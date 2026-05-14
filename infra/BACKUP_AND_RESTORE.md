@@ -50,6 +50,7 @@ Restore steps performed by the script:
 2. drop and recreate the target PostgreSQL database
 3. restore PostgreSQL from `database.sql`, stopping on the first SQL error
 4. replace document storage with the archived files through a one-off Docker helper so bind-mounted storage can be rebuilt even when the host user cannot delete the directory directly
+5. repair legacy Windows PowerShell mojibake in transferred journal descriptions when detected
 
 ## Safety Notes
 
@@ -58,6 +59,7 @@ Restore steps performed by the script:
 - prefer restoring while services are stopped or in maintenance mode
 - verify `/health/ready` after restore
 - spot-check a document download and a key report after recovery
+- Windows PowerShell backups now use Docker file copy instead of a text pipeline so UTF-8 journal text is preserved in `database.sql`
 
 ## Restore Drill Cadence
 

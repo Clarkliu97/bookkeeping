@@ -15,10 +15,17 @@ $documentsArchive = Join-Path $backupDir "documents.zip"
 $metadataPath = Join-Path $backupDir "metadata.json"
 $postgresUser = if ([string]::IsNullOrWhiteSpace($env:POSTGRES_USER)) { "bookkeeping" } else { $env:POSTGRES_USER }
 $postgresDb = if ([string]::IsNullOrWhiteSpace($env:POSTGRES_DB)) { "bookkeeping_tax" } else { $env:POSTGRES_DB }
+$containerDumpPath = "/tmp/bookkeeping-database.sql"
 
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 
-docker compose exec -T db pg_dump -U $postgresUser $postgresDb | Out-File -FilePath $databaseOutput -Encoding utf8
+try {
+    docker compose exec -T db pg_dump -U $postgresUser -d $postgresDb -f $containerDumpPath
+    docker compose cp "db:${containerDumpPath}" $databaseOutput | Out-Null
+}
+finally {
+    docker compose exec -T db rm -f $containerDumpPath | Out-Null
+}
 
 if (Test-Path $documentsPath) {
     Compress-Archive -Path (Join-Path $documentsPath "*") -DestinationPath $documentsArchive -Force

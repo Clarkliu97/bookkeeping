@@ -23,4 +23,20 @@ def store_document_bytes(*, company_id: UUID, original_filename: str, content: b
 
 
 def resolve_document_path(storage_path: str) -> Path:
-    return document_storage_root() / storage_path
+    root = document_storage_root()
+    normalized_storage_path = storage_path.strip()
+    candidates = [
+        root / normalized_storage_path,
+        root / normalized_storage_path.replace("\\", "/"),
+        root / normalized_storage_path.replace("/", "\\"),
+    ]
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if candidate.exists():
+            return candidate
+
+    return candidates[0]

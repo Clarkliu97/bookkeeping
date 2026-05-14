@@ -291,6 +291,7 @@ Important variables:
 - `API_ALERT_WEBHOOK_URL`: optional degraded-readiness alert target
 - `NEXT_PUBLIC_API_BASE_URL`: leave blank when the browser should use the current hostname and `NEXT_PUBLIC_API_PORT`
 - `NEXT_PUBLIC_API_PORT`: default API port used by the frontend
+- `NEXT_ALLOWED_DEV_ORIGINS`: extra Next.js development origins as a comma-separated list or a short LAN range such as `192.168.1.100-253`
 
 ### Run Everything With Docker Compose
 

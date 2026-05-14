@@ -29,6 +29,7 @@ documents_archive="${backup_dir}/documents.zip"
 documents_path="${project_root}/storage/documents"
 postgres_user="${POSTGRES_USER:-bookkeeping}"
 postgres_db="${POSTGRES_DB:-bookkeeping_tax}"
+container_restore_path="/tmp/bookkeeping-restore.sql"
 
 if [ ! -f "${database_input}" ]; then
   echo "database.sql not found in ${backup_dir}" >&2
@@ -41,8 +42,11 @@ docker compose -f "${project_root}/docker-compose.yml" exec -T db \
 docker compose -f "${project_root}/docker-compose.yml" exec -T db \
   createdb -U "${postgres_user}" "${postgres_db}"
 
+docker compose -f "${project_root}/docker-compose.yml" cp \
+  "${database_input}" "db:${container_restore_path}"
+
 docker compose -f "${project_root}/docker-compose.yml" exec -T db \
-  psql -v ON_ERROR_STOP=1 -U "${postgres_user}" -d "${postgres_db}" < "${database_input}"
+  psql -v ON_ERROR_STOP=1 -U "${postgres_user}" -d "${postgres_db}" -f "${container_restore_path}"
 
 if [ -f "${documents_archive}" ]; then
   cat <<'PY' | docker compose -f "${project_root}/docker-compose.yml" run --rm --no-deps -T -u 0 \
@@ -63,5 +67,11 @@ with zipfile.ZipFile(archive_path) as archive:
     archive.extractall(documents_path)
 PY
 fi
+
+docker compose -f "${project_root}/docker-compose.yml" run --rm --no-deps -T api \
+  python -m app.accounting_text_repair --apply
+
+docker compose -f "${project_root}/docker-compose.yml" exec -T db \
+  rm -f "${container_restore_path}"
 
 echo "Restore completed from: ${backup_dir}"

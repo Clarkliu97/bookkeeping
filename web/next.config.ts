@@ -1,10 +1,38 @@
 import type { NextConfig } from "next";
 
+const DEFAULT_ALLOWED_DEV_ORIGINS = "192.168.1.100-253";
 
-const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS ?? "192.168.1.100")
+function isValidOctet(value: number) {
+  return Number.isInteger(value) && value >= 0 && value <= 255;
+}
+
+function expandAllowedDevOrigin(origin: string) {
+  const trimmedOrigin = origin.trim();
+
+  if (!trimmedOrigin) {
+    return [];
+  }
+
+  const shortRangeMatch = trimmedOrigin.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{1,3})-(\d{1,3})$/);
+
+  if (!shortRangeMatch) {
+    return [trimmedOrigin];
+  }
+
+  const [, prefix, rawStart, rawEnd] = shortRangeMatch;
+  const start = Number(rawStart);
+  const end = Number(rawEnd);
+
+  if (!isValidOctet(start) || !isValidOctet(end) || start > end) {
+    throw new Error(`Invalid NEXT_ALLOWED_DEV_ORIGINS range: ${trimmedOrigin}`);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, index) => `${prefix}.${start + index}`);
+}
+
+const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS ?? DEFAULT_ALLOWED_DEV_ORIGINS)
   .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+  .flatMap(expandAllowedDevOrigin);
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

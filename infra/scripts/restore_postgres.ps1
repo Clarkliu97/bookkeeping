@@ -12,6 +12,7 @@ $documentsArchive = Join-Path $BackupDir "documents.zip"
 $documentsPath = Join-Path $ProjectRoot "storage\documents"
 $postgresUser = if ([string]::IsNullOrWhiteSpace($env:POSTGRES_USER)) { "bookkeeping" } else { $env:POSTGRES_USER }
 $postgresDb = if ([string]::IsNullOrWhiteSpace($env:POSTGRES_DB)) { "bookkeeping_tax" } else { $env:POSTGRES_DB }
+$containerRestorePath = "/tmp/bookkeeping-restore.sql"
 
 if (-not (Test-Path $databaseInput)) {
     throw "database.sql not found in $BackupDir"
@@ -23,7 +24,8 @@ try {
     docker compose exec -T db dropdb --if-exists --force -U $postgresUser $postgresDb
     docker compose exec -T db createdb -U $postgresUser $postgresDb
 
-    Get-Content $databaseInput | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U $postgresUser -d $postgresDb
+    docker compose cp $databaseInput "db:${containerRestorePath}" | Out-Null
+    docker compose exec -T db psql -v ON_ERROR_STOP=1 -U $postgresUser -d $postgresDb -f $containerRestorePath
 
     if (Test-Path $documentsArchive) {
         $restoreDocumentsScript = @'
@@ -46,8 +48,11 @@ with zipfile.ZipFile(archive_path) as archive:
         $restoreDocumentsScript | docker compose run --rm --no-deps -T -u 0 -v "${BackupDir}:/restore-backup:ro" api python -
     }
 
+    docker compose run --rm --no-deps -T api python -m app.accounting_text_repair --apply
+
     Write-Output "Restore completed from: $BackupDir"
 }
 finally {
+    docker compose exec -T db rm -f $containerRestorePath | Out-Null
     Pop-Location
 }

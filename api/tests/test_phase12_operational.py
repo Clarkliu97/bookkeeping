@@ -1,4 +1,5 @@
 import app.documents.service as document_service
+from app.core.text_repair import repair_windows_mojibake
 from app.main import observability_store
 
 
@@ -75,3 +76,26 @@ def test_request_id_is_echoed_when_provided(client):
     response = client.get("/health/live", headers={"X-Request-ID": "phase12-test-request"})
     assert response.status_code == 200, response.text
     assert response.headers["x-request-id"] == "phase12-test-request"
+
+
+def test_repair_windows_mojibake_repairs_legacy_windows_transfer_sequences():
+    assert repair_windows_mojibake("ATO BAS refund receivable (Oct鈥揇ec 2025)") == "ATO BAS refund receivable (Oct–Dec 2025)"
+    assert repair_windows_mojibake("JB Hi鈥慒i purchase - Uniden dash camera & cable") == "JB Hi‑Fi purchase - Uniden dash camera & cable"
+    assert repair_windows_mojibake("BAS lodged 鈥?GST credit receivable") == "BAS lodged —GST credit receivable"
+    assert repair_windows_mojibake("Normal text — unchanged") == "Normal text — unchanged"
+
+
+def test_resolve_document_path_supports_legacy_windows_style_restore(tmp_path, monkeypatch):
+    storage_root = tmp_path / "documents"
+    storage_root.mkdir(parents=True, exist_ok=True)
+    legacy_path = storage_root / "ae38ffe8-6624-45ab-aa94-5aca05a7d12d\\52e06205-7e59-4e0d-9b12-f0c94c9298aa.pdf"
+    legacy_path.write_bytes(b"%PDF-1.4 legacy")
+
+    monkeypatch.setattr(document_service, "document_storage_root", lambda: storage_root)
+
+    resolved = document_service.resolve_document_path(
+        "ae38ffe8-6624-45ab-aa94-5aca05a7d12d/52e06205-7e59-4e0d-9b12-f0c94c9298aa.pdf"
+    )
+
+    assert resolved == legacy_path
+    assert resolved.read_bytes() == b"%PDF-1.4 legacy"
