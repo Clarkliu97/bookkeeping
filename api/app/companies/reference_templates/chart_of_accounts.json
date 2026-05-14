@@ -1,0 +1,5410 @@
+[
+  {
+    "account_code": "1000",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Assets",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1010",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Cash and Cash Equivalents",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1011",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Petty Cash",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1020",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Bank Accounts",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1021",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Main Business Transaction Account",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1022",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Business Savings Account",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1023",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Trust / Client Money Account",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1024",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Property Settlement Bank Account",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1025",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Rental Collection Bank Account",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1026",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Investment Trading Cash Account",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1027",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Foreign Currency Bank Account",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1030",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Term Deposits - Short Term",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1031",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Money Market Funds",
+    "reporting_category_code": "BS_CA_CASH"
+  },
+  {
+    "account_code": "1040",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Undeposited Funds",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1041",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "EFTPOS / Card Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1042",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Stripe Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1043",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "PayPal Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1044",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Wise / International Payment Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1045",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Brokerage Settlement Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1090",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Cash Rounding / Small Balance Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1100",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Receivables",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1110",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Accounts Receivable Control",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1111",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Trade Debtors",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1112",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Rental Receivables",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1113",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Management Fee Receivables",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1114",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Technology Service Receivables",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1115",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Interest Receivable",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1116",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Dividend Receivable",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1117",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Distribution Receivable",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1118",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Insurance Recovery Receivable",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1120",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Income",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1121",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Unbilled Revenue",
+    "reporting_category_code": "BS_CA_CONTRACT_ASSETS"
+  },
+  {
+    "account_code": "1122",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Contract Asset",
+    "reporting_category_code": "BS_CA_CONTRACT_ASSETS"
+  },
+  {
+    "account_code": "1130",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Allowance for Doubtful Debts",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1131",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Bad Debt Provision - Trade Debtors",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1140",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Employee Advances",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1141",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Director Loan Receivable",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1142",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Shareholder Loan Receivable",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1143",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Related Party Receivable",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1150",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Intercompany Receivables",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1151",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Intercompany Receivable - Parent",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1152",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Intercompany Receivable - Subsidiary A",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1153",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Intercompany Receivable - Subsidiary B",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1160",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Loan Receivable - Current",
+    "reporting_category_code": "BS_CA_LOANS_RECEIVABLE"
+  },
+  {
+    "account_code": "1161",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Interest-bearing Loan Receivable - Current",
+    "reporting_category_code": "BS_CA_LOANS_RECEIVABLE"
+  },
+  {
+    "account_code": "1162",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Vendor Finance Receivable - Current",
+    "reporting_category_code": "BS_CA_LOANS_RECEIVABLE"
+  },
+  {
+    "account_code": "1190",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Suspense Receivable",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1200",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Tax Assets and Prepayments",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1210",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CONTROL",
+    "name": "GST Paid / Input Tax Credits",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1211",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CONTROL",
+    "name": "GST Receivable from ATO",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1212",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CONTROL",
+    "name": "GST Clearing Account",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1220",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INCOME_TAX_CONTROL",
+    "name": "Income Tax Receivable",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1221",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PAYG_W_CONTROL",
+    "name": "PAYG Instalments Paid",
+    "reporting_category_code": "BS_CA_TAX_RECEIVABLES"
+  },
+  {
+    "account_code": "1222",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FRANKING_CREDIT",
+    "name": "Franking Credits Receivable",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1223",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Fuel Tax Credits Receivable",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1230",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Prepaid Expenses",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1231",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Prepaid Insurance",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1232",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Prepaid Rent",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1233",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Prepaid Software Subscriptions",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1234",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Prepaid Domain / Hosting Costs",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1235",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Prepaid Legal Fees",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1236",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Prepaid Property Outgoings",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1240",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Deposits Paid",
+    "reporting_category_code": "BS_CA_DEPOSITS"
+  },
+  {
+    "account_code": "1241",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Rental Bond / Security Deposit Paid",
+    "reporting_category_code": "BS_CA_DEPOSITS"
+  },
+  {
+    "account_code": "1242",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Property Purchase Deposit Paid",
+    "reporting_category_code": "BS_CA_DEPOSITS"
+  },
+  {
+    "account_code": "1243",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Supplier Deposits Paid",
+    "reporting_category_code": "BS_CA_DEPOSITS"
+  },
+  {
+    "account_code": "1244",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Utility Deposits Paid",
+    "reporting_category_code": "BS_CA_DEPOSITS"
+  },
+  {
+    "account_code": "1250",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "DEFERRED_TAX_CONTROL",
+    "name": "Deferred Tax Asset",
+    "reporting_category_code": "BS_NCA_DEFERRED_TAX_ASSETS"
+  },
+  {
+    "account_code": "1251",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "DEFERRED_TAX_CONTROL",
+    "name": "Deferred Tax Asset - Tax Losses",
+    "reporting_category_code": "BS_NCA_DEFERRED_TAX_ASSETS"
+  },
+  {
+    "account_code": "1252",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "DEFERRED_TAX_CONTROL",
+    "name": "Deferred Tax Asset - Temporary Differences",
+    "reporting_category_code": "BS_NCA_DEFERRED_TAX_ASSETS"
+  },
+  {
+    "account_code": "1300",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Inventory and Work in Progress",
+    "reporting_category_code": "BS_CA_INVENTORY"
+  },
+  {
+    "account_code": "1310",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Trading Inventory",
+    "reporting_category_code": "BS_CA_INVENTORY"
+  },
+  {
+    "account_code": "1311",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Hardware Inventory",
+    "reporting_category_code": "BS_CA_INVENTORY"
+  },
+  {
+    "account_code": "1312",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Software Licence Inventory",
+    "reporting_category_code": "BS_CA_INVENTORY"
+  },
+  {
+    "account_code": "1320",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Work in Progress - Technology Projects",
+    "reporting_category_code": "BS_CA_INVENTORY"
+  },
+  {
+    "account_code": "1321",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Work in Progress - Property Development",
+    "reporting_category_code": "BS_CA_INVENTORY"
+  },
+  {
+    "account_code": "1330",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Inventory Write-down Allowance",
+    "reporting_category_code": "BS_CA_INVENTORY"
+  },
+  {
+    "account_code": "1400",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Investments and Financial Assets",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1410",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Listed Shares - At Fair Value",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1411",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Listed ETFs / Managed Funds",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1412",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Listed Bonds",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1413",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Unlisted Shares",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1414",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Units in Trusts / Funds",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1415",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Cryptocurrency / Digital Assets",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1420",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Investments in Subsidiaries",
+    "reporting_category_code": "BS_NCA_INVESTMENTS_SUBSIDIARIES"
+  },
+  {
+    "account_code": "1421",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Investment in Subsidiary - Technology Co",
+    "reporting_category_code": "BS_NCA_INVESTMENTS_SUBSIDIARIES"
+  },
+  {
+    "account_code": "1422",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Investment in Subsidiary - Property Co",
+    "reporting_category_code": "BS_NCA_INVESTMENTS_SUBSIDIARIES"
+  },
+  {
+    "account_code": "1423",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Investment in Subsidiary - Investment Co",
+    "reporting_category_code": "BS_NCA_INVESTMENTS_SUBSIDIARIES"
+  },
+  {
+    "account_code": "1430",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Investments in Associates",
+    "reporting_category_code": "BS_NCA_INVESTMENTS_SUBSIDIARIES"
+  },
+  {
+    "account_code": "1431",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Investments in Joint Ventures",
+    "reporting_category_code": "BS_NCA_INVESTMENTS_SUBSIDIARIES"
+  },
+  {
+    "account_code": "1440",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Long-term Loan Receivable",
+    "reporting_category_code": "BS_NCA_LOANS_RECEIVABLE"
+  },
+  {
+    "account_code": "1441",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Related-party Loan Receivable - Long Term",
+    "reporting_category_code": "BS_CA_RELATED_PARTY_RECEIVABLES"
+  },
+  {
+    "account_code": "1442",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Mortgage Loan Receivable",
+    "reporting_category_code": "BS_NCA_LOANS_RECEIVABLE"
+  },
+  {
+    "account_code": "1443",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Convertible Note Receivable",
+    "reporting_category_code": "BS_NCA_LOANS_RECEIVABLE"
+  },
+  {
+    "account_code": "1450",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Derivative Financial Assets",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1460",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Fair Value Adjustment - Financial Assets",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1461",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Impairment Allowance - Financial Assets",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1500",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Property, Plant and Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1510",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Land",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1511",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Buildings",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1512",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Commercial Property",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1513",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Residential Investment Property",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1514",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Property Acquisition Costs Capitalised",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1515",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Capital Improvements - Property",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1516",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Property Fixtures and Fittings",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1520",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Leasehold Improvements",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1530",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Plant and Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1531",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Office Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1532",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Computer Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1533",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Server and Network Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1534",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Laboratory / Testing Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1540",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Motor Vehicles",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1550",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Furniture and Fittings",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1560",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Right-of-use Assets",
+    "reporting_category_code": "BS_NCA_ROU_ASSETS"
+  },
+  {
+    "account_code": "1561",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "ROU Asset - Office Lease",
+    "reporting_category_code": "BS_NCA_ROU_ASSETS"
+  },
+  {
+    "account_code": "1562",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "ROU Asset - Property Lease",
+    "reporting_category_code": "BS_NCA_ROU_ASSETS"
+  },
+  {
+    "account_code": "1563",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "ROU Asset - Vehicle Lease",
+    "reporting_category_code": "BS_NCA_ROU_ASSETS"
+  },
+  {
+    "account_code": "1570",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Construction / Development in Progress",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1580",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Accumulated Depreciation - Buildings",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1581",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accumulated Depreciation - Leasehold Improvements",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1582",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Accumulated Depreciation - Plant and Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1583",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Accumulated Depreciation - Computer Equipment",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1584",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Accumulated Depreciation - Motor Vehicles",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1585",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Accumulated Depreciation - Furniture and Fittings",
+    "reporting_category_code": "BS_NCA_PPE"
+  },
+  {
+    "account_code": "1586",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accumulated Depreciation - ROU Assets",
+    "reporting_category_code": "BS_NCA_ROU_ASSETS"
+  },
+  {
+    "account_code": "1590",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Asset Disposal Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1600",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Investment Property",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1610",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Investment Property - Land",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1611",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Investment Property - Building",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1612",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Investment Property - Acquisition Costs",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1613",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Investment Property - Improvements",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1614",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Investment Property - Fixtures and Fittings",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1620",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Investment Property Under Development",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1630",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Fair Value Adjustment - Investment Property",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1640",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Accumulated Depreciation - Investment Property",
+    "reporting_category_code": "BS_NCA_INVESTMENT_PROPERTY"
+  },
+  {
+    "account_code": "1650",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Impairment Allowance - Investment Property",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1700",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Intangible Assets",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1710",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Capitalised Software Development",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1711",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Software Platform Asset",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1712",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Website / Application Development Asset",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1713",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Purchased Software Licences - Capitalised",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1720",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Patents",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1721",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Trademarks",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1722",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Copyrights",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1723",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Domain Names",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1724",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Customer Lists",
+    "reporting_category_code": "BS_CA_TRADE_RECEIVABLES"
+  },
+  {
+    "account_code": "1730",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Goodwill",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1740",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Accumulated Amortisation - Software",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1741",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Accumulated Amortisation - Patents",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1742",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Accumulated Amortisation - Trademarks",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1743",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accumulated Amortisation - Other Intangibles",
+    "reporting_category_code": "BS_NCA_INTANGIBLES"
+  },
+  {
+    "account_code": "1750",
+    "account_type": "contra_asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Impairment Allowance - Intangibles",
+    "reporting_category_code": "BS_NCA_FINANCIAL_ASSETS"
+  },
+  {
+    "account_code": "1800",
+    "account_type": "asset",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Other Assets",
+    "reporting_category_code": "BS_NCA_OTHER_ASSETS"
+  },
+  {
+    "account_code": "1810",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Long-term Security Deposits",
+    "reporting_category_code": "BS_CA_DEPOSITS"
+  },
+  {
+    "account_code": "1820",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Long-term Prepayments",
+    "reporting_category_code": "BS_CA_PREPAYMENTS"
+  },
+  {
+    "account_code": "1830",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Deferred Financing Costs",
+    "reporting_category_code": "BS_NCA_OTHER_ASSETS"
+  },
+  {
+    "account_code": "1840",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Deferred Acquisition Costs",
+    "reporting_category_code": "BS_NCA_OTHER_ASSETS"
+  },
+  {
+    "account_code": "1850",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Other Non-current Assets",
+    "reporting_category_code": "BS_NCA_OTHER_ASSETS"
+  },
+  {
+    "account_code": "1900",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Opening Balance Suspense - Assets",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "1999",
+    "account_type": "asset",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Asset Rounding / Conversion Differences",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2000",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Liabilities",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2010",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Accounts Payable Control",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2011",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Trade Creditors",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2012",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Supplier Bills",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2020",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Credit Card Payable",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2021",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Corporate Credit Card - Main",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2022",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Director / Employee Card Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2030",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Bank Overdraft",
+    "reporting_category_code": "BS_CL_BORROWINGS"
+  },
+  {
+    "account_code": "2040",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Short-term Borrowings",
+    "reporting_category_code": "BS_CL_BORROWINGS"
+  },
+  {
+    "account_code": "2041",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Short-term Related-party Loan Payable",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2042",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Short-term Investment Margin Loan",
+    "reporting_category_code": "BS_CL_BORROWINGS"
+  },
+  {
+    "account_code": "2043",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Short-term Property Loan",
+    "reporting_category_code": "BS_CL_BORROWINGS"
+  },
+  {
+    "account_code": "2050",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Current Portion of Long-term Debt",
+    "reporting_category_code": "BS_CL_BORROWINGS"
+  },
+  {
+    "account_code": "2051",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Current Portion of Mortgage Payable",
+    "reporting_category_code": "BS_CL_BORROWINGS"
+  },
+  {
+    "account_code": "2052",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Current Portion of Lease Liability",
+    "reporting_category_code": "BS_CL_LEASE_LIABILITIES"
+  },
+  {
+    "account_code": "2100",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Tax and Statutory Liabilities",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2110",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CONTROL",
+    "name": "GST Collected",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2111",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CONTROL",
+    "name": "GST Payable to ATO",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2112",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CONTROL",
+    "name": "GST Adjustments Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2113",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CONTROL",
+    "name": "GST Clearing Payable",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2120",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PAYG_W_CONTROL",
+    "name": "PAYG Withholding Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2121",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "SUPER_CONTROL",
+    "name": "Superannuation Payable",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2122",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PAYROLL_TAX_CONTROL",
+    "name": "Payroll Tax Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2123",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "WORKERS_COMP_CONTROL",
+    "name": "Workers Compensation Payable",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2130",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INCOME_TAX_CONTROL",
+    "name": "Income Tax Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2131",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FRANKING_CREDIT",
+    "name": "Franking Account Tax Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2132",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "WHT_FOREIGN",
+    "name": "Withholding Tax Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2140",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FBT_CONTROL",
+    "name": "Fringe Benefits Tax Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2141",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Land Tax Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2142",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Council Rates Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2143",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "STAMP_DUTY_CONTROL",
+    "name": "Stamp Duty Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2144",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "STAMP_DUTY_CONTROL",
+    "name": "Foreign Investor Surcharge Payable",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2150",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "DEFERRED_TAX_CONTROL",
+    "name": "Deferred Tax Liability",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2151",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "DEFERRED_TAX_CONTROL",
+    "name": "Deferred Tax Liability - Revaluations",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2152",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "DEFERRED_TAX_CONTROL",
+    "name": "Deferred Tax Liability - Temporary Differences",
+    "reporting_category_code": "BS_CL_TAX_PAYABLES"
+  },
+  {
+    "account_code": "2200",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Accruals and Provisions",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2210",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Expenses",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2211",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Accounting Fees",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2212",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Legal Fees",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2213",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Audit Fees",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2214",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Interest Payable",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2215",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Property Expenses",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2216",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Accrued Technology Infrastructure Costs",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2220",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Wages Payable",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2221",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Bonus Payable",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2222",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Commission Payable",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2223",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Annual Leave Provision",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2224",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Long Service Leave Provision - Current",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2225",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Long Service Leave Provision - Non-current",
+    "reporting_category_code": "BS_CL_EMPLOYEE_BENEFITS"
+  },
+  {
+    "account_code": "2230",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Warranty Provision",
+    "reporting_category_code": "BS_CL_PROVISIONS"
+  },
+  {
+    "account_code": "2231",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Refund Liability",
+    "reporting_category_code": "BS_CL_PROVISIONS"
+  },
+  {
+    "account_code": "2232",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Onerous Contract Provision",
+    "reporting_category_code": "BS_CL_PROVISIONS"
+  },
+  {
+    "account_code": "2233",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Legal Claim Provision",
+    "reporting_category_code": "BS_CL_PROVISIONS"
+  },
+  {
+    "account_code": "2234",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Property Make-good Provision",
+    "reporting_category_code": "BS_CL_PROVISIONS"
+  },
+  {
+    "account_code": "2235",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Remediation / Cladding Provision",
+    "reporting_category_code": "BS_CL_PROVISIONS"
+  },
+  {
+    "account_code": "2236",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Asset Retirement Obligation",
+    "reporting_category_code": "BS_CL_PROVISIONS"
+  },
+  {
+    "account_code": "2300",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Customer and Contract Liabilities",
+    "reporting_category_code": "BS_CL_TRADE_PAYABLES"
+  },
+  {
+    "account_code": "2310",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Customer Deposits Received",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2311",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Tenant Security Deposits Received",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2312",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Property Sale Deposits Received",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2320",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Unearned Revenue",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2321",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Deferred SaaS Subscription Revenue",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2322",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Deferred Support / Maintenance Revenue",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2323",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Deferred Licence Revenue",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2324",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Deferred Management Fee Revenue",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2330",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Contract Liability",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2340",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Gift Cards / Credits Payable",
+    "reporting_category_code": "BS_CL_CONTRACT_LIABILITIES"
+  },
+  {
+    "account_code": "2400",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Intercompany and Related-party Payables",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2410",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Intercompany Payables",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2411",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Intercompany Payable - Parent",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2412",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Intercompany Payable - Subsidiary A",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2413",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Intercompany Payable - Subsidiary B",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2420",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Director Loan Payable",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2421",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Shareholder Loan Payable",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2422",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Related-party Loan Payable",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2430",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Management Fee Payable to Related Entity",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2440",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Dividend Payable to Shareholders",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2441",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Distribution Payable",
+    "reporting_category_code": "BS_CL_RELATED_PARTY_PAYABLES"
+  },
+  {
+    "account_code": "2500",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Long-term Borrowings",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2510",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Bank Loan Payable - Long Term",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2511",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Mortgage Payable - Investment Property",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2512",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Commercial Property Loan Payable",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2513",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Residential Property Loan Payable",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2514",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PROPERTY_TRANSACTION_REVIEW",
+    "name": "Construction / Development Loan Payable",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2520",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_CAPITAL_PURCHASE_10",
+    "name": "Equipment Finance Payable",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2521",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Vehicle Finance Payable",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2530",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Lease Liability - Long Term",
+    "reporting_category_code": "BS_NCL_LEASE_LIABILITIES"
+  },
+  {
+    "account_code": "2531",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Office Lease Liability",
+    "reporting_category_code": "BS_NCL_LEASE_LIABILITIES"
+  },
+  {
+    "account_code": "2532",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Vehicle Lease Liability",
+    "reporting_category_code": "BS_NCL_LEASE_LIABILITIES"
+  },
+  {
+    "account_code": "2540",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Margin Loan Payable - Long Term",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2550",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Convertible Notes Payable",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2560",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Bonds / Notes Payable",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2570",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Subordinated Debt",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2580",
+    "account_type": "contra_liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Unamortised Borrowing Costs",
+    "reporting_category_code": "BS_NCL_OTHER_LIABILITIES"
+  },
+  {
+    "account_code": "2581",
+    "account_type": "contra_liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Loan Establishment Fee Contra Account",
+    "reporting_category_code": "BS_NCL_BORROWINGS"
+  },
+  {
+    "account_code": "2590",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Other Long-term Liabilities",
+    "reporting_category_code": "BS_NCL_OTHER_LIABILITIES"
+  },
+  {
+    "account_code": "2700",
+    "account_type": "liability",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Other Liabilities",
+    "reporting_category_code": "BS_NCL_OTHER_LIABILITIES"
+  },
+  {
+    "account_code": "2710",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Suspense Payable",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2720",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Payroll Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2730",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Bank Transfer Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2740",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Loan Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2750",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Investment Trade Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2760",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Property Settlement Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2900",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Opening Balance Suspense - Liabilities",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "2999",
+    "account_type": "liability",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Liability Rounding / Conversion Differences",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "3000",
+    "account_type": "equity",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Equity",
+    "reporting_category_code": "BS_EQ_RETAINED_EARNINGS"
+  },
+  {
+    "account_code": "3010",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Share Capital",
+    "reporting_category_code": "BS_EQ_SHARE_CAPITAL"
+  },
+  {
+    "account_code": "3011",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Ordinary Share Capital",
+    "reporting_category_code": "BS_EQ_SHARE_CAPITAL"
+  },
+  {
+    "account_code": "3012",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Preference Share Capital",
+    "reporting_category_code": "BS_EQ_SHARE_CAPITAL"
+  },
+  {
+    "account_code": "3013",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Additional Paid-in Capital / Share Premium",
+    "reporting_category_code": "BS_EQ_SHARE_CAPITAL"
+  },
+  {
+    "account_code": "3020",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Treasury Shares",
+    "reporting_category_code": "BS_EQ_TREASURY_SHARES"
+  },
+  {
+    "account_code": "3030",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Capital Contributions",
+    "reporting_category_code": "BS_EQ_CONTRIBUTIONS"
+  },
+  {
+    "account_code": "3031",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Owner / Shareholder Contributions",
+    "reporting_category_code": "BS_EQ_CONTRIBUTIONS"
+  },
+  {
+    "account_code": "3032",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Capital Contribution - Related Entity",
+    "reporting_category_code": "BS_EQ_CONTRIBUTIONS"
+  },
+  {
+    "account_code": "3100",
+    "account_type": "equity",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Retained Earnings and Reserves",
+    "reporting_category_code": "BS_EQ_RETAINED_EARNINGS"
+  },
+  {
+    "account_code": "3110",
+    "account_type": "equity",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Retained Earnings",
+    "reporting_category_code": "BS_EQ_RETAINED_EARNINGS"
+  },
+  {
+    "account_code": "3111",
+    "account_type": "equity",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Prior Year Retained Earnings",
+    "reporting_category_code": "BS_EQ_RETAINED_EARNINGS"
+  },
+  {
+    "account_code": "3120",
+    "account_type": "equity",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Current Year Earnings",
+    "reporting_category_code": "BS_EQ_RETAINED_EARNINGS"
+  },
+  {
+    "account_code": "3130",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Dividends Declared",
+    "reporting_category_code": "BS_EQ_DIVIDENDS_DISTRIBUTIONS"
+  },
+  {
+    "account_code": "3131",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Dividends Paid",
+    "reporting_category_code": "BS_EQ_DIVIDENDS_DISTRIBUTIONS"
+  },
+  {
+    "account_code": "3132",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Franked Dividends Paid",
+    "reporting_category_code": "BS_EQ_DIVIDENDS_DISTRIBUTIONS"
+  },
+  {
+    "account_code": "3133",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Unfranked Dividends Paid",
+    "reporting_category_code": "BS_EQ_DIVIDENDS_DISTRIBUTIONS"
+  },
+  {
+    "account_code": "3140",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Distributions to Owners",
+    "reporting_category_code": "BS_EQ_DIVIDENDS_DISTRIBUTIONS"
+  },
+  {
+    "account_code": "3150",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "General Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3151",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Asset Revaluation Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3152",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Investment Revaluation Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3153",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Foreign Currency Translation Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3154",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Share-based Payment Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3155",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Hedging Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3156",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Other Comprehensive Income Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3160",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Non-controlling Interest",
+    "reporting_category_code": "BS_EQ_CONSOLIDATION_NCI"
+  },
+  {
+    "account_code": "3170",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Opening Balance Equity",
+    "reporting_category_code": "BS_EQ_RETAINED_EARNINGS"
+  },
+  {
+    "account_code": "3300",
+    "account_type": "equity",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Consolidation Equity Accounts",
+    "reporting_category_code": "BS_EQ_RETAINED_EARNINGS"
+  },
+  {
+    "account_code": "3310",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Consolidation Adjustment Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3311",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Acquisition Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3312",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Common Control Reserve",
+    "reporting_category_code": "BS_EQ_RESERVES_OCI"
+  },
+  {
+    "account_code": "3320",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Parent Investment Elimination",
+    "reporting_category_code": "BS_EQ_CONSOLIDATION_NCI"
+  },
+  {
+    "account_code": "3321",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Subsidiary Equity Elimination",
+    "reporting_category_code": "BS_EQ_CONSOLIDATION_NCI"
+  },
+  {
+    "account_code": "3900",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Equity Suspense",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "3999",
+    "account_type": "equity",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NO_TAX",
+    "name": "Equity Rounding / Conversion Differences",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "4000",
+    "account_type": "revenue",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Revenue / Operating Income",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4010",
+    "account_type": "revenue",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Technology Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4011",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "SaaS Subscription Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4012",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Software Licence Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4013",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Software Implementation Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4014",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Software Development Service Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4015",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Support and Maintenance Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4016",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Cloud Hosting Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4017",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "API Usage Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4018",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Data / Analytics Service Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4019",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Technology Consulting Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4100",
+    "account_type": "revenue",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Holding Company Revenue",
+    "reporting_category_code": "PL_REV_HOLDING_GROUP_SERVICES"
+  },
+  {
+    "account_code": "4110",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Management Fee Revenue",
+    "reporting_category_code": "PL_REV_HOLDING_GROUP_SERVICES"
+  },
+  {
+    "account_code": "4111",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Corporate Service Fee Revenue",
+    "reporting_category_code": "PL_REV_HOLDING_GROUP_SERVICES"
+  },
+  {
+    "account_code": "4112",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Accounting / Admin Recharge Revenue",
+    "reporting_category_code": "PL_REV_HOLDING_GROUP_SERVICES"
+  },
+  {
+    "account_code": "4113",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Technology Recharge Revenue",
+    "reporting_category_code": "PL_REV_HOLDING_GROUP_SERVICES"
+  },
+  {
+    "account_code": "4114",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Shared Office Recharge Revenue",
+    "reporting_category_code": "PL_REV_HOLDING_GROUP_SERVICES"
+  },
+  {
+    "account_code": "4115",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Director / Governance Service Revenue",
+    "reporting_category_code": "PL_REV_HOLDING_GROUP_SERVICES"
+  },
+  {
+    "account_code": "4200",
+    "account_type": "revenue",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Real-estate Operating Revenue",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4210",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Rental Income",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4211",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_SALE",
+    "name": "Residential Rental Income",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4212",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Commercial Rental Income",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4213",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Car Park Rental Income",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4214",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Storage Rental Income",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4220",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Tenant Outgoings Recovery",
+    "reporting_category_code": "PL_REV_PROPERTY_RECOVERIES"
+  },
+  {
+    "account_code": "4221",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Council Rates Recovery",
+    "reporting_category_code": "PL_REV_PROPERTY_RECOVERIES"
+  },
+  {
+    "account_code": "4222",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Water Rates Recovery",
+    "reporting_category_code": "PL_REV_PROPERTY_RECOVERIES"
+  },
+  {
+    "account_code": "4223",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Owners Corporation / Strata Recovery",
+    "reporting_category_code": "PL_REV_PROPERTY_RECOVERIES"
+  },
+  {
+    "account_code": "4224",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Land Tax Recovery",
+    "reporting_category_code": "PL_REV_PROPERTY_RECOVERIES"
+  },
+  {
+    "account_code": "4225",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Utilities Recovery",
+    "reporting_category_code": "PL_REV_PROPERTY_RECOVERIES"
+  },
+  {
+    "account_code": "4230",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Property Management Fee Revenue",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4240",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Lease Break / Compensation Income",
+    "reporting_category_code": "PL_REV_PROPERTY_RENTAL"
+  },
+  {
+    "account_code": "4300",
+    "account_type": "revenue",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Investment Operating Revenue",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4310",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Investment Management Fee Revenue",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4311",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Performance Fee Revenue",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4312",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Advisory Fee Revenue",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4313",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Brokerage / Transaction Fee Revenue",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4320",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Interest Income - Operating",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4321",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Loan Interest Income - Operating",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4322",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Mortgage Interest Income - Operating",
+    "reporting_category_code": "PL_REV_INVESTMENT_SERVICES"
+  },
+  {
+    "account_code": "4400",
+    "account_type": "contra_income",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Contra Revenue",
+    "reporting_category_code": "PL_REV_TECHNOLOGY"
+  },
+  {
+    "account_code": "4410",
+    "account_type": "contra_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_ADJUSTMENT",
+    "name": "Sales Discounts Given",
+    "reporting_category_code": "PL_REV_CONTRA"
+  },
+  {
+    "account_code": "4411",
+    "account_type": "contra_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_ADJUSTMENT",
+    "name": "Subscription Discounts",
+    "reporting_category_code": "PL_REV_CONTRA"
+  },
+  {
+    "account_code": "4412",
+    "account_type": "contra_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_ADJUSTMENT",
+    "name": "Customer Credits and Allowances",
+    "reporting_category_code": "PL_REV_CONTRA"
+  },
+  {
+    "account_code": "4413",
+    "account_type": "contra_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_ADJUSTMENT",
+    "name": "Sales Returns",
+    "reporting_category_code": "PL_REV_CONTRA"
+  },
+  {
+    "account_code": "4414",
+    "account_type": "contra_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_ADJUSTMENT",
+    "name": "Rental Concessions",
+    "reporting_category_code": "PL_REV_CONTRA"
+  },
+  {
+    "account_code": "4415",
+    "account_type": "contra_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_ADJUSTMENT",
+    "name": "Bad Debt Recoveries Against Revenue",
+    "reporting_category_code": "PL_REV_CONTRA"
+  },
+  {
+    "account_code": "4900",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Revenue Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "4999",
+    "account_type": "revenue",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_SALE_10",
+    "name": "Revenue Rounding",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "5000",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Cost of Sales",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5010",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Technology Cost of Sales",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5011",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cloud Hosting Cost of Sales",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5012",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Server Infrastructure Cost of Sales",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5013",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Third-party API Cost of Sales",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5014",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Data Provider Cost of Sales",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5015",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Software Licence Resale Cost",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5016",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Customer Support Direct Labour",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5017",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Implementation Direct Labour",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5018",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Contractor Delivery Costs",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5019",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Payment Processing Fees - COGS",
+    "reporting_category_code": "PL_COGS_TECHNOLOGY"
+  },
+  {
+    "account_code": "5300",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Real-estate Direct Costs",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5310",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Management Fees - Direct",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5311",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Letting Fees",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5312",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Rental Advertising - Direct",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5313",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Tenant Screening Costs",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5320",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Recoverable Outgoings Expense",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5321",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Council Rates - Recoverable",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5322",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Water Rates - Recoverable",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5323",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Owners Corporation / Strata - Recoverable",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5324",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Land Tax - Recoverable",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5325",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Utilities - Recoverable",
+    "reporting_category_code": "PL_COGS_PROPERTY"
+  },
+  {
+    "account_code": "5500",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Investment Direct Costs",
+    "reporting_category_code": "PL_COGS_INVESTMENT"
+  },
+  {
+    "account_code": "5510",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Brokerage and Trading Fees - COGS",
+    "reporting_category_code": "PL_COGS_INVESTMENT"
+  },
+  {
+    "account_code": "5511",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Exchange / Market Data Fees - COGS",
+    "reporting_category_code": "PL_COGS_INVESTMENT"
+  },
+  {
+    "account_code": "5512",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Custody Fees - COGS",
+    "reporting_category_code": "PL_COGS_INVESTMENT"
+  },
+  {
+    "account_code": "5513",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Fund Administration Costs - COGS",
+    "reporting_category_code": "PL_COGS_INVESTMENT"
+  },
+  {
+    "account_code": "5520",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Interest Expense - Operating Lending",
+    "reporting_category_code": "PL_COGS_INVESTMENT"
+  },
+  {
+    "account_code": "5800",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Inventory Cost of Sales",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5810",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Purchases for Resale",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5811",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Hardware Purchases for Resale",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5812",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Freight Inwards",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5813",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "IMPORT_GST",
+    "name": "Import Duties and Customs",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5820",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Inventory Adjustments",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5821",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Stock Shrinkage / Loss",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5822",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Inventory Write-down Expense",
+    "reporting_category_code": "PL_COGS_INVENTORY"
+  },
+  {
+    "account_code": "5900",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cost of Sales Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "5999",
+    "account_type": "cost_of_sales",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cost of Sales Rounding",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "6000",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Operating Expenses",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6010",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Employment Expenses",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6011",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Wages and Salaries",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6012",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Directors' Fees",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6013",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Bonuses",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6014",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Sales Commissions",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6015",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "SUPER_CONTROL",
+    "name": "Employer Superannuation",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6016",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "PAYROLL_TAX_CONTROL",
+    "name": "Payroll Tax Expense",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6017",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "WORKERS_COMP_CONTROL",
+    "name": "Workers Compensation Insurance",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6018",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Annual Leave Expense",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6019",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Long Service Leave Expense",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6020",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Recruitment Expense",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6021",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Staff Training and Development",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6022",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Staff Amenities",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6023",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Staff Travel and Accommodation",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6024",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Staff Entertainment",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6030",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Contractor Expenses",
+    "reporting_category_code": "PL_EXP_CONTRACTORS"
+  },
+  {
+    "account_code": "6031",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Software Development Contractors",
+    "reporting_category_code": "PL_EXP_CONTRACTORS"
+  },
+  {
+    "account_code": "6032",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Consulting Contractors",
+    "reporting_category_code": "PL_EXP_CONTRACTORS"
+  },
+  {
+    "account_code": "6033",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Maintenance Contractors",
+    "reporting_category_code": "PL_EXP_CONTRACTORS"
+  },
+  {
+    "account_code": "6200",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Technology and Product Expenses",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6210",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Research and Development Expense",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6211",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Product Development Expense",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6212",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Software Engineering Expense",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6213",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Testing and QA Expense",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6214",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "UX / Design Expense",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6220",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cloud Hosting Expense",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6221",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "AWS / Azure / GCP Expense",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6222",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Domain and DNS Expense",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6223",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Website Hosting Expense",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6224",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "CDN / Storage Expense",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6225",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Monitoring / Logging Tools",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6226",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cybersecurity Tools",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6227",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Developer Tools",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6228",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Data Labelling / Dataset Costs",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6229",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "AI / Model API Costs",
+    "reporting_category_code": "PL_EXP_TECH_RND_PRODUCT"
+  },
+  {
+    "account_code": "6230",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Software Subscriptions",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6231",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Office Productivity Software",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6232",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Accounting Software",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6233",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "CRM Software",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6234",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Project Management Software",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6240",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Small Computer Equipment",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6241",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "IT Repairs and Maintenance",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6242",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Data Backup and Recovery",
+    "reporting_category_code": "PL_EXP_TECH_INFRA_SOFTWARE"
+  },
+  {
+    "account_code": "6400",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Occupancy and Office Expenses",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6410",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Rent Expense",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6411",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Office Rent",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6412",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Coworking / Serviced Office Expense",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6413",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Storage / Warehouse Rent",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6420",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Outgoings Expense",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6421",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Electricity",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6422",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Gas",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6423",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Water",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6424",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Internet and Telephone",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6425",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Mobile Phone Expense",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6430",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cleaning Expense",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6431",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Security Expense",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6432",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Repairs and Maintenance - Office",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6440",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Office Supplies",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6441",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Printing and Stationery",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6442",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Postage and Courier",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6443",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Books and Publications",
+    "reporting_category_code": "PL_EXP_OCCUPANCY_OFFICE"
+  },
+  {
+    "account_code": "6450",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Bank Fees",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "6451",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Merchant Fees",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "6452",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "International Transfer Fees",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "6460",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "General Administration Expense",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "6600",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Professional and Compliance Expenses",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6610",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Accounting Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6611",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Bookkeeping Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6612",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Tax Agent Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6613",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Audit Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6620",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Legal Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6621",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Corporate Legal Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6622",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Legal Fees - Expensed",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6623",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Technology/IP Legal Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6630",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Consulting Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6631",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Strategy / Management Consulting",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6632",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Technical Consulting",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6640",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "ASIC / Company Filing Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6641",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Business Registration Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6642",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Licence and Permit Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6643",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Domain / Trademark Registration Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6650",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Insurance Expense",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6651",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Public Liability Insurance",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6652",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Professional Indemnity Insurance",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6653",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cyber Insurance",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6654",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Directors and Officers Insurance",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "6655",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Insurance",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6660",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Due Diligence Expense",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6661",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Valuation Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6662",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Valuation Fees",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6663",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Investment Research Expense",
+    "reporting_category_code": "PL_EXP_PROFESSIONAL_COMPLIANCE"
+  },
+  {
+    "account_code": "6800",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Sales and Marketing Expenses",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6810",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Advertising Expense",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6811",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Digital Advertising",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6812",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "SEO / SEM Expense",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6813",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Content Marketing Expense",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6814",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Email Marketing Expense",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6815",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Sponsorships",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6820",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Website Marketing Expense",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6821",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Branding and Design",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6822",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Trade Shows and Events",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6823",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Customer Acquisition Cost",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6824",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Customer Success Expense",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6830",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Client Entertainment",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6831",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Client Gifts",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "6832",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Meals and Entertainment",
+    "reporting_category_code": "PL_EXP_MARKETING_CUSTOMER"
+  },
+  {
+    "account_code": "7000",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Real-estate Operating Expenses",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7010",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Repairs and Maintenance",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7011",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Plumbing Repairs",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7012",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Electrical Repairs",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7013",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Appliance Repairs",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7014",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "General Property Maintenance",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7020",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Owners Corporation / Strata Fees",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7021",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Council Rates",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7022",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Water Rates",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7023",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Land Tax Expense",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7024",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Fire Services Levy",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7030",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Management Fees",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7031",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Letting and Leasing Fees",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7032",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Rental Statement Fees",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7040",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Insurance",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7041",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Landlord Insurance",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7042",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Building Insurance",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7050",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Utilities - Property",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7051",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Electricity - Property",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7052",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Gas - Property",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7053",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Water Usage - Property",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7060",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Cleaning and Gardening",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7061",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Pest Control",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7062",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Security and Access Systems",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7070",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Leasing Advertising",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7080",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Body Corporate Special Levy Expense",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7081",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Building Remediation Expense",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7082",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Property Compliance Expense",
+    "reporting_category_code": "PL_EXP_PROPERTY_OPERATING"
+  },
+  {
+    "account_code": "7200",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Investment Operating Expenses",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7210",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Brokerage Fees - Expense",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7211",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Custody Fees",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7212",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Portfolio Administration Fees",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7213",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Investment Advisory Fees",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7214",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Fund Management Fees",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7215",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Performance Fees Paid",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7220",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Market Data Subscriptions",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7221",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Research Subscriptions",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7222",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Investment Platform Fees",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7230",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "WHT_FOREIGN",
+    "name": "Foreign Withholding Tax Expense",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7231",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "WHT_FOREIGN",
+    "name": "Non-creditable Withholding Tax",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7240",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Margin Lending Fees",
+    "reporting_category_code": "PL_EXP_INVESTMENT_OPERATING"
+  },
+  {
+    "account_code": "7400",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Finance, Depreciation and Amortisation",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7410",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Interest Expense",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7411",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Bank Loan Interest Expense",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7412",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Mortgage Interest Expense",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7413",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Related-party Loan Interest Expense",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7414",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Lease Interest Expense",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7415",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Margin Loan Interest Expense",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7420",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Loan Establishment Fee Expense",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7421",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Loan Service Fees",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7422",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "Late Payment Interest and Charges",
+    "reporting_category_code": "PL_EXP_FINANCE_COSTS"
+  },
+  {
+    "account_code": "7430",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Depreciation Expense",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7431",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Depreciation - Buildings",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7432",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Depreciation - Plant and Equipment",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7433",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Depreciation - Computer Equipment",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7434",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Depreciation - Motor Vehicles",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7435",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Depreciation - Furniture and Fittings",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7436",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Depreciation - Right-of-use Assets",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7440",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Amortisation Expense",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7441",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Amortisation - Capitalised Software",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7442",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Amortisation - Patents and Trademarks",
+    "reporting_category_code": "PL_EXP_DEPRECIATION_AMORTISATION"
+  },
+  {
+    "account_code": "7450",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Bad Debt Expense",
+    "reporting_category_code": "PL_EXP_BAD_DEBTS_IMPAIRMENT"
+  },
+  {
+    "account_code": "7451",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Doubtful Debt Expense",
+    "reporting_category_code": "PL_EXP_BAD_DEBTS_IMPAIRMENT"
+  },
+  {
+    "account_code": "7460",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Impairment Expense - Operating Assets",
+    "reporting_category_code": "PL_EXP_BAD_DEBTS_IMPAIRMENT"
+  },
+  {
+    "account_code": "7600",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Tax and Government Expenses",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7610",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INCOME_TAX_EXPENSE",
+    "name": "Income Tax Expense",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7611",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INCOME_TAX_EXPENSE",
+    "name": "Current Income Tax Expense",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7612",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INCOME_TAX_EXPENSE",
+    "name": "Deferred Income Tax Expense",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7620",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FBT_CONTROL",
+    "name": "Fringe Benefits Tax Expense",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7621",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "LAND_TAX_CONTROL",
+    "name": "Land Tax Expense - Corporate",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7622",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "STAMP_DUTY_CONTROL",
+    "name": "Stamp Duty Expense",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7623",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Government Charges and Levies",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7630",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_ROUNDING",
+    "name": "GST Rounding Expense",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "7631",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INPUT_TAXED_PURCHASE",
+    "name": "GST Non-creditable Expense",
+    "reporting_category_code": "PL_EXP_TAX_GOVERNMENT"
+  },
+  {
+    "account_code": "7640",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NON_DEDUCTIBLE",
+    "name": "Fines and Penalties - Non-deductible",
+    "reporting_category_code": "PL_EXP_NON_DEDUCTIBLE"
+  },
+  {
+    "account_code": "7641",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NON_DEDUCTIBLE",
+    "name": "Non-deductible Entertainment",
+    "reporting_category_code": "PL_EXP_NON_DEDUCTIBLE"
+  },
+  {
+    "account_code": "7642",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NON_DEDUCTIBLE",
+    "name": "Non-deductible Donations",
+    "reporting_category_code": "PL_EXP_NON_DEDUCTIBLE"
+  },
+  {
+    "account_code": "7643",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NON_DEDUCTIBLE",
+    "name": "Private / Non-business Expense",
+    "reporting_category_code": "PL_EXP_NON_DEDUCTIBLE"
+  },
+  {
+    "account_code": "7800",
+    "account_type": "expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Other Operating Expenses",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "7810",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Travel - Domestic",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7811",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Travel - International",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7812",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Accommodation",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7813",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Meals While Travelling",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7820",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Motor Vehicle Expense",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7821",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Fuel / Charging",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7822",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Vehicle Repairs and Maintenance",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7823",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Registration and Insurance",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "7824",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Parking and Tolls",
+    "reporting_category_code": "PL_EXP_TRAVEL_VEHICLE"
+  },
+  {
+    "account_code": "7830",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NON_DEDUCTIBLE",
+    "name": "Donations",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "7840",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Foreign Exchange Loss - Operating",
+    "reporting_category_code": "PL_EXP_FX_OPERATING"
+  },
+  {
+    "account_code": "7850",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Expense Reimbursements to Employees",
+    "reporting_category_code": "PL_EXP_ADMIN_BANK"
+  },
+  {
+    "account_code": "7860",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Owner / Director Reimbursements",
+    "reporting_category_code": "PL_EXP_EMPLOYEE"
+  },
+  {
+    "account_code": "7900",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Expense Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "7999",
+    "account_type": "expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GST_PURCHASE_10",
+    "name": "Expense Rounding",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "8000",
+    "account_type": "other_income",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Other Income",
+    "reporting_category_code": "PL_OI_SUNDRY"
+  },
+  {
+    "account_code": "8010",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Interest Income - Non-operating",
+    "reporting_category_code": "PL_OI_INTEREST"
+  },
+  {
+    "account_code": "8011",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Bank Interest Income",
+    "reporting_category_code": "PL_OI_INTEREST"
+  },
+  {
+    "account_code": "8012",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Term Deposit Interest Income",
+    "reporting_category_code": "PL_OI_INTEREST"
+  },
+  {
+    "account_code": "8013",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Loan Interest Income - Non-operating",
+    "reporting_category_code": "PL_OI_INTEREST"
+  },
+  {
+    "account_code": "8014",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Margin / Cash Management Interest",
+    "reporting_category_code": "PL_OI_INTEREST"
+  },
+  {
+    "account_code": "8020",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Dividend Income",
+    "reporting_category_code": "PL_OI_DIVIDEND_DISTRIBUTION"
+  },
+  {
+    "account_code": "8021",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Franked Dividend Income",
+    "reporting_category_code": "PL_OI_DIVIDEND_DISTRIBUTION"
+  },
+  {
+    "account_code": "8022",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Unfranked Dividend Income",
+    "reporting_category_code": "PL_OI_DIVIDEND_DISTRIBUTION"
+  },
+  {
+    "account_code": "8023",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Foreign Dividend Income",
+    "reporting_category_code": "PL_OI_DIVIDEND_DISTRIBUTION"
+  },
+  {
+    "account_code": "8024",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Trust / Fund Distribution Income",
+    "reporting_category_code": "PL_OI_DIVIDEND_DISTRIBUTION"
+  },
+  {
+    "account_code": "8030",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Royalty Income - Non-operating",
+    "reporting_category_code": "PL_OI_ROYALTY_FX"
+  },
+  {
+    "account_code": "8040",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Foreign Exchange Gain - Non-operating",
+    "reporting_category_code": "PL_OI_ROYALTY_FX"
+  },
+  {
+    "account_code": "8050",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Gain on Financial Assets at Fair Value",
+    "reporting_category_code": "PL_OI_FAIR_VALUE_GAINS"
+  },
+  {
+    "account_code": "8051",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Unrealised Gain on Listed Investments",
+    "reporting_category_code": "PL_OI_FAIR_VALUE_GAINS"
+  },
+  {
+    "account_code": "8052",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Realised Gain on Sale of Investments",
+    "reporting_category_code": "PL_OI_SUNDRY"
+  },
+  {
+    "account_code": "8053",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "FINANCIAL_SUPPLY_REVIEW",
+    "name": "Gain on Derivatives",
+    "reporting_category_code": "PL_OI_FAIR_VALUE_GAINS"
+  },
+  {
+    "account_code": "8060",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Gain on Revaluation of Investment Property",
+    "reporting_category_code": "PL_OI_FAIR_VALUE_GAINS"
+  },
+  {
+    "account_code": "8061",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Unrealised Fair Value Gain - Investment Property",
+    "reporting_category_code": "PL_OI_FAIR_VALUE_GAINS"
+  },
+  {
+    "account_code": "8070",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Gain on Disposal of Property",
+    "reporting_category_code": "PL_OI_DISPOSAL_GAINS"
+  },
+  {
+    "account_code": "8071",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Gain on Disposal of PPE",
+    "reporting_category_code": "PL_OI_DISPOSAL_GAINS"
+  },
+  {
+    "account_code": "8300",
+    "account_type": "other_income",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Grants and Recoveries",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8310",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GRANT_INCOME_REVIEW",
+    "name": "Government Grants Income",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8311",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GRANT_INCOME_REVIEW",
+    "name": "R&D Incentive / Grant Income",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8312",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "GRANT_INCOME_REVIEW",
+    "name": "Wage Subsidy Income",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8320",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INSURANCE_RECOVERY_REVIEW",
+    "name": "Insurance Recovery Income",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8321",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "INSURANCE_RECOVERY_REVIEW",
+    "name": "Property Insurance Recovery",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8322",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Business Interruption Recovery",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8330",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Bad Debts Recovered",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8340",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Settlement / Compensation Income",
+    "reporting_category_code": "PL_OI_GRANTS_RECOVERIES"
+  },
+  {
+    "account_code": "8350",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Sundry Income",
+    "reporting_category_code": "PL_OI_SUNDRY"
+  },
+  {
+    "account_code": "8900",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Other Income Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "8999",
+    "account_type": "other_income",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Other Income Rounding",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "9000",
+    "account_type": "other_expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Other Expenses",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9010",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Loss on Financial Assets at Fair Value",
+    "reporting_category_code": "PL_OE_FAIR_VALUE_LOSSES"
+  },
+  {
+    "account_code": "9011",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Unrealised Loss on Listed Investments",
+    "reporting_category_code": "PL_OE_FAIR_VALUE_LOSSES"
+  },
+  {
+    "account_code": "9012",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Realised Loss on Sale of Investments",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9013",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Loss on Derivatives",
+    "reporting_category_code": "PL_OE_FAIR_VALUE_LOSSES"
+  },
+  {
+    "account_code": "9020",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Loss on Revaluation of Investment Property",
+    "reporting_category_code": "PL_OE_FAIR_VALUE_LOSSES"
+  },
+  {
+    "account_code": "9021",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Unrealised Fair Value Loss - Investment Property",
+    "reporting_category_code": "PL_OE_FAIR_VALUE_LOSSES"
+  },
+  {
+    "account_code": "9030",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Loss on Disposal of Property",
+    "reporting_category_code": "PL_OE_DISPOSAL_LOSSES"
+  },
+  {
+    "account_code": "9031",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Loss on Disposal of PPE",
+    "reporting_category_code": "PL_OE_DISPOSAL_LOSSES"
+  },
+  {
+    "account_code": "9040",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Impairment Loss - Investments",
+    "reporting_category_code": "PL_OE_IMPAIRMENT"
+  },
+  {
+    "account_code": "9041",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Impairment Loss - Investment Property",
+    "reporting_category_code": "PL_OE_IMPAIRMENT"
+  },
+  {
+    "account_code": "9042",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Impairment Loss - Goodwill",
+    "reporting_category_code": "PL_OE_IMPAIRMENT"
+  },
+  {
+    "account_code": "9050",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Foreign Exchange Loss - Non-operating",
+    "reporting_category_code": "PL_OE_FX_NON_OPERATING"
+  },
+  {
+    "account_code": "9300",
+    "account_type": "other_expense",
+    "allow_manual_posting": false,
+    "default_tax_code_code": null,
+    "name": "Exceptional and Non-recurring Expenses",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9310",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Legal Settlement Expense",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9311",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Property Litigation Expense",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9320",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Restructuring Costs",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9321",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Redundancy / Termination Costs",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9330",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Disaster / Casualty Loss",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9340",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Prior Period Adjustment Expense",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9350",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "NON_DEDUCTIBLE",
+    "name": "Tax Penalties and Interest",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9360",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Abandoned Acquisition Costs",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9361",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Abandoned Property Acquisition Costs",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9362",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Abandoned Software Project Costs",
+    "reporting_category_code": "PL_OE_EXCEPTIONAL_NONRECURRING"
+  },
+  {
+    "account_code": "9400",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Other Expense Clearing",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "9499",
+    "account_type": "other_expense",
+    "allow_manual_posting": true,
+    "default_tax_code_code": "BAS_EXCLUDED",
+    "name": "Other Expense Rounding",
+    "reporting_category_code": "SUSPENSE_CLEARING_ROUNDING"
+  },
+  {
+    "account_code": "9500",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Non-posting and Statistical Accounts",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9510",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Budgeted Revenue",
+    "reporting_category_code": "NP_BUDGET"
+  },
+  {
+    "account_code": "9511",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Budgeted Expenses",
+    "reporting_category_code": "NP_BUDGET"
+  },
+  {
+    "account_code": "9512",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Budgeted Capital Expenditure",
+    "reporting_category_code": "NP_BUDGET"
+  },
+  {
+    "account_code": "9520",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Headcount",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9521",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Full-time Equivalent Employees",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9530",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "SaaS Monthly Recurring Revenue",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9531",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "SaaS Annual Recurring Revenue",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9532",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Active Customers",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9533",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Churn Rate",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9534",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Customer Acquisition Cost KPI",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9535",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Lifetime Value KPI",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9540",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Property Count",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9541",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Occupancy Rate",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9542",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Net Lettable Area",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9543",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Average Weekly Rent",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9544",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Property Valuation Memo",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9550",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Portfolio Market Value Memo",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9551",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Units / Shares Held Memo",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9552",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Portfolio Allocation Percentage",
+    "reporting_category_code": "NP_STATISTICAL_KPI"
+  },
+  {
+    "account_code": "9560",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Intercompany Elimination Memo",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9561",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Related Party Disclosure Memo",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9570",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Off-balance-sheet Guarantees",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9571",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Lease Commitments Memo",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9572",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Contingent Liability Memo",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  },
+  {
+    "account_code": "9580",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Tax Reconciliation Memo",
+    "reporting_category_code": "NP_TAX_WORKSHEET"
+  },
+  {
+    "account_code": "9581",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Franking Account Memo",
+    "reporting_category_code": "NP_TAX_WORKSHEET"
+  },
+  {
+    "account_code": "9582",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "R&D Tax Incentive Memo",
+    "reporting_category_code": "NP_TAX_WORKSHEET"
+  },
+  {
+    "account_code": "9999",
+    "account_type": "non_posting",
+    "allow_manual_posting": false,
+    "default_tax_code_code": "NOT_APPLICABLE",
+    "name": "Suspense / Unmapped Import Account",
+    "reporting_category_code": "NP_MEMO_DISCLOSURE"
+  }
+]

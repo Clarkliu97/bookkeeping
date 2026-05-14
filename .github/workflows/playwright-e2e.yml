@@ -1,0 +1,32 @@
+name: Playwright E2E
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  operator-workspace-e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create CI environment file
+        run: cp .env.example .env
+
+      - name: Run operator workspace browser suite in Docker Compose
+        run: docker compose --profile test up --build --abort-on-container-exit --exit-code-from e2e e2e
+
+      - name: Upload Playwright report
+        if: always() && hashFiles('web/playwright-report/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/playwright-report
+
+      - name: Tear down compose stack
+        if: always()
+        run: docker compose --profile test down -v

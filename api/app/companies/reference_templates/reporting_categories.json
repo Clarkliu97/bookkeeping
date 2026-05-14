@@ -1,0 +1,412 @@
+[
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_CASH",
+    "name": "Cash and cash equivalents"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_TRADE_RECEIVABLES",
+    "name": "Trade and other receivables"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_CONTRACT_ASSETS",
+    "name": "Contract assets and unbilled revenue"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_RELATED_PARTY_RECEIVABLES",
+    "name": "Related-party and intercompany receivables"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_LOANS_RECEIVABLE",
+    "name": "Current loans receivable"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_TAX_RECEIVABLES",
+    "name": "Tax receivables and tax prepayments"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_PREPAYMENTS",
+    "name": "Prepayments"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_DEPOSITS",
+    "name": "Deposits paid"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CA_INVENTORY",
+    "name": "Inventory and work in progress"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_FINANCIAL_ASSETS",
+    "name": "Financial assets and investments"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_INVESTMENTS_SUBSIDIARIES",
+    "name": "Investments in subsidiaries, associates and JVs"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_LOANS_RECEIVABLE",
+    "name": "Non-current loans receivable"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_PPE",
+    "name": "Property, plant and equipment"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_ROU_ASSETS",
+    "name": "Right-of-use assets"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_INVESTMENT_PROPERTY",
+    "name": "Investment property"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_INTANGIBLES",
+    "name": "Intangible assets and goodwill"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_DEFERRED_TAX_ASSETS",
+    "name": "Deferred tax assets"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCA_OTHER_ASSETS",
+    "name": "Other non-current assets"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_TRADE_PAYABLES",
+    "name": "Trade and other payables"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_BORROWINGS",
+    "name": "Current borrowings"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_LEASE_LIABILITIES",
+    "name": "Current lease liabilities"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_TAX_PAYABLES",
+    "name": "Tax and statutory payables"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_EMPLOYEE_BENEFITS",
+    "name": "Employee benefit liabilities"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_PROVISIONS",
+    "name": "Current provisions"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_CONTRACT_LIABILITIES",
+    "name": "Customer deposits and deferred revenue"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_RELATED_PARTY_PAYABLES",
+    "name": "Related-party and intercompany payables"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_CL_CLEARING_SUSPENSE",
+    "name": "Current clearing and suspense liabilities"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCL_BORROWINGS",
+    "name": "Non-current borrowings"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCL_LEASE_LIABILITIES",
+    "name": "Non-current lease liabilities"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCL_DEFERRED_TAX_LIABILITIES",
+    "name": "Deferred tax liabilities"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_NCL_OTHER_LIABILITIES",
+    "name": "Other non-current liabilities"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_EQ_SHARE_CAPITAL",
+    "name": "Share capital and paid-in capital"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_EQ_TREASURY_SHARES",
+    "name": "Treasury shares"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_EQ_CONTRIBUTIONS",
+    "name": "Capital contributions"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_EQ_RETAINED_EARNINGS",
+    "name": "Retained earnings and current year earnings"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_EQ_DIVIDENDS_DISTRIBUTIONS",
+    "name": "Dividends and distributions"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_EQ_RESERVES_OCI",
+    "name": "Reserves and other comprehensive income"
+  },
+  {
+    "category_type": "balance_sheet",
+    "code": "BS_EQ_CONSOLIDATION_NCI",
+    "name": "Consolidation equity and non-controlling interests"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_REV_TECHNOLOGY",
+    "name": "Technology operating revenue"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_REV_HOLDING_GROUP_SERVICES",
+    "name": "Holding company and group service revenue"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_REV_PROPERTY_RENTAL",
+    "name": "Real-estate rental revenue"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_REV_PROPERTY_RECOVERIES",
+    "name": "Property recoveries and recoverable outgoings income"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_REV_INVESTMENT_SERVICES",
+    "name": "Investment operating revenue"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_REV_CONTRA",
+    "name": "Contra revenue"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_COGS_TECHNOLOGY",
+    "name": "Technology cost of sales"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_COGS_PROPERTY",
+    "name": "Real-estate direct costs"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_COGS_INVESTMENT",
+    "name": "Investment direct costs"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_COGS_INVENTORY",
+    "name": "Inventory cost of sales"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_EMPLOYEE",
+    "name": "Employee and payroll expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_CONTRACTORS",
+    "name": "Contractor expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_TECH_RND_PRODUCT",
+    "name": "Technology R&D and product expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_TECH_INFRA_SOFTWARE",
+    "name": "Technology infrastructure and software expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_OCCUPANCY_OFFICE",
+    "name": "Occupancy and office expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_ADMIN_BANK",
+    "name": "Administration, bank and merchant fees"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_PROFESSIONAL_COMPLIANCE",
+    "name": "Professional, legal and compliance expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_MARKETING_CUSTOMER",
+    "name": "Sales, marketing and customer expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_PROPERTY_OPERATING",
+    "name": "Real-estate operating expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_INVESTMENT_OPERATING",
+    "name": "Investment operating expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_FINANCE_COSTS",
+    "name": "Finance costs"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_DEPRECIATION_AMORTISATION",
+    "name": "Depreciation and amortisation"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_BAD_DEBTS_IMPAIRMENT",
+    "name": "Bad debts and operating impairments"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_TAX_GOVERNMENT",
+    "name": "Tax and government expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_NON_DEDUCTIBLE",
+    "name": "Non-deductible and private expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_TRAVEL_VEHICLE",
+    "name": "Travel and motor vehicle expenses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_EXP_FX_OPERATING",
+    "name": "Operating foreign exchange differences"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OI_INTEREST",
+    "name": "Interest income"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OI_DIVIDEND_DISTRIBUTION",
+    "name": "Dividend and distribution income"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OI_ROYALTY_FX",
+    "name": "Royalty and foreign exchange income"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OI_FAIR_VALUE_GAINS",
+    "name": "Fair value and unrealised gains"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OI_DISPOSAL_GAINS",
+    "name": "Gains on disposal"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OI_GRANTS_RECOVERIES",
+    "name": "Grants, recoveries and compensation income"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OI_SUNDRY",
+    "name": "Sundry other income"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OE_FAIR_VALUE_LOSSES",
+    "name": "Fair value and unrealised losses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OE_DISPOSAL_LOSSES",
+    "name": "Losses on disposal"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OE_IMPAIRMENT",
+    "name": "Investment, property and goodwill impairments"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OE_FX_NON_OPERATING",
+    "name": "Non-operating foreign exchange losses"
+  },
+  {
+    "category_type": "pnl",
+    "code": "PL_OE_EXCEPTIONAL_NONRECURRING",
+    "name": "Exceptional, non-recurring and prior-period expenses"
+  },
+  {
+    "category_type": "other",
+    "code": "NP_BUDGET",
+    "name": "Budget accounts"
+  },
+  {
+    "category_type": "other",
+    "code": "NP_STATISTICAL_KPI",
+    "name": "Statistical and KPI accounts"
+  },
+  {
+    "category_type": "other",
+    "code": "NP_MEMO_DISCLOSURE",
+    "name": "Memo and disclosure accounts"
+  },
+  {
+    "category_type": "tax_support",
+    "code": "NP_TAX_WORKSHEET",
+    "name": "Tax worksheet accounts"
+  },
+  {
+    "category_type": "other",
+    "code": "SUSPENSE_CLEARING_ROUNDING",
+    "name": "Suspense, clearing and rounding"
+  }
+]

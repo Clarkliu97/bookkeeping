@@ -1,0 +1,317 @@
+[
+  {
+    "bas_label": "G1",
+    "code": "GST_SALE_10",
+    "description": "Taxable Australian sale. Reports GST collected at 1A and gross/net sale at G1 depending BAS method.",
+    "input_output_type": "output_taxed",
+    "is_gst_applicable": true,
+    "name": "GST on Sales",
+    "rate": "0.10"
+  },
+  {
+    "bas_label": null,
+    "code": "GST_FREE_SALE",
+    "description": "GST-free domestic sale; no GST charged but related input tax credits may generally be claimable.",
+    "input_output_type": "gst_free",
+    "is_gst_applicable": false,
+    "name": "GST-free Sales",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "GST_FREE_EXPORT",
+    "description": "Export sale or GST-free supply to overseas customer where requirements are met; usually relevant to G2/G3 style reporting.",
+    "input_output_type": "gst_free",
+    "is_gst_applicable": false,
+    "name": "GST-free Export Sales",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "INPUT_TAXED_SALE",
+    "description": "Input-taxed sale such as many residential rents and financial supplies; GST is not charged and related credits may be restricted.",
+    "input_output_type": "input_taxed",
+    "is_gst_applicable": false,
+    "name": "Input-taxed Sales / Financial Supplies",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": "G1",
+    "code": "GST_SALE_ADJUSTMENT",
+    "description": "Credit notes, discounts, refunds, bad debt adjustments and other output tax adjustments.",
+    "input_output_type": "output_taxed",
+    "is_gst_applicable": true,
+    "name": "GST Sales Adjustment",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": "G11",
+    "code": "GST_PURCHASE_10",
+    "description": "Creditable business acquisition where GST credit is claimable. Usually BAS 1B and G11.",
+    "input_output_type": "input_tax_credit",
+    "is_gst_applicable": true,
+    "name": "GST on Purchases",
+    "rate": "0.10"
+  },
+  {
+    "bas_label": "G10",
+    "code": "GST_CAPITAL_PURCHASE_10",
+    "description": "Creditable acquisition of capital assets. Usually BAS 1B and G10.",
+    "input_output_type": "input_tax_credit",
+    "is_gst_applicable": true,
+    "name": "GST on Capital Purchases",
+    "rate": "0.10"
+  },
+  {
+    "bas_label": null,
+    "code": "GST_FREE_PURCHASE",
+    "description": "Purchase that has no GST in price but is still a business acquisition.",
+    "input_output_type": "gst_free",
+    "is_gst_applicable": false,
+    "name": "GST-free Purchase",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "INPUT_TAXED_PURCHASE",
+    "description": "Purchase connected with input-taxed activities, or financial acquisition where credits may be restricted.",
+    "input_output_type": "input_taxed",
+    "is_gst_applicable": false,
+    "name": "Input-taxed / No-credit Purchase",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": "G11",
+    "code": "GST_PURCHASE_ADJUSTMENT",
+    "description": "Supplier credit notes, rebates, refunds, bad debt adjustments and input tax credit adjustments.",
+    "input_output_type": "input_tax_credit",
+    "is_gst_applicable": true,
+    "name": "GST Purchase Adjustment",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": "1B",
+    "code": "IMPORT_GST",
+    "description": "GST paid or deferred on taxable importations.",
+    "input_output_type": "input_tax_credit",
+    "is_gst_applicable": true,
+    "name": "Import GST",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "IMPORTED_SERVICES_REVIEW",
+    "description": "Imported services, digital products or cross-border supplies requiring review for GST treatment.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Imported Services / Reverse Charge Review",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "BAS_EXCLUDED",
+    "description": "Accounting or non-GST movement not reported as a taxable/GST-free/input-taxed sale or purchase on BAS.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "BAS Excluded / Not Reportable on BAS",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "NO_TAX",
+    "description": "Balance sheet transfers, equity movements, non-supply movements, pure financing principal and other out-of-scope transactions.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "No Tax / Out of Scope",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "GST_CONTROL",
+    "description": "System/control code for GST paid, collected, payable, receivable, clearing and BAS settlement accounts.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "GST Control Account",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "PAYG_W_CONTROL",
+    "description": "PAYG withholding liabilities and remittances.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "PAYG Withholding Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "SUPER_CONTROL",
+    "description": "Employer superannuation payable and remittances.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Superannuation Payable Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "PAYROLL_TAX_CONTROL",
+    "description": "State payroll tax payable and settlement.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Payroll Tax Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "WORKERS_COMP_CONTROL",
+    "description": "Workers compensation payable or accrual control.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Workers Compensation Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "INCOME_TAX_CONTROL",
+    "description": "Company income tax receivable/payable and PAYG instalments.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Income Tax Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "INCOME_TAX_EXPENSE",
+    "description": "Current/deferred income tax expense accounts.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Income Tax Expense",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "DEFERRED_TAX_CONTROL",
+    "description": "Deferred tax asset/liability and deferred tax movements.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Deferred Tax Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "FBT_CONTROL",
+    "description": "FBT payable or expense control.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Fringe Benefits Tax Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "LAND_TAX_CONTROL",
+    "description": "Land tax, council rates, water rates and similar statutory property charges where no GST credit applies.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Land Tax / Rates Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "STAMP_DUTY_CONTROL",
+    "description": "Stamp duty, transfer duty and property transaction duty accounts.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Stamp Duty / Transfer Duty Control",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "WHT_FOREIGN",
+    "description": "Foreign withholding tax deducted from dividends, interest, royalties or distributions.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Foreign Withholding Tax",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "FRANKING_CREDIT",
+    "description": "Franking credits receivable or franking memo tracking.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Franking Credit / Franking Account",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "NON_DEDUCTIBLE",
+    "description": "Expenses requiring tax add-back or special tax treatment.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Non-deductible Expense",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "PRIVATE_NON_BUSINESS",
+    "description": "Private, mixed-use or non-business expense requiring review.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Private / Non-business",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "GRANT_INCOME_REVIEW",
+    "description": "Government grants and subsidies; GST depends on whether the grant is consideration for a supply.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Grant Income Review",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "INSURANCE_RECOVERY_REVIEW",
+    "description": "Insurance claim receipts requiring review for GST adjustment or non-GST treatment.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Insurance Recovery Review",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "PROPERTY_TRANSACTION_REVIEW",
+    "description": "Property purchase/sale/settlement items requiring review: residential, commercial, going concern, margin scheme or capital asset treatment.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Property Transaction Review",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "FINANCIAL_SUPPLY_REVIEW",
+    "description": "Interest, loans, dividends, securities and investment dealings where GST/input-taxed rules may apply.",
+    "input_output_type": "input_taxed",
+    "is_gst_applicable": false,
+    "name": "Financial Supply Review",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "GST_ROUNDING",
+    "description": "Small BAS/GST rounding differences.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "GST Rounding",
+    "rate": "0.00"
+  },
+  {
+    "bas_label": null,
+    "code": "NOT_APPLICABLE",
+    "description": "Budget, memo, KPI, statistical and other non-posting accounts.",
+    "input_output_type": "none",
+    "is_gst_applicable": false,
+    "name": "Not Applicable",
+    "rate": "0.00"
+  }
+]

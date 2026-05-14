@@ -1,0 +1,49 @@
+[project]
+name = "bookkeeping-tax-api"
+version = "0.1.0"
+description = "Internal bookkeeping and tax support API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14.0",
+  "email-validator>=2.2.0",
+  "fastapi>=0.115.0",
+  "openai>=1.107.0",
+  "pydantic-settings>=2.7.0",
+  "PyJWT>=2.10.1",
+  "pwdlib[argon2]>=0.2.1",
+  "psycopg[binary]>=3.2.0",
+  "python-multipart>=0.0.18",
+  "reportlab>=4.2.5",
+  "sqlalchemy>=2.0.36",
+  "uvicorn[standard]>=0.32.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28.0",
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
+  "ruff>=0.8.0"
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+"app.companies" = ["reference_templates/*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

@@ -1,0 +1,114 @@
+services:
+  db:
+    image: postgres:16
+    container_name: bookkeeping-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bookkeeping_tax}
+      POSTGRES_USER: ${POSTGRES_USER:-bookkeeping}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bookkeeping}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bookkeeping} -d ${POSTGRES_DB:-bookkeeping_tax}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: ./api
+    container_name: bookkeeping-api
+    restart: unless-stopped
+    command:
+      [
+        "sh",
+        "-lc",
+        "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app"
+      ]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      API_DATABASE_URL: ${API_DATABASE_URL:-postgresql+psycopg://bookkeeping:bookkeeping@db:5432/bookkeeping_tax}
+      API_DOCUMENT_STORAGE_PATH: ${API_DOCUMENT_STORAGE_PATH:-/app/storage/documents}
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100,http://web:3000}
+      API_ALLOWED_ORIGIN_REGEX: ${API_ALLOWED_ORIGIN_REGEX:-^https?://(localhost|127\.0\.0\.1|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?::\d+)?$}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      API_LOG_LEVEL: ${API_LOG_LEVEL:-INFO}
+      API_LOG_JSON: ${API_LOG_JSON:-true}
+      API_METRICS_ENABLED: ${API_METRICS_ENABLED:-true}
+      API_ALERT_WEBHOOK_URL: ${API_ALERT_WEBHOOK_URL:-}
+      API_ALERT_WEBHOOK_TIMEOUT_SECONDS: ${API_ALERT_WEBHOOK_TIMEOUT_SECONDS:-1}
+      API_ALERT_MIN_INTERVAL_SECONDS: ${API_ALERT_MIN_INTERVAL_SECONDS:-300}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./api:/app
+      - ./storage:/app/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    build:
+      context: ./web
+    container_name: bookkeeping-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_PORT: ${NEXT_PUBLIC_API_PORT:-8000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+      NEXT_ALLOWED_DEV_ORIGINS: ${NEXT_ALLOWED_DEV_ORIGINS:-192.168.1.100}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - ./web:/app
+      - web_next_data:/app/.next
+    command: ["npm", "run", "dev", "--", "--webpack", "--hostname", "0.0.0.0", "--port", "3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.55.0-noble
+    working_dir: /workspace/web
+    profiles:
+      - test
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    environment:
+      CI: "true"
+      E2E_BASE_URL: http://web:3000
+      E2E_API_BASE_URL: http://api:8000
+    volumes:
+      - .:/workspace
+    command: sh -lc "npm ci && npm run test:e2e"
+
+volumes:
+  postgres_data:
+  web_next_data:

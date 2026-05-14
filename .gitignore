@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Python environments
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+*.egg-info/
+
+# Logs
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Local storage
+storage/
+uploads/
+
+# Local operator scripts
+infra/scripts/*.local.ps1
+clear_db.ps1
+process.md
+
+# Agent customization files
+.github/agents/
+**/*.agent.md
+**/*.instructions.md
+**/*.prompt.md
+**/copilot-instructions.md
+**/AGENTS.md
+**/SKILL.md
+
+# Codes and Accounts
+chart_of_account_template.md
+reporting_categories.md
+tax_codes.md
+docs/
+
+# Testing
+.testing/
+
+# Backups
+backups/
+
+# Repository planning docs
+IMPLEMENTATION_PLAN.md
+!README.md
+!.gitignore
+!LICENSE
+!.gitattributes
