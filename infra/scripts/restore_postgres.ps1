@@ -4,6 +4,9 @@ param(
     [string]$ProjectRoot = (Get-Location).Path
 )
 
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
 $databaseInput = Join-Path $BackupDir "database.sql"
 $documentsArchive = Join-Path $BackupDir "documents.zip"
 $documentsPath = Join-Path $ProjectRoot "storage\documents"
@@ -14,12 +17,22 @@ if (-not (Test-Path $databaseInput)) {
     throw "database.sql not found in $BackupDir"
 }
 
-Get-Content $databaseInput | docker compose exec -T db psql -U $postgresUser -d $postgresDb
+Push-Location $ProjectRoot
 
-if (Test-Path $documentsArchive) {
-    Remove-Item $documentsPath -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Path $documentsPath -Force | Out-Null
-    Expand-Archive -Path $documentsArchive -DestinationPath $documentsPath -Force
+try {
+    docker compose exec -T db dropdb --if-exists --force -U $postgresUser $postgresDb
+    docker compose exec -T db createdb -U $postgresUser $postgresDb
+
+    Get-Content $databaseInput | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U $postgresUser -d $postgresDb
+
+    if (Test-Path $documentsArchive) {
+        Remove-Item $documentsPath -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $documentsPath -Force | Out-Null
+        Expand-Archive -Path $documentsArchive -DestinationPath $documentsPath -Force
+    }
+
+    Write-Output "Restore completed from: $BackupDir"
 }
-
-Write-Output "Restore completed from: $BackupDir"
+finally {
+    Pop-Location
+}

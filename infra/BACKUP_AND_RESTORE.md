@@ -47,12 +47,14 @@ sh ./infra/scripts/restore_postgres.sh ./backups/<timestamp>
 Restore steps performed by the script:
 
 1. validate the backup set exists
-2. restore PostgreSQL from `database.sql`
-3. replace document storage with the archived files
+2. drop and recreate the target PostgreSQL database
+3. restore PostgreSQL from `database.sql`, stopping on the first SQL error
+4. replace document storage with the archived files
 
 ## Safety Notes
 
 - restore only from a backup set captured together
+- the restore scripts are destructive for the target database and rebuild it before loading the backup
 - prefer restoring while services are stopped or in maintenance mode
 - verify `/health/ready` after restore
 - spot-check a document download and a key report after recovery

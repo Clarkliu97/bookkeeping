@@ -26,7 +26,13 @@ if [ ! -f "${database_input}" ]; then
 fi
 
 docker compose -f "${project_root}/docker-compose.yml" exec -T db \
-  psql -U "${postgres_user}" -d "${postgres_db}" < "${database_input}"
+  dropdb --if-exists --force -U "${postgres_user}" "${postgres_db}"
+
+docker compose -f "${project_root}/docker-compose.yml" exec -T db \
+  createdb -U "${postgres_user}" "${postgres_db}"
+
+docker compose -f "${project_root}/docker-compose.yml" exec -T db \
+  psql -v ON_ERROR_STOP=1 -U "${postgres_user}" -d "${postgres_db}" < "${database_input}"
 
 if [ -f "${documents_archive}" ]; then
   rm -rf "${documents_path}"
