@@ -9,10 +9,20 @@ fi
 script_dir="$(cd "$(dirname -- "$0")" && pwd)"
 project_root="${PROJECT_ROOT:-$(cd "${script_dir}/../.." && pwd)}"
 
+host_path_for_docker() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$1"
+  else
+    printf '%s' "$1"
+  fi
+}
+
 if ! backup_dir="$(cd "$1" 2>/dev/null && pwd)"; then
   echo "Backup directory not found: $1" >&2
   exit 1
 fi
+
+backup_dir_mount="$(host_path_for_docker "${backup_dir}")"
 
 database_input="${backup_dir}/database.sql"
 documents_archive="${backup_dir}/documents.zip"
@@ -35,27 +45,23 @@ docker compose -f "${project_root}/docker-compose.yml" exec -T db \
   psql -v ON_ERROR_STOP=1 -U "${postgres_user}" -d "${postgres_db}" < "${database_input}"
 
 if [ -f "${documents_archive}" ]; then
-  rm -rf "${documents_path}"
-  mkdir -p "${documents_path}"
-
-  if command -v python3 >/dev/null 2>&1; then
-    DOCUMENTS_ARCHIVE="${documents_archive}" DOCUMENTS_PATH="${documents_path}" python3 - <<'PY'
-import os
-from pathlib import Path
+  cat <<'PY' | docker compose -f "${project_root}/docker-compose.yml" run --rm --no-deps -T -u 0 \
+    -v "${backup_dir_mount}:/restore-backup:ro" api python -
+import shutil
 import zipfile
+from pathlib import Path
 
-archive_path = Path(os.environ["DOCUMENTS_ARCHIVE"])
-documents_path = Path(os.environ["DOCUMENTS_PATH"])
+archive_path = Path("/restore-backup/documents.zip")
+documents_path = Path("/app/storage/documents")
+
+if documents_path.exists():
+    shutil.rmtree(documents_path)
+
+documents_path.mkdir(parents=True, exist_ok=True)
 
 with zipfile.ZipFile(archive_path) as archive:
     archive.extractall(documents_path)
 PY
-  elif command -v unzip >/dev/null 2>&1; then
-    unzip -oq "${documents_archive}" -d "${documents_path}"
-  else
-    echo "Unable to restore documents.zip. Install python3 or unzip." >&2
-    exit 1
-  fi
 fi
 
 echo "Restore completed from: ${backup_dir}"

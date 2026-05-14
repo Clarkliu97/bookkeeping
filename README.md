@@ -250,7 +250,6 @@ The Operations route exposes readiness, metrics, alerts, and recovery guidance f
 ├── storage/                local development document storage
 ├── web/                    Next.js frontend
 ├── docker-compose.yml      local multi-service runtime
-├── IMPLEMENTATION_PLAN.md  implementation record and handoff plan
 ├── chart_of_account_template.md
 ├── tax_codes.md
 ├── reporting_categories.md
@@ -370,7 +369,6 @@ These are surfaced both through the API and through the frontend operations dash
 
 ## Key Documents
 
-- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 - [api/README.md](api/README.md)
 - [docs/CORE_DATABASE_SCHEMA.md](docs/CORE_DATABASE_SCHEMA.md)
 - [docs/PHASE_BACKLOG.md](docs/PHASE_BACKLOG.md)

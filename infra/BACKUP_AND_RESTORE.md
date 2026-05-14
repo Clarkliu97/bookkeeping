@@ -49,7 +49,7 @@ Restore steps performed by the script:
 1. validate the backup set exists
 2. drop and recreate the target PostgreSQL database
 3. restore PostgreSQL from `database.sql`, stopping on the first SQL error
-4. replace document storage with the archived files
+4. replace document storage with the archived files through a one-off Docker helper so bind-mounted storage can be rebuilt even when the host user cannot delete the directory directly
 
 ## Safety Notes
 

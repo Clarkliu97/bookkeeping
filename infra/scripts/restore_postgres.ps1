@@ -26,9 +26,24 @@ try {
     Get-Content $databaseInput | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U $postgresUser -d $postgresDb
 
     if (Test-Path $documentsArchive) {
-        Remove-Item $documentsPath -Recurse -Force -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Path $documentsPath -Force | Out-Null
-        Expand-Archive -Path $documentsArchive -DestinationPath $documentsPath -Force
+        $restoreDocumentsScript = @'
+import shutil
+import zipfile
+from pathlib import Path
+
+archive_path = Path("/restore-backup/documents.zip")
+documents_path = Path("/app/storage/documents")
+
+if documents_path.exists():
+    shutil.rmtree(documents_path)
+
+documents_path.mkdir(parents=True, exist_ok=True)
+
+with zipfile.ZipFile(archive_path) as archive:
+    archive.extractall(documents_path)
+'@
+
+        $restoreDocumentsScript | docker compose run --rm --no-deps -T -u 0 -v "${BackupDir}:/restore-backup:ro" api python -
     }
 
     Write-Output "Restore completed from: $BackupDir"
