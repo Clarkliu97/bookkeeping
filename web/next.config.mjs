@@ -1,12 +1,10 @@
-import type { NextConfig } from "next";
-
 const DEFAULT_ALLOWED_DEV_ORIGINS = "192.168.1.100-253";
 
-function isValidOctet(value: number) {
+function isValidOctet(value) {
   return Number.isInteger(value) && value >= 0 && value <= 255;
 }
 
-function expandAllowedDevOrigin(origin: string) {
+function expandAllowedDevOrigin(origin) {
   const trimmedOrigin = origin.trim();
 
   if (!trimmedOrigin) {
@@ -30,11 +28,15 @@ function expandAllowedDevOrigin(origin: string) {
   return Array.from({ length: end - start + 1 }, (_, index) => `${prefix}.${start + index}`);
 }
 
-const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS ?? DEFAULT_ALLOWED_DEV_ORIGINS)
+const allowedDevOriginsValue = typeof process !== "undefined" && typeof process.env.NEXT_ALLOWED_DEV_ORIGINS === "string"
+  ? process.env.NEXT_ALLOWED_DEV_ORIGINS
+  : DEFAULT_ALLOWED_DEV_ORIGINS;
+
+const allowedDevOrigins = allowedDevOriginsValue
   .split(",")
   .flatMap(expandAllowedDevOrigin);
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   reactStrictMode: true,
   allowedDevOrigins,
 };
