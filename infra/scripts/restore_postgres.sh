@@ -1,12 +1,12 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 if [ "$#" -lt 1 ]; then
-  echo "Usage: bash infra/scripts/restore_postgres.sh BACKUP_DIR" >&2
+  echo "Usage: sh infra/scripts/restore_postgres.sh BACKUP_DIR" >&2
   exit 1
 fi
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(cd "$(dirname -- "$0")" && pwd)"
 project_root="${PROJECT_ROOT:-$(cd "${script_dir}/../.." && pwd)}"
 
 if ! backup_dir="$(cd "$1" 2>/dev/null && pwd)"; then

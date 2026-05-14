@@ -20,7 +20,7 @@ pwsh ./infra/scripts/backup_postgres.ps1
 ```
 
 ```bash
-bash ./infra/scripts/backup_postgres.sh
+sh ./infra/scripts/backup_postgres.sh
 ```
 
 Outputs per run:
@@ -41,7 +41,7 @@ pwsh ./infra/scripts/restore_postgres.ps1 -BackupDir ./backups/<timestamp>
 ```
 
 ```bash
-bash ./infra/scripts/restore_postgres.sh ./backups/<timestamp>
+sh ./infra/scripts/restore_postgres.sh ./backups/<timestamp>
 ```
 
 Restore steps performed by the script:

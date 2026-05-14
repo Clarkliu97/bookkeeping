@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(cd "$(dirname -- "$0")" && pwd)"
 project_root="${PROJECT_ROOT:-$(cd "${script_dir}/../.." && pwd)}"
 output_root="${BACKUP_OUTPUT_DIR:-${OUTPUT_ROOT:-${project_root}/backups}}"
 
