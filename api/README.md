@@ -27,7 +27,7 @@ The backend is organized as a modular monolith around accounting, compliance sup
 
 ## Backup and Restore
 
-Operational backup and restore scripts for PostgreSQL data and document storage live under [infra/scripts/backup_postgres.ps1](../infra/scripts/backup_postgres.ps1) and [infra/scripts/restore_postgres.ps1](../infra/scripts/restore_postgres.ps1).
+Operational backup and restore scripts for PostgreSQL data and document storage live under [infra/scripts/backup_postgres.ps1](../infra/scripts/backup_postgres.ps1), [infra/scripts/backup_postgres.sh](../infra/scripts/backup_postgres.sh), [infra/scripts/restore_postgres.ps1](../infra/scripts/restore_postgres.ps1), and [infra/scripts/restore_postgres.sh](../infra/scripts/restore_postgres.sh).
 
 ## Database Migrations
 

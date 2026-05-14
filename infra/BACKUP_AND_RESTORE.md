@@ -11,7 +11,17 @@ The accounting records and the source/export files must stay in sync to preserve
 
 ## Backup Workflow
 
-Use [infra/scripts/backup_postgres.ps1](scripts/backup_postgres.ps1) from the repository root.
+Use either [infra/scripts/backup_postgres.ps1](scripts/backup_postgres.ps1) on Windows PowerShell or [infra/scripts/backup_postgres.sh](scripts/backup_postgres.sh) in Ubuntu or other Bash environments.
+
+Examples from the repository root:
+
+```powershell
+pwsh ./infra/scripts/backup_postgres.ps1
+```
+
+```bash
+bash ./infra/scripts/backup_postgres.sh
+```
 
 Outputs per run:
 
@@ -22,7 +32,17 @@ Outputs per run:
 
 ## Restore Workflow
 
-Use [infra/scripts/restore_postgres.ps1](scripts/restore_postgres.ps1) from the repository root with a selected backup directory.
+Use either [infra/scripts/restore_postgres.ps1](scripts/restore_postgres.ps1) on Windows PowerShell or [infra/scripts/restore_postgres.sh](scripts/restore_postgres.sh) in Ubuntu or other Bash environments with a selected backup directory.
+
+Examples from the repository root:
+
+```powershell
+pwsh ./infra/scripts/restore_postgres.ps1 -BackupDir ./backups/<timestamp>
+```
+
+```bash
+bash ./infra/scripts/restore_postgres.sh ./backups/<timestamp>
+```
 
 Restore steps performed by the script:
 

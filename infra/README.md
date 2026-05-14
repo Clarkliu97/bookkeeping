@@ -27,8 +27,8 @@ Recommended initial production shape:
 
 ## Backup and Restore Assets
 
-- [infra/scripts/backup_postgres.ps1](scripts/backup_postgres.ps1): creates a timestamped PostgreSQL dump plus document archive
-- [infra/scripts/restore_postgres.ps1](scripts/restore_postgres.ps1): restores a chosen backup directory back into PostgreSQL and document storage
+- [infra/scripts/backup_postgres.ps1](scripts/backup_postgres.ps1) and [infra/scripts/backup_postgres.sh](scripts/backup_postgres.sh): create a timestamped PostgreSQL dump plus document archive
+- [infra/scripts/restore_postgres.ps1](scripts/restore_postgres.ps1) and [infra/scripts/restore_postgres.sh](scripts/restore_postgres.sh): restore a chosen backup directory back into PostgreSQL and document storage
 - [infra/RESTORE_DRILL.md](RESTORE_DRILL.md): recurring restore-drill procedure and evidence checklist
 - [infra/RESTORE_DRILL_LOG_TEMPLATE.md](RESTORE_DRILL_LOG_TEMPLATE.md): run log template for scheduled restore drills
 

@@ -14,7 +14,7 @@ The goal is operational confidence, not application feature testing.
 
 ## Inputs
 
-- one recent backup set created by [infra/scripts/backup_postgres.ps1](scripts/backup_postgres.ps1)
+- one recent backup set created by [infra/scripts/backup_postgres.ps1](scripts/backup_postgres.ps1) or [infra/scripts/backup_postgres.sh](scripts/backup_postgres.sh)
 - an operator with access to the internal deployment environment
 - the current `.env` values for PostgreSQL and storage paths
 
@@ -28,7 +28,7 @@ The goal is operational confidence, not application feature testing.
 
 1. Confirm the backup set contents match the expected files.
 2. Stop or isolate normal user access.
-3. Run [infra/scripts/restore_postgres.ps1](scripts/restore_postgres.ps1) against the chosen backup directory.
+3. Run [infra/scripts/restore_postgres.ps1](scripts/restore_postgres.ps1) or [infra/scripts/restore_postgres.sh](scripts/restore_postgres.sh) against the chosen backup directory.
 4. Start the application stack if it was stopped.
 5. Verify `GET /health/ready` returns `200`.
 6. Verify `GET /metrics` responds and still reports readiness status.
