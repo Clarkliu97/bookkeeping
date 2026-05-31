@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { BankingSection } from "./operator-sections/banking-section";
 import { BookkeepingSection } from "./operator-sections/bookkeeping-section";
@@ -9,12 +10,12 @@ import { DashboardSection } from "./operator-sections/dashboard-section";
 import { ReportsSection } from "./operator-sections/reports-section";
 import { SetupSection } from "./operator-sections/setup-section";
 import { YearEndSection } from "./operator-sections/year-end-section";
-import { createDefaultConfiguration, useOperatorState } from "./operator-state";
+import { createDefaultConfiguration, type OperatorState, useOperatorState } from "./operator-state";
 import { sectionOptions, type SectionKey } from "./operator-routes";
 import { EmptyState, Field, ProcessingVeil, SectionButton, StatusPill } from "./operator-ui";
 
 
-export function OperatorClient({ activeSection }: { activeSection: SectionKey }) {
+export function OperatorClient({ activeSection, renderSectionContent }: { activeSection: SectionKey; renderSectionContent?: (operator: OperatorState) => ReactNode }) {
   const operator = useOperatorState();
   const [floatingMessages, setFloatingMessages] = useState(
     operator.flashMessage ? [operator.flashMessage] : [],
@@ -135,7 +136,7 @@ export function OperatorClient({ activeSection }: { activeSection: SectionKey })
     );
   }
 
-  let sectionContent = <DashboardSection operator={operator} />;
+  let sectionContent: ReactNode = <DashboardSection operator={operator} />;
   if (activeSection === "setup") {
     sectionContent = <SetupSection operator={operator} />;
   } else if (activeSection === "bookkeeping") {
@@ -146,6 +147,10 @@ export function OperatorClient({ activeSection }: { activeSection: SectionKey })
     sectionContent = <ReportsSection operator={operator} />;
   } else if (activeSection === "year_end") {
     sectionContent = <YearEndSection operator={operator} />;
+  }
+
+  if (renderSectionContent) {
+    sectionContent = renderSectionContent(operator);
   }
 
   return (

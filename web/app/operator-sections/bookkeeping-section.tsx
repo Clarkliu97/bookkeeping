@@ -1,16 +1,9 @@
+import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
-import { createEmptyJournalDraft, createEmptyJournalLine, formatDateTime, formatMoney, type GeneralLedgerReport, type OperatorState } from "../operator-state";
+import { formatDateTime, formatMoney, type GeneralLedgerReport, type OperatorState } from "../operator-state";
+import { JournalEditorSection } from "./journal-editor-section";
 import { Field, StatusPill } from "../operator-ui";
-
-
-function parseMoneyToCents(value: string): number {
-  const parsed = Number(value || "0");
-  if (!Number.isFinite(parsed)) {
-    throw new Error("Enter valid journal line amounts before saving.");
-  }
-  return Math.round(parsed * 100);
-}
 
 
 function buildGeneralLedgerQuery(filters: { start_date: string; end_date: string; account_id: string }) {
@@ -104,15 +97,18 @@ function formatDocumentBadge(mediaType: string | null | undefined, filename?: st
 }
 
 
-let pdfJsModulePromise: Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> | null = null;
+let pdfJsModulePromise: Promise<typeof import("pdfjs-dist/legacy/webpack.mjs")> | null = null;
 
 
 async function loadPdfJsModule() {
-  pdfJsModulePromise ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL("../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
-    return pdfjs;
-  });
+  pdfJsModulePromise ??= import("pdfjs-dist/legacy/webpack.mjs");
   return pdfJsModulePromise;
+}
+
+
+async function loadPdfDocument(previewBlob: Blob) {
+  const pdfjs = await loadPdfJsModule();
+  return pdfjs.getDocument({ data: new Uint8Array(await previewBlob.arrayBuffer()) }).promise;
 }
 
 
@@ -249,8 +245,6 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     setSelectedJournalId,
     selectedJournal,
     journalEvidence,
-    journalDraft,
-    setJournalDraft,
     generalLedgerFilters,
     setGeneralLedgerFilters,
     reportState,
@@ -286,24 +280,15 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     busyLabel,
   } = operator;
 
-  function startNewJournalDraft() {
-    setSelectedJournalId("");
-    setJournalDraft(createEmptyJournalDraft(effectiveJournalPeriodId));
-  }
-
-  const fallbackPeriodId = selectedPeriodId || periodOptionList[0]?.value || "";
-  const effectiveJournalPeriodId = journalDraft.accounting_period_id || fallbackPeriodId;
   const generalLedgerEntryCount = countLedgerEntries(reportState.generalLedger);
   const [expandedJournalId, setExpandedJournalId] = useState("");
   const [ledgerPreviewJournalId, setLedgerPreviewJournalId] = useState("");
+  const [journalEditorJournalId, setJournalEditorJournalId] = useState<string | undefined>(undefined);
+  const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
   const [journalSearchQuery, setJournalSearchQuery] = useState("");
   const [journalStatusFilter, setJournalStatusFilter] = useState("");
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState("");
   const [ledgerStatusFilter, setLedgerStatusFilter] = useState("");
-  const [journalEvidenceDocumentId, setJournalEvidenceDocumentId] = useState("");
-  const [journalEvidenceNote, setJournalEvidenceNote] = useState("Supports the selected journal");
-  const [journalEvidenceFile, setJournalEvidenceFile] = useState<File | null>(null);
-  const [journalEvidenceUploadKey, setJournalEvidenceUploadKey] = useState(0);
   const [recommendationModels, setRecommendationModels] = useState<JournalRecommendationModel[]>([]);
   const [recommendationModelId, setRecommendationModelId] = useState("gpt-5.4-mini");
   const [recommendationFiles, setRecommendationFiles] = useState<File[]>([]);
@@ -320,10 +305,11 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const [activeEvidenceViewer, setActiveEvidenceViewer] = useState<ActiveEvidenceViewer | null>(null);
   const documentBlobByIdRef = useRef<Record<string, Blob>>({});
   const documentPreviewUrlsRef = useRef<Record<string, string>>({});
-  const documentPreviewRequestsRef = useRef<Record<string, Promise<void>>>({});
+  const documentPreviewRequestsRef = useRef<Record<string, Promise<boolean>>>({});
   const pdfThumbnailRequestsRef = useRef<Record<string, Promise<void>>>({});
   const pdfFullRenderRequestsRef = useRef<Record<string, Promise<void>>>({});
   const isRecommendationProcessing = busyLabel === "Analyzing documents";
+  const fallbackPeriodId = selectedPeriodId || periodOptionList[0]?.value || "";
 
   async function ensureJournalEvidenceLoaded(journalId: string) {
     if (!selectedCompanyId || !journalId || journalId === selectedJournalId || journalId in journalEvidenceCache || journalEvidenceLoadingIds[journalId]) {
@@ -345,20 +331,36 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     }
   }
 
-  async function ensureDocumentPreview(documentId: string, filename: string, mediaType: string | null) {
+  function setPdfPreviewError(documentId: string, message: string) {
+    setPdfPreviewById((current) => ({
+      ...current,
+      [documentId]: {
+        thumbnailStatus: current[documentId]?.thumbnailStatus === "ready" ? "ready" : "error",
+        thumbnailUrl: current[documentId]?.thumbnailUrl ?? null,
+        fullStatus: "error",
+        pageImageUrls: current[documentId]?.pageImageUrls ?? [],
+        error: message,
+      },
+    }));
+  }
+
+  async function ensureDocumentPreview(documentId: string, filename: string, mediaType: string | null, options?: { force?: boolean }) {
     if (!selectedCompanyId) {
-      return;
+      return false;
     }
 
     const existingPreview = documentPreviewById[documentId];
     if (existingPreview?.status === "ready") {
-      return;
+      return true;
+    }
+    if (existingPreview?.status === "error" && !options?.force) {
+      return false;
     }
 
     const activeRequest = documentPreviewRequestsRef.current[documentId];
     if (activeRequest) {
       await activeRequest;
-      return;
+      return Boolean(documentBlobByIdRef.current[documentId]);
     }
 
     const requestPromise = (async () => {
@@ -372,6 +374,18 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           media_type: mediaType,
         },
       }));
+      if (isPdfDocument(mediaType, filename)) {
+        setPdfPreviewById((current) => ({
+          ...current,
+          [documentId]: {
+            thumbnailStatus: current[documentId]?.thumbnailStatus === "ready" ? "ready" : "idle",
+            thumbnailUrl: current[documentId]?.thumbnailUrl ?? null,
+            fullStatus: "idle",
+            pageImageUrls: current[documentId]?.pageImageUrls ?? [],
+            error: null,
+          },
+        }));
+      }
 
       try {
         const response = await request<{ blob: Blob; headers: Headers }>(`/api/companies/${selectedCompanyId}/documents/${documentId}/download`, "GET", undefined, "blob");
@@ -399,7 +413,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
             media_type: normalizedMediaType,
           },
         }));
+        return true;
       } catch (error) {
+        delete documentBlobByIdRef.current[documentId];
         setDocumentPreviewById((current) => ({
           ...current,
           [documentId]: {
@@ -410,18 +426,23 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
             media_type: mediaType,
           },
         }));
+        if (isPdfDocument(mediaType, filename)) {
+          setPdfPreviewError(documentId, error instanceof Error ? error.message : `Could not render ${filename}.`);
+        }
+        return false;
       } finally {
         delete documentPreviewRequestsRef.current[documentId];
       }
     })();
 
     documentPreviewRequestsRef.current[documentId] = requestPromise;
-    await requestPromise;
+    return await requestPromise;
   }
 
   async function renderPdfThumbnail(documentId: string, filename: string) {
     const previewBlob = documentBlobByIdRef.current[documentId];
     if (!previewBlob) {
+      setPdfPreviewError(documentId, `Could not load ${filename} for preview.`);
       return;
     }
 
@@ -448,8 +469,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       }));
 
       try {
-        const pdfjs = await loadPdfJsModule();
-        const pdf = await pdfjs.getDocument({ data: new Uint8Array(await previewBlob.arrayBuffer()) }).promise;
+        const pdf = await loadPdfDocument(previewBlob);
         const page = await pdf.getPage(1);
         const initialViewport = page.getViewport({ scale: 1 });
         const scale = Math.min(1.1, 220 / initialViewport.width);
@@ -498,6 +518,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   async function renderPdfFullDocument(documentId: string, filename: string) {
     const previewBlob = documentBlobByIdRef.current[documentId];
     if (!previewBlob) {
+      setPdfPreviewError(documentId, `Could not load ${filename} for preview.`);
       return;
     }
 
@@ -524,8 +545,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       }));
 
       try {
-        const pdfjs = await loadPdfJsModule();
-        const pdf = await pdfjs.getDocument({ data: new Uint8Array(await previewBlob.arrayBuffer()) }).promise;
+        const pdf = await loadPdfDocument(previewBlob);
         const pageImageUrls: string[] = [];
 
         for (let pageIndex = 1; pageIndex <= pdf.numPages; pageIndex += 1) {
@@ -598,9 +618,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       filename: item.original_filename,
       media_type: item.media_type,
     });
-    void ensureDocumentPreview(item.document_id, item.original_filename, item.media_type)
-      .then(async () => {
-        if (isPdfDocument(item.media_type, item.original_filename)) {
+    void ensureDocumentPreview(item.document_id, item.original_filename, item.media_type, { force: true })
+      .then(async (previewReady) => {
+        if (previewReady && isPdfDocument(item.media_type, item.original_filename)) {
           await renderPdfFullDocument(item.document_id, item.original_filename);
         }
       });
@@ -694,37 +714,6 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     await refreshAll();
   }
 
-  const journalAccountOptionList = useMemo(() => {
-    const activeOptionIds = new Set(activeAccountOptionList.map((item) => item.value));
-    const selectedAccountIds = new Set(journalDraft.lines.map((line) => line.account_id).filter(Boolean));
-    return accountOptionList
-      .filter((item) => activeOptionIds.has(item.value) || selectedAccountIds.has(item.value))
-      .map((item) => {
-        if (activeOptionIds.has(item.value)) {
-          return item;
-        }
-        const account = accounts.find((candidate) => candidate.id === item.value);
-        return { ...item, label: `${item.label}${account?.is_active === false ? " (inactive)" : ""}` };
-      });
-  }, [accountOptionList, accounts, activeAccountOptionList, journalDraft.lines]);
-  const journalTaxCodeOptionList = useMemo(() => {
-    const activeOptionIds = new Set(activeTaxCodeOptionList.map((item) => item.value));
-    const selectedTaxCodeIds = new Set(journalDraft.lines.map((line) => line.tax_code_id).filter(Boolean));
-    return taxCodeOptionList
-      .filter((item) => activeOptionIds.has(item.value) || selectedTaxCodeIds.has(item.value))
-      .map((item) => {
-        if (activeOptionIds.has(item.value)) {
-          return item;
-        }
-        const taxCode = taxCodes.find((candidate) => candidate.id === item.value);
-        return { ...item, label: `${item.label}${taxCode?.is_active === false ? " (inactive)" : ""}` };
-      });
-  }, [activeTaxCodeOptionList, journalDraft.lines, taxCodeOptionList, taxCodes]);
-
-  const availableEvidenceDocuments = useMemo(() => {
-    const linkedDocumentIds = new Set(journalEvidence.map((item) => item.document_id));
-    return documents.filter((item) => !linkedDocumentIds.has(item.id));
-  }, [documents, journalEvidence]);
   const categoryNameById = useMemo(() => new Map(categories.map((item) => [item.id, item.name])), [categories]);
   const accountLabelById = useMemo(() => new Map(accounts.map((item) => [item.id, `${item.account_code} ${item.name}`])), [accounts]);
   const taxCodeLabelById = useMemo(() => new Map(taxCodes.map((item) => [item.id, `${item.code} ${item.name}`])), [taxCodes]);
@@ -742,12 +731,17 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     : null;
   const activeEvidenceIsPdf = Boolean(activeEvidenceViewer && activeEvidenceMediaType && isPdfDocument(activeEvidenceMediaType, activeEvidenceViewer.filename));
   const activeEvidenceIsImage = Boolean(activeEvidenceViewer && activeEvidenceMediaType && isImageDocument(activeEvidenceMediaType, activeEvidenceViewer.filename));
+  const activeEvidenceHasError = Boolean(
+    activeEvidencePreview?.status === "error"
+    || activePdfPreview?.fullStatus === "error"
+    || activePdfPreview?.error,
+  );
   const activeEvidenceIsLoading = activeEvidenceIsPdf
-    ? !activePdfPreview || activePdfPreview.fullStatus === "idle" || activePdfPreview.fullStatus === "loading"
-    : !activeEvidencePreview || activeEvidencePreview.status === "loading";
+    ? !activeEvidenceHasError && (!activePdfPreview || activePdfPreview.fullStatus === "idle" || activePdfPreview.fullStatus === "loading")
+    : !activeEvidenceHasError && (!activeEvidencePreview || activeEvidencePreview.status === "loading");
   const activeEvidenceCanRender = activeEvidenceIsPdf
-    ? activePdfPreview?.fullStatus === "ready"
-    : activeEvidencePreview?.status === "ready";
+    ? !activeEvidenceHasError && activePdfPreview?.fullStatus === "ready"
+    : !activeEvidenceHasError && activeEvidencePreview?.status === "ready";
   const journalTableRef = useRef<HTMLDivElement | null>(null);
   const visibleEvidenceJournalIds = useMemo(
     () => Array.from(new Set([selectedJournal?.id, expandedJournal?.id, ledgerPreviewJournal?.id].filter((value): value is string => Boolean(value)))),
@@ -824,26 +818,20 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     [filteredLedgerAccounts],
   );
 
-  useEffect(() => {
-    setJournalEvidenceDocumentId((current) => {
-      if (availableEvidenceDocuments.some((item) => item.id === current)) {
-        return current;
-      }
-      return availableEvidenceDocuments[0]?.id ?? "";
-    });
-  }, [availableEvidenceDocuments]);
+  function openCreateJournalPopup() {
+    setJournalEditorJournalId(undefined);
+    setIsJournalEditorOpen(true);
+  }
 
-  useEffect(() => {
-    if (!selectedJournal) {
-      setJournalEvidenceNote("Supports the selected journal");
-      setJournalEvidenceFile(null);
-      setJournalEvidenceUploadKey((current) => current + 1);
-      return;
-    }
-    setJournalEvidenceNote(`Supports ${selectedJournal.entry_number}`);
-    setJournalEvidenceFile(null);
-    setJournalEvidenceUploadKey((current) => current + 1);
-  }, [selectedJournalId]);
+  function openUpdateJournalPopup(journalId: string) {
+    setJournalEditorJournalId(journalId);
+    setIsJournalEditorOpen(true);
+  }
+
+  function closeJournalEditorPopup() {
+    setIsJournalEditorOpen(false);
+    setJournalEditorJournalId(undefined);
+  }
 
   useEffect(() => {
     if (!selectedJournalId) {
@@ -872,12 +860,13 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           (!isImageDocument(item.media_type, item.original_filename) && !isPdfDocument(item.media_type, item.original_filename))
           || preview?.status === "ready"
           || preview?.status === "loading"
+          || preview?.status === "error"
         ) {
           continue;
         }
         void ensureDocumentPreview(item.document_id, item.original_filename, item.media_type)
-          .then(async () => {
-            if (isPdfDocument(item.media_type, item.original_filename)) {
+          .then(async (previewReady) => {
+            if (previewReady && isPdfDocument(item.media_type, item.original_filename)) {
               await renderPdfThumbnail(item.document_id, item.original_filename);
             }
           });
@@ -936,8 +925,8 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   }, [request, recommendationModelId, selectedCompanyId]);
 
   useEffect(() => {
-    setRecommendationTargetPeriodId((current) => current || effectiveJournalPeriodId || "");
-  }, [effectiveJournalPeriodId]);
+    setRecommendationTargetPeriodId((current) => current || fallbackPeriodId || "");
+  }, [fallbackPeriodId]);
 
   useEffect(() => {
     if (!expandedJournalId) {
@@ -1090,9 +1079,14 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       </article>
 
       <article className="panel panel-wide">
-        <div className="panel-heading"><h2>Journals</h2><span className="pill">{journals.length} journals</span></div>
-        <div className="workspace-split journal-workspace-split">
-          <div className="stacked-cards table-panel-stack">
+        <div className="panel-heading">
+          <h2>Journals</h2>
+          <div className="request-actions-inline">
+            <span className="pill">{journals.length} journals</span>
+            <button className="button-link button-link-small" type="button" onClick={openCreateJournalPopup}>Create journal</button>
+          </div>
+        </div>
+        <div className="stacked-cards table-panel-stack">
             <div className="mini-card table-filter-card">
               <div className="form-grid two-up">
                 <Field label="Search journals"><input value={journalSearchQuery} onChange={(event) => setJournalSearchQuery(event.target.value)} placeholder="Entry, date, description, reference, source" /></Field>
@@ -1133,6 +1127,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                                     <span><strong>Source</strong> {item.source_type || "-"}</span>
                                     <span><strong>Lines</strong> {item.lines.length}</span>
                                   </div>
+                                  <div className="request-actions-inline">
+                                    <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => openUpdateJournalPopup(item.id)}>Update journal</button>
+                                  </div>
                                   {renderJournalEvidencePreview(item)}
                                   <div className="table-shell compact-table-shell journal-preview-lines-shell">
                                     <table className="data-table journal-preview-lines-table">
@@ -1167,240 +1164,6 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
               </div>
             )}
           </div>
-          <div className="stacked-cards">
-            <div className="mini-card journal-editor-card">
-              <div className="mini-card-heading">
-                <div>
-                  <h3>{selectedJournal ? "Draft journal editor" : "Create journal"}</h3>
-                  <p className="summary-line">Create a reviewable draft with a clear explanation and balanced line details before posting.</p>
-                </div>
-                <div className="journal-editor-heading-actions">
-                  {selectedJournal ? <button className="button-link button-link-small button-link-secondary" type="button" onClick={startNewJournalDraft}>New journal</button> : null}
-                  <span className="pill">{journalDraft.lines.length} lines</span>
-                </div>
-              </div>
-              <div className="journal-editor-shell">
-                <section className="journal-editor-panel">
-                  <div className="journal-editor-panel-heading">
-                    <div>
-                      <h4>Journal details</h4>
-                      <p className="summary-line">Set the journal date, period, and source information that explains why this entry exists.</p>
-                    </div>
-                  </div>
-                  <div className="form-grid two-up journal-editor-meta">
-                    <Field label="Entry date"><input type="date" value={journalDraft.entry_date} onChange={(event) => setJournalDraft((current) => ({ ...current, entry_date: event.target.value }))} /></Field>
-                    <Field label="Accounting period"><select value={effectiveJournalPeriodId} onChange={(event) => setJournalDraft((current) => ({ ...current, accounting_period_id: event.target.value }))}><option value="">Select period</option>{periodOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-                    <Field label="Source type"><input value={journalDraft.source_type} onChange={(event) => setJournalDraft((current) => ({ ...current, source_type: event.target.value }))} /></Field>
-                    <Field label="Reference"><input value={journalDraft.reference} onChange={(event) => setJournalDraft((current) => ({ ...current, reference: event.target.value }))} /></Field>
-                    <Field label="Description" wide><textarea rows={3} value={journalDraft.description} onChange={(event) => setJournalDraft((current) => ({ ...current, description: event.target.value }))} /></Field>
-                  </div>
-                </section>
-                <section className="journal-editor-panel">
-                  <div className="journal-editor-panel-heading">
-                    <div>
-                      <h4>Journal lines</h4>
-                      <p className="summary-line">Keep at least two lines and document the purpose of each debit and credit clearly for review.</p>
-                    </div>
-                    <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => setJournalDraft((current) => ({ ...current, lines: [...current.lines, createEmptyJournalLine()] }))}>Add line</button>
-                  </div>
-                  <div className="line-editor">
-                    {journalDraft.lines.map((line, index) => (
-                      <div className="line-editor-row" key={`${index}-${line.account_id}`}>
-                        <div className="line-editor-row-header">
-                          <div className="line-editor-row-label">
-                            <strong>{`Line ${index + 1}`}</strong>
-                            <span>Choose the account, tax treatment, and one side of the entry amount.</span>
-                          </div>
-                          <button
-                            className="button-link button-link-small button-link-secondary"
-                            type="button"
-                            aria-label={`Delete line ${index + 1}`}
-                            disabled={journalDraft.lines.length <= 2}
-                            onClick={() => setJournalDraft((current) => ({
-                              ...current,
-                              lines: current.lines.length <= 2
-                                ? current.lines
-                                : current.lines.filter((_, itemIndex) => itemIndex !== index),
-                            }))}
-                          >
-                            Delete line
-                          </button>
-                        </div>
-                        <div className="line-editor-row-grid">
-                          <Field label="Account"><select value={line.account_id} onChange={(event) => setJournalDraft((current) => ({ ...current, lines: current.lines.map((item, itemIndex) => itemIndex === index ? { ...item, account_id: event.target.value } : item) }))}><option value="">Select account</option>{journalAccountOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-                          <Field label="Tax code"><select value={line.tax_code_id ?? ""} onChange={(event) => setJournalDraft((current) => ({ ...current, lines: current.lines.map((item, itemIndex) => itemIndex === index ? { ...item, tax_code_id: event.target.value } : item) }))}><option value="">None</option>{journalTaxCodeOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-                          <Field label="Debit"><input value={line.debit_amount} onChange={(event) => setJournalDraft((current) => ({ ...current, lines: current.lines.map((item, itemIndex) => itemIndex === index ? { ...item, debit_amount: event.target.value } : item) }))} /></Field>
-                          <Field label="Credit"><input value={line.credit_amount} onChange={(event) => setJournalDraft((current) => ({ ...current, lines: current.lines.map((item, itemIndex) => itemIndex === index ? { ...item, credit_amount: event.target.value } : item) }))} /></Field>
-                          <Field label="Line note" wide><textarea rows={2} value={line.description ?? ""} onChange={(event) => setJournalDraft((current) => ({ ...current, lines: current.lines.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item) }))} /></Field>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-              <div className="request-actions journal-editor-actions">
-                <button className="button-link button-link-small" type="button" data-testid="save-journal" onClick={() => runAction("Saving journal", async () => {
-                  if (!effectiveJournalPeriodId) {
-                    throw new Error("Create or select an accounting period before saving a journal.");
-                  }
-                  let debitTotalCents = 0;
-                  let creditTotalCents = 0;
-                  journalDraft.lines.forEach((line, index) => {
-                    if (!line.account_id) {
-                      throw new Error(`Select an account for journal line ${index + 1} before saving.`);
-                    }
-                    const debitAmountCents = parseMoneyToCents(line.debit_amount);
-                    const creditAmountCents = parseMoneyToCents(line.credit_amount);
-                    const isValidSingleSidedLine = (
-                      (debitAmountCents > 0 && creditAmountCents === 0)
-                      || (creditAmountCents > 0 && debitAmountCents === 0)
-                    );
-                    if (!isValidSingleSidedLine) {
-                      throw new Error(`Journal line ${index + 1} must have exactly one positive amount.`);
-                    }
-                    debitTotalCents += debitAmountCents;
-                    creditTotalCents += creditAmountCents;
-                  });
-                  if (debitTotalCents !== creditTotalCents) {
-                    throw new Error("Journal is not balanced.");
-                  }
-                  const payload = {
-                    ...journalDraft,
-                    accounting_period_id: effectiveJournalPeriodId,
-                    lines: journalDraft.lines.map((line) => ({ ...line, tax_code_id: line.tax_code_id || null, reporting_category_id: line.reporting_category_id || null, source_document_reference: line.source_document_reference || null })),
-                  };
-                  if (selectedJournal && selectedJournal.status === "draft") {
-                    await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}`, "PUT", payload);
-                  } else {
-                    await request(`/api/companies/${selectedCompanyId}/journals`, "POST", payload);
-                  }
-                  showMessage("success", "Saved journal draft.");
-                  if (!selectedJournal) {
-                    setJournalDraft(createEmptyJournalDraft(effectiveJournalPeriodId));
-                  }
-                  await refreshAll();
-                })}>Save journal</button>
-                {selectedJournal && selectedJournal.status === "draft" ? <button className="button-link button-link-small button-link-danger" type="button" onClick={() => runAction("Deleting journal", async () => {
-                  if (!confirmDanger(`Delete draft journal ${selectedJournal.entry_number}?`)) {
-                    return;
-                  }
-                  await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}`, "DELETE", undefined, "void");
-                  setSelectedJournalId("");
-                  await refreshAll();
-                  showMessage("success", `Deleted draft journal ${selectedJournal.entry_number}.`);
-                })}>Delete selected</button> : null}
-                {selectedJournal ? <button className="button-link button-link-small" type="button" data-testid="post-journal" onClick={() => runAction("Posting journal", async () => {
-                  const nextLedgerFilters = {
-                    ...generalLedgerFilters,
-                    start_date: selectedJournal.entry_date,
-                    end_date: selectedJournal.entry_date,
-                  };
-                  await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/post`, "POST");
-                  await refreshAll();
-                  setGeneralLedgerFilters(nextLedgerFilters);
-                  await loadGeneralLedger(nextLedgerFilters);
-                  showMessage("success", "Posted journal and refreshed the ledger view for that date.");
-                })}>Post selected</button> : null}
-                {selectedJournal && selectedJournal.status === "posted" ? <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Reversing journal", async () => {
-                  const nextLedgerFilters = {
-                    ...generalLedgerFilters,
-                    start_date: selectedJournal.entry_date,
-                    end_date: selectedJournal.entry_date,
-                  };
-                  await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/reverse`, "POST");
-                  await refreshAll();
-                  setGeneralLedgerFilters(nextLedgerFilters);
-                  await loadGeneralLedger(nextLedgerFilters);
-                  showMessage("success", "Created reversal journal and refreshed the ledger view for that date.");
-                })}>Reverse selected</button> : null}
-              </div>
-            </div>
-            {selectedJournal ? (
-              <div className="mini-card">
-                <div className="mini-card-heading">
-                  <h3>Journal evidence</h3>
-                  <span className="pill">{journalEvidence.length} linked</span>
-                </div>
-                <p className="summary-line">Attach one or many documents to this journal, or reuse the same document across multiple journals when the evidence supports more than one entry.</p>
-                <div className="form-grid two-up">
-                  <Field label="Existing document">
-                    <select value={journalEvidenceDocumentId} onChange={(event) => setJournalEvidenceDocumentId(event.target.value)}>
-                      <option value="">Select uploaded document</option>
-                      {availableEvidenceDocuments.map((item) => <option key={item.id} value={item.id}>{item.original_filename}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Evidence note">
-                    <input value={journalEvidenceNote} onChange={(event) => setJournalEvidenceNote(event.target.value)} />
-                  </Field>
-                  <Field label="Upload new evidence" wide>
-                    <input key={journalEvidenceUploadKey} type="file" onChange={(event) => setJournalEvidenceFile(event.target.files?.[0] ?? null)} />
-                  </Field>
-                </div>
-                <div className="request-actions evidence-actions">
-                  <button className="button-link button-link-small" type="button" onClick={() => runAction("Linking document evidence", async () => {
-                    if (!journalEvidenceDocumentId) {
-                      throw new Error("Choose an existing document before attaching it to the journal.");
-                    }
-                    await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/documents/${journalEvidenceDocumentId}`, "POST", { note: journalEvidenceNote || null });
-                    await loadJournalEvidence(selectedJournal.id);
-                    showMessage("success", "Attached document evidence to the selected journal.");
-                  })}>Attach selected document</button>
-                  <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Uploading journal evidence", async () => {
-                    if (!journalEvidenceFile) {
-                      throw new Error("Choose a file before uploading journal evidence.");
-                    }
-                    const formData = new FormData();
-                    formData.append("file", journalEvidenceFile);
-                    formData.append("note", journalEvidenceNote);
-                    const uploadedDocument = await request<{ id: string; original_filename: string }>(`/api/companies/${selectedCompanyId}/documents`, "POST", formData);
-                    await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/documents/${uploadedDocument.id}`, "POST", { note: journalEvidenceNote || null });
-                    await refreshAll();
-                    await loadJournalEvidence(selectedJournal.id);
-                    setJournalEvidenceFile(null);
-                    setJournalEvidenceUploadKey((current) => current + 1);
-                    showMessage("success", `Uploaded and attached ${uploadedDocument.original_filename}.`);
-                  })}>Upload and attach</button>
-                </div>
-                {journalEvidence.length > 0 ? (
-                  <div className="table-shell compact-table-shell evidence-table-shell">
-                    <table className="data-table">
-                      <thead><tr><th>Document</th><th>Evidence note</th><th>Attached</th><th>Actions</th></tr></thead>
-                      <tbody>
-                        {journalEvidence.map((item) => (
-                          <tr key={item.link_id} className="row-static">
-                            <td>{item.original_filename}<div className="table-meta">{item.media_type ?? "Unknown type"} · {formatFileSize(item.byte_size)}</div></td>
-                            <td>{item.note || "-"}</td>
-                            <td>{formatDateTime(item.linked_at)}<div className="table-meta">Uploaded {formatDateTime(item.document_created_at)}</div></td>
-                            <td>
-                              <div className="request-actions-inline evidence-row-actions">
-                                <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Downloading evidence", async () => {
-                                  await downloadFromApi(`/api/companies/${selectedCompanyId}/documents/${item.document_id}/download`, item.original_filename);
-                                })}>Download</button>
-                                <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Unlinking evidence", async () => {
-                                  if (!confirmDanger(`Remove ${item.original_filename} from ${selectedJournal.entry_number}?`)) {
-                                    return;
-                                  }
-                                  await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/documents/${item.document_id}/links/${item.link_id}`, "DELETE", undefined, "void");
-                                  await loadJournalEvidence(selectedJournal.id);
-                                  showMessage("success", "Removed evidence from the selected journal.");
-                                })}>Unlink</button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <strong>No evidence linked yet.</strong>
-                    <p>Attach existing documents or upload fresh support directly against this journal so the accounting entry and its evidence stay connected.</p>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
       </article>
 
       <article className="panel panel-wide">
@@ -1771,6 +1534,13 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        ) : null}
+        {isJournalEditorOpen ? (
+          <div className="journal-popup-backdrop" role="presentation" onClick={closeJournalEditorPopup}>
+            <div className="journal-popup-card journal-editor-popup-card" role="dialog" aria-modal="true" aria-label={journalEditorJournalId ? "Update journal" : "Create journal"} onClick={(event) => event.stopPropagation()}>
+              <JournalEditorSection operator={operator} journalId={journalEditorJournalId} mode="modal" onClose={closeJournalEditorPopup} />
             </div>
           </div>
         ) : null}
