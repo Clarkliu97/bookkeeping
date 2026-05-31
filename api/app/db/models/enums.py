@@ -9,6 +9,7 @@ class EntityType(StrEnum):
     JOURNAL_ENTRY = "journal_entry"
     JOURNAL_RECOMMENDATION_RUN = "journal_recommendation_run"
     BAS_RUN = "bas_run"
+    EMPLOYMENT_WORKER = "employment_worker"
     FIXED_ASSET = "fixed_asset"
     DEPRECIATION_RUN = "depreciation_run"
     TAX_WORKPAPER_PACK = "tax_workpaper_pack"
@@ -114,6 +115,82 @@ class ApprovalActionType(StrEnum):
     UNLOCKED = "unlocked"
 
 
+class EmploymentWorkerKind(StrEnum):
+    INDIVIDUAL = "individual"
+    ENTITY = "entity"
+
+
+class EmploymentEngagementType(StrEnum):
+    EMPLOYEE = "employee"
+    DIRECTOR = "director"
+    INDIVIDUAL_CONTRACTOR = "individual_contractor"
+    CONTRACTOR_ENTITY = "contractor_entity"
+    LABOUR_HIRE = "labour_hire"
+    INTERN = "intern"
+
+
+class EmploymentStatus(StrEnum):
+    DRAFT = "draft"
+    ONBOARDING = "onboarding"
+    ACTIVE = "active"
+    ACTIVE_WITH_RESTRICTIONS = "active_with_restrictions"
+    ON_PAID_LEAVE = "on_paid_leave"
+    ON_UNPAID_LEAVE = "on_unpaid_leave"
+    SUSPENDED = "suspended"
+    ON_NOTICE = "on_notice"
+    ENDED = "ended"
+    ARCHIVED = "archived"
+
+
+class WorkRightsBasis(StrEnum):
+    AUSTRALIAN_CITIZEN = "australian_citizen"
+    PERMANENT_RESIDENT = "permanent_resident"
+    NEW_ZEALAND_CITIZEN = "new_zealand_citizen"
+    EMPLOYER_SPONSORED_TEMPORARY_VISA = "employer_sponsored_temporary_visa"
+    OTHER_TEMPORARY_VISA = "other_temporary_visa"
+    STUDENT_VISA = "student_visa"
+    WORKING_HOLIDAY_VISA = "working_holiday_visa"
+    BRIDGING_VISA = "bridging_visa"
+    UNKNOWN_REVIEW_REQUIRED = "unknown_review_required"
+    NO_VERIFIED_WORK_RIGHT = "no_verified_work_right"
+
+
+class WorkRightsStatus(StrEnum):
+    NOT_REQUIRED = "not_required"
+    PENDING_EVIDENCE = "pending_evidence"
+    PENDING_REVIEW = "pending_review"
+    VERIFIED = "verified"
+    VERIFIED_WITH_RESTRICTIONS = "verified_with_restrictions"
+    EXPIRING_SOON = "expiring_soon"
+    EXPIRED = "expired"
+    BLOCKED_PENDING_REVIEW = "blocked_pending_review"
+
+
+class RemunerationBasis(StrEnum):
+    SALARY = "salary"
+    HOURLY = "hourly"
+    DAY_RATE = "day_rate"
+    COMMISSION = "commission"
+    CONTRACTOR_FEE = "contractor_fee"
+    DIRECTOR_FEE = "director_fee"
+    UNPAID = "unpaid"
+
+
+class EmploymentReimbursementStatus(StrEnum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    REVIEWED = "reviewed"
+    PAID = "paid"
+    REJECTED = "rejected"
+
+
+class EmploymentAssetStatus(StrEnum):
+    ISSUED = "issued"
+    RETURNED = "returned"
+    LOST = "lost"
+    DAMAGED = "damaged"
+
+
 class DocumentLinkEntityType(StrEnum):
     JOURNAL_ENTRY = "journal_entry"
     JOURNAL_RECOMMENDATION_RUN = "journal_recommendation_run"
@@ -121,6 +198,7 @@ class DocumentLinkEntityType(StrEnum):
     BANK_IMPORT_ROW = "bank_import_row"
     RECONCILIATION_ITEM = "reconciliation_item"
     ACCOUNTING_PERIOD = "accounting_period"
+    EMPLOYMENT_WORKER = "employment_worker"
 
 
 class JournalRecommendationStatus(StrEnum):

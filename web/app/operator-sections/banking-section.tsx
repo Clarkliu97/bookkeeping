@@ -1,7 +1,74 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { formatDateTime, formatMoney, type OperatorState } from "../operator-state";
 import { EmptyState, Field, StatusPill } from "../operator-ui";
+
+
+function toDecimalNumber(value: string | number | null | undefined) {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+
+function bankRowSignedAmount(row: { debit_amount: string; credit_amount: string } | null | undefined) {
+  if (!row) {
+    return 0;
+  }
+  const debit = toDecimalNumber(row.debit_amount);
+  const credit = toDecimalNumber(row.credit_amount);
+  if (credit > 0) {
+    return credit;
+  }
+  if (debit > 0) {
+    return -debit;
+  }
+  return 0;
+}
+
+
+function bankRowAmountLabel(row: { debit_amount: string; credit_amount: string } | null | undefined) {
+  if (!row) {
+    return "No amount";
+  }
+  const credit = toDecimalNumber(row.credit_amount);
+  if (credit > 0) {
+    return `Credit ${formatMoney(row.credit_amount)}`;
+  }
+  const debit = toDecimalNumber(row.debit_amount);
+  if (debit > 0) {
+    return `Debit ${formatMoney(row.debit_amount)}`;
+  }
+  return formatMoney("0");
+}
+
+
+function journalTotals(journal: { lines: Array<{ debit_amount: string; credit_amount: string }> }) {
+  return journal.lines.reduce(
+    (totals, line) => ({
+      debit: totals.debit + toDecimalNumber(line.debit_amount),
+      credit: totals.credit + toDecimalNumber(line.credit_amount),
+    }),
+    { debit: 0, credit: 0 },
+  );
+}
+
+
+function daysBetween(left: string, right: string) {
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return Math.abs(leftTime - rightTime);
+}
+
+
+function tokenizeMatchText(value: string) {
+  return value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+}
 
 
 export function BankingSection({ operator }: { operator: OperatorState }) {
@@ -42,6 +109,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     selectedReconciliationItem,
     reconciliationMatchJournalId,
     setReconciliationMatchJournalId,
+    journals,
     journalOptionList,
     basRunDetail,
     basGenerationDraft,
@@ -63,10 +131,115 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     downloadFromApi,
   } = operator;
   const [importNoteDraft, setImportNoteDraft] = useState("");
+  const [reconciliationItemNote, setReconciliationItemNote] = useState("");
+  const [isReconciliationWorkspaceOpen, setIsReconciliationWorkspaceOpen] = useState(false);
 
   useEffect(() => {
     setImportNoteDraft(selectedImportSession?.note ?? "");
   }, [selectedImportSession?.id, selectedImportSession?.note]);
+
+  useEffect(() => {
+    setReconciliationItemNote(selectedReconciliationItem?.note ?? "");
+    setReconciliationMatchJournalId(selectedReconciliationItem?.matched_journal_entry_id ?? "");
+  }, [selectedReconciliationItem?.id, selectedReconciliationItem?.matched_journal_entry_id, selectedReconciliationItem?.note, setReconciliationMatchJournalId]);
+
+  useEffect(() => {
+    if (!isReconciliationWorkspaceOpen) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsReconciliationWorkspaceOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isReconciliationWorkspaceOpen]);
+
+  const reconciliationSessionBankName = useMemo(
+    () => bankAccounts.find((item) => item.id === selectedReconciliationSession?.bank_account_id)?.name ?? "No bank account",
+    [bankAccounts, selectedReconciliationSession?.bank_account_id],
+  );
+
+  const reconciliationSessionPeriodLabel = useMemo(
+    () => periodOptionList.find((item) => item.value === selectedReconciliationSession?.accounting_period_id)?.label ?? "No period linked",
+    [periodOptionList, selectedReconciliationSession?.accounting_period_id],
+  );
+
+  const orderedReconciliationItems = useMemo(() => {
+    const statusWeight: Record<string, number> = { matched: 0, unmatched: 1, ignored: 2 };
+    return [...reconciliationItems].sort((left, right) => {
+      const weightDelta = (statusWeight[left.status] ?? 99) - (statusWeight[right.status] ?? 99);
+      if (weightDelta !== 0) {
+        return weightDelta;
+      }
+      return daysBetween(left.bank_row?.transaction_date ?? "", right.bank_row?.transaction_date ?? "");
+    });
+  }, [reconciliationItems]);
+
+  const selectedCandidateJournal = useMemo(
+    () => journals.find((item) => item.id === reconciliationMatchJournalId) ?? null,
+    [journals, reconciliationMatchJournalId],
+  );
+
+  const candidateJournals = useMemo(() => {
+    if (!selectedReconciliationItem?.bank_row) {
+      return [];
+    }
+    const targetAmount = Math.abs(bankRowSignedAmount(selectedReconciliationItem.bank_row));
+    const searchTokens = tokenizeMatchText(`${selectedReconciliationItem.bank_row.description} ${selectedReconciliationItem.bank_row.reference ?? ""}`);
+    return journals
+      .filter((journal) => journal.status === "posted")
+      .map((journal) => {
+        const totals = journalTotals(journal);
+        const journalLabelText = `${journal.entry_number} ${journal.description} ${journal.reference ?? ""}`.toLowerCase();
+        const tokenHits = searchTokens.reduce((sum, token) => sum + (journalLabelText.includes(token) ? 1 : 0), 0);
+        const amountGap = Math.abs(totals.debit - targetAmount);
+        const dateGap = daysBetween(journal.entry_date, selectedReconciliationItem.bank_row?.transaction_date ?? "");
+        return { journal, totals, tokenHits, amountGap, dateGap };
+      })
+      .sort((left, right) => {
+        const leftIsActive = left.journal.id === reconciliationMatchJournalId || left.journal.id === selectedReconciliationItem.matched_journal_entry_id;
+        const rightIsActive = right.journal.id === reconciliationMatchJournalId || right.journal.id === selectedReconciliationItem.matched_journal_entry_id;
+        if (leftIsActive !== rightIsActive) {
+          return leftIsActive ? -1 : 1;
+        }
+        return left.amountGap - right.amountGap || right.tokenHits - left.tokenHits || left.dateGap - right.dateGap;
+      })
+      .slice(0, 24);
+  }, [journals, reconciliationMatchJournalId, selectedReconciliationItem?.bank_row, selectedReconciliationItem?.matched_journal_entry_id]);
+
+  const activeComparisonJournal = selectedCandidateJournal ?? null;
+  const selectedMatchedJournalSummary = selectedReconciliationItem?.matched_journal_entry ?? null;
+
+  function openReconciliationWorkspace() {
+    if (!selectedReconciliationItemId && orderedReconciliationItems[0]) {
+      setSelectedReconciliationItemId(orderedReconciliationItems[0].id);
+    }
+    setIsReconciliationWorkspaceOpen(true);
+  }
+
+  async function matchSelectedReconciliationItem() {
+    if (!selectedReconciliationItem) {
+      throw new Error("Select a reconciliation item before matching.");
+    }
+    await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/items/${selectedReconciliationItem.id}/match`, "POST", { matched_journal_entry_id: reconciliationMatchJournalId, note: reconciliationItemNote || null });
+    showMessage("success", "Matched reconciliation item.");
+    await refreshAll();
+  }
+
+  async function ignoreSelectedReconciliationItem() {
+    if (!selectedReconciliationItem) {
+      throw new Error("Select a reconciliation item before ignoring.");
+    }
+    await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/items/${selectedReconciliationItem.id}/ignore`, "POST", { note: reconciliationItemNote || null });
+    showMessage("success", "Ignored reconciliation item.");
+    await refreshAll();
+  }
 
   return (
     <section className="sections-stack">
@@ -209,8 +382,22 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
               </div>
               {selectedReconciliationSession ? (
                 <div>
+                  <div className="stats-grid mini-stats-grid">
+                    <div className="stat-card"><span>Bank account</span><strong>{reconciliationSessionBankName}</strong></div>
+                    <div className="stat-card"><span>Period</span><strong>{reconciliationSessionPeriodLabel}</strong></div>
+                    <div className="stat-card"><span>Status</span><strong>{selectedReconciliationSession.status}</strong></div>
+                    <div className="stat-card"><span>Completed</span><strong>{selectedReconciliationSession.completed_at ? formatDateTime(selectedReconciliationSession.completed_at) : "Open"}</strong></div>
+                  </div>
+                  {reconciliationSummary ? (
+                    <div className="stats-grid mini-stats-grid">
+                      <div className="stat-card"><span>Total items</span><strong>{reconciliationSummary.total_items}</strong></div>
+                      <div className="stat-card"><span>Ready to action</span><strong>{reconciliationSummary.unmatched_items}</strong></div>
+                      <div className="stat-card"><span>Matched</span><strong>{reconciliationSummary.matched_items}</strong></div>
+                      <div className="stat-card"><span>Ignored</span><strong>{reconciliationSummary.ignored_items}</strong></div>
+                    </div>
+                  ) : null}
                   <div className="form-grid">
-                    <Field label="Update note"><input value={reconciliationUpdateDraft.note} onChange={(event) => setReconciliationUpdateDraft((current) => ({ ...current, note: event.target.value }))} /></Field>
+                    <Field label="Session note"><input value={reconciliationUpdateDraft.note} onChange={(event) => setReconciliationUpdateDraft((current) => ({ ...current, note: event.target.value }))} /></Field>
                   </div>
                   <div className="request-actions">
                     <button className="button-link button-link-small" type="button" onClick={() => runAction("Updating reconciliation", async () => {
@@ -231,47 +418,174 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
 
           <div className="stacked-cards">
             <div className="mini-card">
-              <h3>Items and summary</h3>
-              {reconciliationSummary ? (
-                <div className="stats-grid mini-stats-grid">
-                  <div className="stat-card"><span>Total</span><strong>{reconciliationSummary.total_items}</strong></div>
-                  <div className="stat-card"><span>Matched</span><strong>{reconciliationSummary.matched_items}</strong></div>
-                  <div className="stat-card"><span>Ignored</span><strong>{reconciliationSummary.ignored_items}</strong></div>
-                  <div className="stat-card"><span>Unmatched</span><strong>{reconciliationSummary.unmatched_items}</strong></div>
-                </div>
-              ) : null}
-              <div className="table-shell compact-table-shell">
-                <table className="data-table">
-                  <thead><tr><th>Status</th><th>Item</th><th>Journal</th></tr></thead>
-                  <tbody>
-                    {reconciliationItems.map((item) => (
-                      <tr key={item.id} className={selectedReconciliationItemId === item.id ? "is-selected" : ""} onClick={() => setSelectedReconciliationItemId(item.id)}>
-                        <td><StatusPill value={item.status} /></td>
-                        <td>{item.bank_import_row_id.slice(0, 8)}</td>
-                        <td>{item.matched_journal_entry_id?.slice(0, 8) ?? "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mini-card-heading">
+                <h3>Left-to-right matching</h3>
+                <span className="pill">{orderedReconciliationItems.length} items</span>
               </div>
-              {selectedReconciliationItem ? (
-                <div className="form-grid two-up">
-                  <Field label="Posted journal"><select value={reconciliationMatchJournalId} onChange={(event) => setReconciliationMatchJournalId(event.target.value)}><option value="">Select posted journal</option>{journalOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-                  <Field label="Item action note"><input value={reconciliationUpdateDraft.note} onChange={(event) => setReconciliationUpdateDraft((current) => ({ ...current, note: event.target.value }))} /></Field>
-                  <div className="request-actions inline-span">
-                    <button className="button-link button-link-small" type="button" onClick={() => runAction("Matching reconciliation item", async () => {
-                      await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/items/${selectedReconciliationItem.id}/match`, "POST", { matched_journal_entry_id: reconciliationMatchJournalId, note: reconciliationUpdateDraft.note || null });
-                      showMessage("success", "Matched reconciliation item.");
-                      await refreshAll();
-                    })}>Match</button>
-                    <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Ignoring reconciliation item", async () => {
-                      await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/items/${selectedReconciliationItem.id}/ignore`, "POST", { note: reconciliationUpdateDraft.note || null });
-                      showMessage("success", "Ignored reconciliation item.");
-                      await refreshAll();
-                    })}>Ignore</button>
+              {selectedReconciliationSession ? (
+                <>
+                  <p className="summary-line reconciliation-guidance">Open the matching window to compare statement rows beside posted journals with enough room for review notes and resolution actions.</p>
+                  <div className="reconciliation-launch-panel">
+                    <div className="stats-grid mini-stats-grid">
+                      <div className="stat-card"><span>Open</span><strong>{reconciliationSummary?.unmatched_items ?? 0}</strong></div>
+                      <div className="stat-card"><span>Matched</span><strong>{reconciliationSummary?.matched_items ?? 0}</strong></div>
+                    </div>
+                    <div className="request-actions">
+                      <button className="button-link button-link-small" type="button" onClick={openReconciliationWorkspace}>Open matching window</button>
+                    </div>
+                    {selectedReconciliationItem ? (
+                      <div className="reconciliation-selected-summary">
+                        <span>Selected item</span>
+                        <strong>{selectedReconciliationItem.bank_row?.description ?? `Bank row ${selectedReconciliationItem.bank_import_row_id.slice(0, 8)}`}</strong>
+                        <p>{selectedReconciliationItem.bank_row?.transaction_date ?? "No date"} - {bankRowAmountLabel(selectedReconciliationItem.bank_row)}</p>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
+                  {isReconciliationWorkspaceOpen ? (
+                    <div className="journal-popup-backdrop" role="presentation" onClick={() => setIsReconciliationWorkspaceOpen(false)}>
+                      <div className="journal-popup-card reconciliation-popup-card" role="dialog" aria-modal="true" aria-label="Left-to-right reconciliation matching" onClick={(event) => event.stopPropagation()}>
+                        <div className="journal-popup-header">
+                          <div>
+                            <h3>Left-to-right matching</h3>
+                            <p className="summary-line">Compare one statement item against posted journals, then match or ignore it from the same window.</p>
+                          </div>
+                          <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => setIsReconciliationWorkspaceOpen(false)}>Close</button>
+                        </div>
+                  <div className="reconciliation-popup-grid">
+                    <div className="mini-card reconciliation-lane-card reconciliation-statement-panel">
+                      <div className="mini-card-heading">
+                        <h4>Statement items</h4>
+                        <span className="pill">{reconciliationSummary?.unmatched_items ?? 0} open</span>
+                      </div>
+                      <div className="compact-list tall-list reconciliation-item-list">
+                        {orderedReconciliationItems.map((item) => (
+                          <button key={item.id} className={`reconciliation-item-button${selectedReconciliationItemId === item.id ? " is-active" : ""}`} type="button" onClick={() => setSelectedReconciliationItemId(item.id)}>
+                            <div className="reconciliation-item-button-top">
+                              <strong>{item.bank_row?.description ?? `Bank row ${item.bank_import_row_id.slice(0, 8)}`}</strong>
+                              <StatusPill value={item.status} />
+                            </div>
+                            <div className="reconciliation-item-button-meta">
+                              <span>{item.bank_row?.transaction_date ?? "No date"}</span>
+                              <span className="reconciliation-amount">{bankRowAmountLabel(item.bank_row)}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mini-card reconciliation-lane-card reconciliation-comparison-panel">
+                      <div className="mini-card-heading">
+                        <h4>Comparison and resolution</h4>
+                        {selectedReconciliationItem ? <StatusPill value={selectedReconciliationItem.status} /> : null}
+                      </div>
+                      {selectedReconciliationItem ? (
+                        <div className="reconciliation-comparison-scroll">
+                          <div className="reconciliation-detail-grid">
+                            <section className="reconciliation-detail-card">
+                              <h4>Statement side</h4>
+                              <div className="reconciliation-detail-list">
+                                <div><span>Date</span><strong>{selectedReconciliationItem.bank_row?.transaction_date ?? "-"}</strong></div>
+                                <div><span>Description</span><strong>{selectedReconciliationItem.bank_row?.description ?? "-"}</strong></div>
+                                <div><span>Reference</span><strong>{selectedReconciliationItem.bank_row?.reference || "-"}</strong></div>
+                                <div><span>Line</span><strong>{selectedReconciliationItem.bank_row?.line_number ?? "-"}</strong></div>
+                                <div><span>Amount</span><strong>{bankRowAmountLabel(selectedReconciliationItem.bank_row)}</strong></div>
+                                <div><span>Bank row status</span><strong>{selectedReconciliationItem.bank_row?.status ?? "-"}</strong></div>
+                              </div>
+                            </section>
+
+                            <section className="reconciliation-detail-card">
+                              <h4>Journal side</h4>
+                              {activeComparisonJournal ? (
+                                <div className="reconciliation-detail-list">
+                                  <div><span>Entry</span><strong>{activeComparisonJournal.entry_number}</strong></div>
+                                  <div><span>Entry date</span><strong>{activeComparisonJournal.entry_date}</strong></div>
+                                  <div><span>Description</span><strong>{activeComparisonJournal.description}</strong></div>
+                                  <div><span>Reference</span><strong>{activeComparisonJournal.reference || "-"}</strong></div>
+                                  <div><span>Debit total</span><strong>{formatMoney(journalTotals(activeComparisonJournal).debit)}</strong></div>
+                                  <div><span>Credit total</span><strong>{formatMoney(journalTotals(activeComparisonJournal).credit)}</strong></div>
+                                </div>
+                              ) : selectedMatchedJournalSummary ? (
+                                <div className="reconciliation-detail-list">
+                                  <div><span>Current match</span><strong>{selectedMatchedJournalSummary.entry_number}</strong></div>
+                                  <div><span>Entry date</span><strong>{selectedMatchedJournalSummary.entry_date}</strong></div>
+                                  <div><span>Description</span><strong>{selectedMatchedJournalSummary.description}</strong></div>
+                                  <div><span>Reference</span><strong>{selectedMatchedJournalSummary.reference || "-"}</strong></div>
+                                  <div><span>Debit total</span><strong>{formatMoney(selectedMatchedJournalSummary.debit_total)}</strong></div>
+                                  <div><span>Credit total</span><strong>{formatMoney(selectedMatchedJournalSummary.credit_total)}</strong></div>
+                                </div>
+                              ) : (
+                                <EmptyState title="No journal selected" detail="Pick a posted journal below to compare it against the selected statement row." />
+                              )}
+                            </section>
+                          </div>
+
+                          <section className="reconciliation-match-panel">
+                            <div className="mini-card-heading">
+                              <h4>Match action</h4>
+                              <span className="pill">{candidateJournals.length} shown</span>
+                            </div>
+                            <div className="compact-list reconciliation-candidate-list">
+                              {candidateJournals.map(({ journal, totals, amountGap, tokenHits }) => (
+                                <button key={journal.id} className={`reconciliation-item-button${reconciliationMatchJournalId === journal.id ? " is-active" : ""}`} type="button" onClick={() => setReconciliationMatchJournalId(journal.id)}>
+                                  <div className="reconciliation-item-button-top">
+                                    <strong>{journal.entry_number} · {journal.description}</strong>
+                                    <span className="reconciliation-amount">{formatMoney(totals.debit)}</span>
+                                  </div>
+                                  <div className="reconciliation-item-button-meta">
+                                    <span>{journal.entry_date}</span>
+                                    <span>{journal.reference || "No reference"}</span>
+                                  </div>
+                                  <div className="reconciliation-item-button-meta">
+                                    <span>{tokenHits > 0 ? `${tokenHits} text matches` : "No text overlap"}</span>
+                                    <span>{amountGap === 0 ? "Amount aligned" : `${formatMoney(amountGap)} difference`}</span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                            <div className="form-grid two-up">
+                              <Field label="Posted journal"><select value={reconciliationMatchJournalId} onChange={(event) => setReconciliationMatchJournalId(event.target.value)}><option value="">Select posted journal</option>{journalOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+                              <Field label="Resolution note"><input value={reconciliationItemNote} onChange={(event) => setReconciliationItemNote(event.target.value)} /></Field>
+                            </div>
+                            <div className="request-actions">
+                              <button className="button-link button-link-small" type="button" disabled={!reconciliationMatchJournalId} onClick={() => runAction("Matching reconciliation item", matchSelectedReconciliationItem)}>Match selected journal</button>
+                              <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Ignoring reconciliation item", ignoreSelectedReconciliationItem)}>Ignore item</button>
+                            </div>
+                          </section>
+                        </div>
+                      ) : (
+                        <EmptyState title="Select an item to compare" detail="The matching lane will show the statement row on the left and the chosen journal on the right." />
+                      )}
+                    </div>
+
+                    <div className="mini-card reconciliation-lane-card reconciliation-journal-panel">
+                      <div className="mini-card-heading">
+                        <h4>Posted journals</h4>
+                        <span className="pill">{candidateJournals.length} shown</span>
+                      </div>
+                      <div className="compact-list reconciliation-candidate-list">
+                        {candidateJournals.length > 0 ? candidateJournals.map(({ journal, totals }) => (
+                          <button key={journal.id} className={`reconciliation-item-button${reconciliationMatchJournalId === journal.id ? " is-active" : ""}`} type="button" onClick={() => setReconciliationMatchJournalId(journal.id)}>
+                            <div className="reconciliation-item-button-top">
+                              <strong>{journal.entry_number} - {journal.description}</strong>
+                              <span className="reconciliation-amount">{formatMoney(totals.debit)}</span>
+                            </div>
+                            <div className="reconciliation-item-button-meta">
+                              <span>{journal.entry_date}</span>
+                            </div>
+                          </button>
+                        )) : (
+                          <EmptyState title="No posted journals found" detail="No posted journal candidates are available for this statement item." />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <EmptyState title="No reconciliation session selected" detail="Create or select a reconciliation session to start the left-to-right matching workflow." />
+              )}
             </div>
           </div>
         </div>

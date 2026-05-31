@@ -11,6 +11,7 @@ from app.db.models.accounting import AccountingPeriod, JournalEntry
 from app.db.models.auth import User
 from app.db.models.bas import BasExport
 from app.db.models.documents import Document, DocumentLink
+from app.db.models.employment import EmploymentWorker
 from app.db.models.enums import DocumentLinkEntityType, EntityType
 from app.db.models.reconciliation import ReconciliationItem
 from app.documents.service import resolve_document_path, store_document_bytes
@@ -46,6 +47,7 @@ def _validate_link_target(db: Session, company_id: UUID, entity_type: DocumentLi
         DocumentLinkEntityType.BANK_IMPORT_ROW: BankImportRow,
         DocumentLinkEntityType.RECONCILIATION_ITEM: ReconciliationItem,
         DocumentLinkEntityType.ACCOUNTING_PERIOD: AccountingPeriod,
+        DocumentLinkEntityType.EMPLOYMENT_WORKER: EmploymentWorker,
     }
     model = entity_map[entity_type]
     instance = db.get(model, entity_id)

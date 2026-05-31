@@ -118,6 +118,264 @@ class AccountingPeriodRead(ORMModel):
     updated_at: datetime
 
 
+class EmploymentWorkerRead(ORMModel):
+    id: UUID
+    company_id: UUID
+    worker_code: str
+    display_name: str
+    legal_name: str | None
+    worker_kind: str
+    date_of_birth: date | None
+    primary_email: str | None
+    primary_phone: str | None
+    address_summary: str | None
+    emergency_contact_summary: str | None
+    privacy_note: str | None
+    is_active: bool
+    note: str | None
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmploymentEngagementRead(ORMModel):
+    id: UUID
+    company_id: UUID
+    worker_id: UUID
+    engagement_type: str
+    employment_basis: str
+    start_date: date
+    expected_end_date: date | None
+    actual_end_date: date | None
+    department: str | None
+    role_name: str
+    manager_name: str | None
+    primary_work_location: str | None
+    pay_cycle_reference: str | None
+    status: str
+    status_reason: str | None
+    note: str | None
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmploymentWorkRightsRead(ORMModel):
+    id: UUID
+    company_id: UUID
+    worker_id: UUID
+    engagement_id: UUID | None
+    work_rights_basis: str
+    review_status: str
+    visa_subclass: str | None
+    visa_label: str | None
+    visa_grant_date: date | None
+    visa_expiry_date: date | None
+    work_condition_summary: str | None
+    hours_restriction_summary: str | None
+    sponsorship_required: bool
+    sponsoring_entity_note: str | None
+    vevo_checked_at: datetime | None
+    next_review_due_at: date | None
+    reviewer_user_id: UUID | None
+    review_note: str | None
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmploymentCompensationRead(ORMModel):
+    id: UUID
+    company_id: UUID
+    engagement_id: UUID
+    remuneration_basis: str
+    expected_base_amount: Decimal | None
+    tax_profile: str | None
+    superannuation_category: str | None
+    workers_comp_category: str | None
+    payroll_tax_in_scope: bool
+    leave_profile: str | None
+    reimbursement_allowed: bool
+    asset_issue_allowed: bool
+    expense_account_id: UUID | None
+    liability_account_id: UUID | None
+    tfn_declaration_received: bool
+    super_choice_received: bool
+    abn_provided: bool
+    gst_registered_known: bool
+    note: str | None
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmploymentLeaveSnapshotRead(ORMModel):
+    id: UUID
+    company_id: UUID
+    engagement_id: UUID
+    snapshot_date: date
+    annual_leave_hours: Decimal
+    personal_leave_hours: Decimal
+    long_service_leave_hours: Decimal
+    leave_value_amount: Decimal
+    current_lsl_value_amount: Decimal
+    non_current_lsl_value_amount: Decimal
+    note: str | None
+    reviewed_by_user_id: UUID | None
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmploymentReimbursementRead(ORMModel):
+    id: UUID
+    company_id: UUID
+    worker_id: UUID
+    engagement_id: UUID | None
+    reimbursement_date: date
+    description: str
+    amount: Decimal
+    status: str
+    note: str | None
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmploymentIssuedAssetRead(ORMModel):
+    id: UUID
+    company_id: UUID
+    worker_id: UUID
+    engagement_id: UUID | None
+    asset_name: str
+    asset_type: str | None
+    serial_number: str | None
+    assigned_on: date
+    due_back_on: date | None
+    returned_on: date | None
+    status: str
+    note: str | None
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmploymentLinkedDocumentRead(BaseModel):
+    link_id: UUID
+    document_id: UUID
+    original_filename: str
+    media_type: str | None
+    byte_size: int
+    note: str | None
+    linked_at: datetime
+
+
+class EmploymentQueueItemRead(BaseModel):
+    worker_id: UUID
+    worker_name: str
+    engagement_id: UUID | None
+    title: str
+    status: str
+    due_date: date | None
+    detail: str | None
+
+
+class EmploymentDashboardRead(BaseModel):
+    total_workers: int
+    active_engagements: int
+    onboarding_count: int
+    expiring_work_rights_count: int
+    missing_document_count: int
+    onboarding_items: list[EmploymentQueueItemRead]
+    work_rights_due_items: list[EmploymentQueueItemRead]
+    finalization_items: list[EmploymentQueueItemRead]
+
+
+class EmploymentWorkerDetailRead(EmploymentWorkerRead):
+    engagements: list[EmploymentEngagementRead]
+    work_rights_records: list[EmploymentWorkRightsRead]
+    compensation_profiles: list[EmploymentCompensationRead]
+    leave_snapshots: list[EmploymentLeaveSnapshotRead]
+    reimbursements: list[EmploymentReimbursementRead]
+    issued_assets: list[EmploymentIssuedAssetRead]
+    linked_documents: list[EmploymentLinkedDocumentRead]
+
+
+class EmploymentHeadcountLineRead(BaseModel):
+    worker_id: UUID
+    worker_name: str
+    worker_kind: str
+    engagement_id: UUID
+    engagement_type: str
+    status: str
+    department: str | None
+    role_name: str
+    start_date: date
+    expected_end_date: date | None
+    actual_end_date: date | None
+
+
+class EmploymentHeadcountReportRead(BaseModel):
+    generated_at: datetime
+    total_workers: int
+    active_engagements: int
+    contractor_engagements: int
+    rows: list[EmploymentHeadcountLineRead]
+
+
+class EmploymentWorkRightsReportLineRead(BaseModel):
+    worker_id: UUID
+    worker_name: str
+    engagement_id: UUID | None
+    review_status: str
+    work_rights_basis: str
+    visa_label: str | None
+    visa_expiry_date: date | None
+    next_review_due_at: date | None
+    restriction_summary: str | None
+
+
+class EmploymentWorkRightsReportRead(BaseModel):
+    generated_at: datetime
+    rows: list[EmploymentWorkRightsReportLineRead]
+
+
+class EmploymentLeaveLiabilityLineRead(BaseModel):
+    worker_id: UUID
+    worker_name: str
+    engagement_id: UUID
+    engagement_status: str
+    snapshot_date: date
+    annual_leave_hours: Decimal
+    long_service_leave_hours: Decimal
+    leave_value_amount: Decimal
+    current_lsl_value_amount: Decimal
+    non_current_lsl_value_amount: Decimal
+
+
+class EmploymentLeaveLiabilityReportRead(BaseModel):
+    generated_at: datetime
+    rows: list[EmploymentLeaveLiabilityLineRead]
+
+
+class EmploymentContractorReviewLineRead(BaseModel):
+    worker_id: UUID
+    worker_name: str
+    engagement_id: UUID
+    engagement_type: str
+    status: str
+    remuneration_basis: str | None
+    abn_provided: bool | None
+    gst_registered_known: bool | None
+    payroll_tax_in_scope: bool | None
+    note: str | None
+
+
+class EmploymentContractorReviewReportRead(BaseModel):
+    generated_at: datetime
+    rows: list[EmploymentContractorReviewLineRead]
+
+
 class ApprovalActionRead(ORMModel):
     id: UUID
     company_id: UUID
@@ -615,6 +873,28 @@ class BankImportSessionRead(ORMModel):
     updated_at: datetime
 
 
+class ReconciliationBankRowRead(ORMModel):
+    id: UUID
+    line_number: int
+    transaction_date: date
+    description: str
+    reference: str | None
+    debit_amount: Decimal
+    credit_amount: Decimal
+    status: str
+
+
+class ReconciliationJournalSummaryRead(BaseModel):
+    id: UUID
+    entry_number: str
+    entry_date: date
+    description: str
+    reference: str | None
+    status: str
+    debit_total: Decimal
+    credit_total: Decimal
+
+
 class ReconciliationItemRead(ORMModel):
     id: UUID
     company_id: UUID
@@ -627,6 +907,8 @@ class ReconciliationItemRead(ORMModel):
     resolved_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    bank_row: ReconciliationBankRowRead | None = None
+    matched_journal_entry: ReconciliationJournalSummaryRead | None = None
 
 
 class ReconciliationSessionRead(ORMModel):
@@ -640,6 +922,9 @@ class ReconciliationSessionRead(ORMModel):
     note: str | None
     created_at: datetime
     updated_at: datetime
+
+    bank_row: ReconciliationBankRowRead | None = None
+    matched_journal_entry: ReconciliationJournalSummaryRead | None = None
 
 
 class ReconciliationSummary(BaseModel):

@@ -5,6 +5,15 @@ from app.db.models.auth import Role, User, UserCompanyAccess, UserRole
 from app.db.models.banking import BankAccount, BankImportRow, BankImportSession
 from app.db.models.companies import Company, CompanyConfigurationVersion
 from app.db.models.documents import Document, DocumentLink
+from app.db.models.employment import (
+    EmploymentCompensationProfile,
+    EmploymentEngagement,
+    EmploymentIssuedAsset,
+    EmploymentLeaveSnapshot,
+    EmploymentReimbursementItem,
+    EmploymentWorker,
+    EmploymentWorkRightsRecord,
+)
 from app.db.models.journal_recommendations import (
     JournalRecommendationLine,
     JournalRecommendationProposal,
@@ -42,6 +51,13 @@ __all__ = [
     "DocumentLink",
     "DepreciationRun",
     "DepreciationRunLine",
+    "EmploymentCompensationProfile",
+    "EmploymentEngagement",
+    "EmploymentIssuedAsset",
+    "EmploymentLeaveSnapshot",
+    "EmploymentReimbursementItem",
+    "EmploymentWorker",
+    "EmploymentWorkRightsRecord",
     "FixedAsset",
     "FixedAssetStatusHistory",
     "JournalEntry",

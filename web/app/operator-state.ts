@@ -206,12 +206,36 @@ type ReconciliationSession = {
   completed_at: string | null;
 };
 
+type ReconciliationBankRow = {
+  id: string;
+  line_number: number;
+  transaction_date: string;
+  description: string;
+  reference: string | null;
+  debit_amount: string;
+  credit_amount: string;
+  status: string;
+};
+
+type ReconciliationJournalSummary = {
+  id: string;
+  entry_number: string;
+  entry_date: string;
+  description: string;
+  reference: string | null;
+  status: string;
+  debit_total: string;
+  credit_total: string;
+};
+
 type ReconciliationItem = {
   id: string;
   bank_import_row_id: string;
   matched_journal_entry_id: string | null;
   status: string;
   note: string | null;
+  bank_row: ReconciliationBankRow | null;
+  matched_journal_entry: ReconciliationJournalSummary | null;
 };
 
 type ReconciliationSummary = {

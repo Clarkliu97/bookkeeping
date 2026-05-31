@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { BankingSection } from "./operator-sections/banking-section";
 import { BookkeepingSection } from "./operator-sections/bookkeeping-section";
 import { DashboardSection } from "./operator-sections/dashboard-section";
+import { EmploymentSection } from "./operator-sections/employment-section";
 import { ReportsSection } from "./operator-sections/reports-section";
 import { SetupSection } from "./operator-sections/setup-section";
 import { YearEndSection } from "./operator-sections/year-end-section";
@@ -143,6 +144,8 @@ export function OperatorClient({ activeSection, renderSectionContent }: { active
     sectionContent = <BookkeepingSection operator={operator} />;
   } else if (activeSection === "banking") {
     sectionContent = <BankingSection operator={operator} />;
+  } else if (activeSection === "employment") {
+    sectionContent = <EmploymentSection operator={operator} />;
   } else if (activeSection === "reports") {
     sectionContent = <ReportsSection operator={operator} />;
   } else if (activeSection === "year_end") {

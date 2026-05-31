@@ -4,7 +4,19 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.db.models.enums import AccountType, ReportingCategoryType, TaxInputOutputType
+from app.db.models.enums import (
+    AccountType,
+    EmploymentAssetStatus,
+    EmploymentEngagementType,
+    EmploymentReimbursementStatus,
+    EmploymentStatus,
+    EmploymentWorkerKind,
+    RemunerationBasis,
+    ReportingCategoryType,
+    TaxInputOutputType,
+    WorkRightsBasis,
+    WorkRightsStatus,
+)
 from app.schemas.common import UserRead
 
 
@@ -134,6 +146,135 @@ class AccountingPeriodCreate(BaseModel):
 
 
 class AccountingPeriodUpdate(AccountingPeriodCreate):
+    pass
+
+
+class EmploymentWorkerCreate(BaseModel):
+    worker_code: str = Field(min_length=1, max_length=64)
+    display_name: str = Field(min_length=1, max_length=255)
+    legal_name: str | None = Field(default=None, max_length=255)
+    worker_kind: EmploymentWorkerKind
+    date_of_birth: date | None = None
+    primary_email: EmailStr | None = None
+    primary_phone: str | None = Field(default=None, max_length=64)
+    address_summary: str | None = None
+    emergency_contact_summary: str | None = None
+    privacy_note: str | None = None
+    is_active: bool = True
+    note: str | None = None
+
+
+class EmploymentWorkerUpdate(EmploymentWorkerCreate):
+    pass
+
+
+class EmploymentEngagementCreate(BaseModel):
+    engagement_type: EmploymentEngagementType
+    employment_basis: str = Field(min_length=1, max_length=64)
+    start_date: date
+    expected_end_date: date | None = None
+    actual_end_date: date | None = None
+    department: str | None = Field(default=None, max_length=128)
+    role_name: str = Field(min_length=1, max_length=255)
+    manager_name: str | None = Field(default=None, max_length=255)
+    primary_work_location: str | None = Field(default=None, max_length=255)
+    pay_cycle_reference: str | None = Field(default=None, max_length=64)
+    status: EmploymentStatus
+    status_reason: str | None = None
+    note: str | None = None
+
+
+class EmploymentEngagementUpdate(EmploymentEngagementCreate):
+    pass
+
+
+class EmploymentWorkRightsCreate(BaseModel):
+    engagement_id: UUID | None = None
+    work_rights_basis: WorkRightsBasis
+    review_status: WorkRightsStatus
+    visa_subclass: str | None = Field(default=None, max_length=64)
+    visa_label: str | None = Field(default=None, max_length=255)
+    visa_grant_date: date | None = None
+    visa_expiry_date: date | None = None
+    work_condition_summary: str | None = None
+    hours_restriction_summary: str | None = None
+    sponsorship_required: bool = False
+    sponsoring_entity_note: str | None = None
+    vevo_checked_at: date | None = None
+    next_review_due_at: date | None = None
+    reviewer_user_id: UUID | None = None
+    review_note: str | None = None
+
+
+class EmploymentWorkRightsUpdate(EmploymentWorkRightsCreate):
+    pass
+
+
+class EmploymentCompensationCreate(BaseModel):
+    remuneration_basis: RemunerationBasis
+    expected_base_amount: Decimal | None = None
+    tax_profile: str | None = Field(default=None, max_length=64)
+    superannuation_category: str | None = Field(default=None, max_length=64)
+    workers_comp_category: str | None = Field(default=None, max_length=64)
+    payroll_tax_in_scope: bool = False
+    leave_profile: str | None = Field(default=None, max_length=64)
+    reimbursement_allowed: bool = False
+    asset_issue_allowed: bool = False
+    expense_account_id: UUID | None = None
+    liability_account_id: UUID | None = None
+    tfn_declaration_received: bool = False
+    super_choice_received: bool = False
+    abn_provided: bool = False
+    gst_registered_known: bool = False
+    note: str | None = None
+
+
+class EmploymentCompensationUpdate(EmploymentCompensationCreate):
+    pass
+
+
+class EmploymentLeaveSnapshotCreate(BaseModel):
+    snapshot_date: date
+    annual_leave_hours: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
+    personal_leave_hours: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
+    long_service_leave_hours: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
+    leave_value_amount: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
+    current_lsl_value_amount: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
+    non_current_lsl_value_amount: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
+    note: str | None = None
+    reviewed_by_user_id: UUID | None = None
+
+
+class EmploymentLeaveSnapshotUpdate(EmploymentLeaveSnapshotCreate):
+    pass
+
+
+class EmploymentReimbursementCreate(BaseModel):
+    engagement_id: UUID | None = None
+    reimbursement_date: date
+    description: str = Field(min_length=1, max_length=255)
+    amount: Decimal = Field(ge=Decimal("0.00"))
+    status: EmploymentReimbursementStatus
+    note: str | None = None
+
+
+class EmploymentReimbursementUpdate(EmploymentReimbursementCreate):
+    pass
+
+
+class EmploymentIssuedAssetCreate(BaseModel):
+    engagement_id: UUID | None = None
+    asset_name: str = Field(min_length=1, max_length=255)
+    asset_type: str | None = Field(default=None, max_length=64)
+    serial_number: str | None = Field(default=None, max_length=128)
+    assigned_on: date
+    due_back_on: date | None = None
+    returned_on: date | None = None
+    status: EmploymentAssetStatus
+    note: str | None = None
+
+
+class EmploymentIssuedAssetUpdate(EmploymentIssuedAssetCreate):
     pass
 
 

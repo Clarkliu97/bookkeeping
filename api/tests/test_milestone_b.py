@@ -224,7 +224,10 @@ def test_reconciliation_session_matches_confirmed_bank_row(client):
         headers=auth_header(token),
     )
     assert items_response.status_code == 200, items_response.text
-    item_id = items_response.json()[0]["id"]
+    first_item = items_response.json()[0]
+    assert first_item["bank_row"]["description"] == "Customer deposit"
+    assert first_item["bank_row"]["credit_amount"] == "100.00"
+    item_id = first_item["id"]
 
     match_response = client.post(
         f"/api/companies/{company_id}/reconciliation-sessions/{reconciliation_session_id}/items/{item_id}/match",
@@ -233,6 +236,7 @@ def test_reconciliation_session_matches_confirmed_bank_row(client):
     )
     assert match_response.status_code == 200, match_response.text
     assert match_response.json()["status"] == "matched"
+    assert match_response.json()["matched_journal_entry"]["description"] == "Journal for reconciliation"
 
     summary_response = client.get(
         f"/api/companies/{company_id}/reconciliation-sessions/{reconciliation_session_id}/summary",
@@ -453,8 +457,11 @@ def test_reconciliation_ignore_and_completion_block_until_resolved(client):
         headers=auth_header(token),
     )
     assert items_response.status_code == 200, items_response.text
-    first_item_id = items_response.json()[0]["id"]
-    second_item_id = items_response.json()[1]["id"]
+    items_payload = items_response.json()
+    assert items_payload[0]["bank_row"]["description"] == "Customer deposit"
+    assert items_payload[1]["bank_row"]["description"] == "Unknown receipt"
+    first_item_id = items_payload[0]["id"]
+    second_item_id = items_payload[1]["id"]
 
     match_response = client.post(
         f"/api/companies/{company_id}/reconciliation-sessions/{reconciliation_session_id}/items/{first_item_id}/match",

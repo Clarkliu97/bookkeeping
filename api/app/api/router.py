@@ -8,6 +8,7 @@ from app.bank_imports.router import router as bank_imports_router
 from app.chart_of_accounts.router import router as chart_of_accounts_router
 from app.companies.router import router as companies_router
 from app.documents.router import router as documents_router
+from app.employment.router import router as employment_router
 from app.fixed_assets.router import router as fixed_assets_router
 from app.journal_recommendations.router import router as journal_recommendations_router
 from app.ledger.router import router as ledger_router
@@ -24,6 +25,7 @@ api_router.include_router(chart_of_accounts_router)
 api_router.include_router(accounting_periods_router)
 api_router.include_router(ledger_router)
 api_router.include_router(journal_recommendations_router)
+api_router.include_router(employment_router)
 api_router.include_router(fixed_assets_router)
 api_router.include_router(reports_router)
 api_router.include_router(tax_workpapers_router)
