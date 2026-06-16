@@ -21,6 +21,7 @@ services:
   api:
     build:
       context: ./api
+      target: development
     container_name: bookkeeping-api
     restart: unless-stopped
     command:
@@ -67,6 +68,7 @@ services:
   web:
     build:
       context: ./web
+      target: development
     container_name: bookkeeping-web
     restart: unless-stopped
     depends_on:

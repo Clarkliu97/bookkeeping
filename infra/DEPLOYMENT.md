@@ -35,7 +35,7 @@ This stays aligned with the repository scope: internal use, traceable review wor
 
 1. Create `.env` from `.env.example` with production credentials and paths.
 2. Ensure document storage and backup directories are on persistent disk.
-3. Start services with `docker compose up --build -d`.
+3. Start services with `docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d`.
 4. Confirm `docker compose ps` shows healthy `db` and `api` services.
 5. Verify `http://<host>:8000/health/ready` returns `200` before user traffic.
 
@@ -43,5 +43,6 @@ This stays aligned with the repository scope: internal use, traceable review wor
 
 - set a strong `API_SECRET_KEY`
 - restrict `API_ALLOWED_ORIGINS` to the internal frontend origin
+- keep `API_BIND_ADDRESS` and `WEB_BIND_ADDRESS` on `127.0.0.1` unless another interface is intentionally required
 - keep PostgreSQL and document storage on persistent disks
 - direct backup output to a path outside ephemeral container filesystems
