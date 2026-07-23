@@ -355,6 +355,8 @@ Important variables:
 docker compose up --build
 ```
 
+This command uses the development targets: the API runs with autoreload and the web app runs `next dev --webpack` with bind-mounted source.
+
 Expected local endpoints:
 
 - frontend: `http://localhost:3000`
@@ -363,6 +365,16 @@ Expected local endpoints:
 - PostgreSQL: `localhost:5432`
 
 The API container runs Alembic migrations on startup before launching Uvicorn.
+
+### Production Compose Override
+
+For a long-lived server deployment, layer the production override on top of the base compose file:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+The production override switches both services to production image targets, removes the source bind mounts, runs the API without `--reload`, and runs the frontend with `next start` instead of `next dev`. By default it binds ports `3000` and `8000` to `127.0.0.1`; set `WEB_BIND_ADDRESS` or `API_BIND_ADDRESS` in `.env` if the services must listen on another interface.
 
 ### LAN Access
 
