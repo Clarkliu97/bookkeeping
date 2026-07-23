@@ -129,6 +129,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     setBasActionNote,
     loadBasRun,
     downloadFromApi,
+    confirmDanger,
   } = operator;
   const [importNoteDraft, setImportNoteDraft] = useState("");
   const [reconciliationItemNote, setReconciliationItemNote] = useState("");
@@ -239,6 +240,31 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/items/${selectedReconciliationItem.id}/ignore`, "POST", { note: reconciliationItemNote || null });
     showMessage("success", "Ignored reconciliation item.");
     await refreshAll();
+  }
+
+  async function deleteSelectedReconciliationSession() {
+    if (!selectedReconciliationSession) {
+      throw new Error("Select a reconciliation session before deleting.");
+    }
+    const sessionLabel = selectedReconciliationSession.note?.trim() || selectedReconciliationSession.id.slice(0, 8);
+    if (!confirmDanger(
+      `Delete reconciliation session "${sessionLabel}"? All bank rows included in this session will return to staged status. This cannot be undone.`,
+    )) {
+      return;
+    }
+
+    await request(
+      `/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSession.id}`,
+      "DELETE",
+      undefined,
+      "void",
+    );
+    setIsReconciliationWorkspaceOpen(false);
+    setSelectedReconciliationSessionId("");
+    setSelectedReconciliationItemId("");
+    setReconciliationMatchJournalId("");
+    await refreshAll();
+    showMessage("success", `Deleted reconciliation session "${sessionLabel}".`);
   }
 
   return (
@@ -397,20 +423,25 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                     </div>
                   ) : null}
                   <div className="form-grid">
-                    <Field label="Session note"><input value={reconciliationUpdateDraft.note} onChange={(event) => setReconciliationUpdateDraft((current) => ({ ...current, note: event.target.value }))} /></Field>
+                    <Field label="Session note"><input value={reconciliationUpdateDraft.note} readOnly={selectedReconciliationSession.status === "completed"} onChange={(event) => setReconciliationUpdateDraft((current) => ({ ...current, note: event.target.value }))} /></Field>
                   </div>
-                  <div className="request-actions">
-                    <button className="button-link button-link-small" type="button" onClick={() => runAction("Updating reconciliation", async () => {
-                      await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSession.id}`, "PUT", { accounting_period_id: reconciliationUpdateDraft.accounting_period_id || null, note: reconciliationUpdateDraft.note || null });
-                      showMessage("success", "Updated reconciliation session.");
-                      await refreshAll();
-                    })}>Save session</button>
-                    <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Completing reconciliation", async () => {
-                      await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSession.id}/complete`, "POST", { note: reconciliationUpdateDraft.note || null });
-                      showMessage("success", "Completed reconciliation session.");
-                      await refreshAll();
-                    })}>Complete</button>
-                  </div>
+                  {selectedReconciliationSession.status !== "completed" ? (
+                    <div className="request-actions">
+                      <button className="button-link button-link-small" type="button" onClick={() => runAction("Updating reconciliation", async () => {
+                        await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSession.id}`, "PUT", { accounting_period_id: reconciliationUpdateDraft.accounting_period_id || null, note: reconciliationUpdateDraft.note || null });
+                        showMessage("success", "Updated reconciliation session.");
+                        await refreshAll();
+                      })}>Save session</button>
+                      <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Completing reconciliation", async () => {
+                        await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSession.id}/complete`, "POST", { note: reconciliationUpdateDraft.note || null });
+                        showMessage("success", "Completed reconciliation session.");
+                        await refreshAll();
+                      })}>Complete</button>
+                      <button className="button-link button-link-small button-link-danger" data-testid="delete-reconciliation-session" type="button" onClick={() => runAction("Deleting reconciliation session", deleteSelectedReconciliationSession)}>Delete session</button>
+                    </div>
+                  ) : (
+                    <p className="summary-line">Completed reconciliation sessions are retained for audit history and cannot be changed or deleted.</p>
+                  )}
                 </div>
               ) : null}
             </div>

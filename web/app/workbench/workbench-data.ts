@@ -575,7 +575,7 @@ const bankingBasMutationCards: ActionConfig[] = [
   {
     kind: "json",
     title: "Delete Reconciliation Session",
-    description: "Delete the active reconciliation session and reset unresolved rows.",
+    description: "Delete the active reconciliation session and reset all of its bank rows to staged.",
     method: "DELETE",
     pathTemplate: "/api/companies/{{companyId}}/reconciliation-sessions/{{reconciliationSessionId}}",
     auth: "token",

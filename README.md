@@ -77,7 +77,7 @@ The project explicitly does not support:
 - upload bank CSV files into staged import sessions
 - review staged rows and duplicate protection
 - confirm imports before reconciliation
-- create reconciliation sessions, compare deterministically ordered statement rows with ranked posted-journal candidates, match or ignore items, and complete sessions
+- create reconciliation sessions, compare deterministically ordered statement rows with ranked posted-journal candidates, match or ignore items, delete open sessions when a restart is needed, and complete sessions
 
 ### BAS Support
 
@@ -216,11 +216,12 @@ Typical tasks:
 4. Confirm the import when the rows look correct.
 5. Create a reconciliation session.
 6. Match or ignore reconciliation items.
-7. Complete the session.
-8. Generate BAS periods.
-9. Create a BAS run for a selected BAS period.
-10. Review BAS lines, warnings, adjustments, and notes.
-11. Submit, approve, and export BAS support outputs.
+7. If an open session needs to be restarted, select `Delete session`, confirm the warning, and verify its linked bank rows have returned to staged status.
+8. Complete the session when every item is resolved. Completed sessions are retained for audit history and cannot be edited or deleted.
+9. Generate BAS periods.
+10. Create a BAS run for a selected BAS period.
+11. Review BAS lines, warnings, adjustments, and notes.
+12. Submit, approve, and export BAS support outputs.
 
 ### Reports: `/reports`
 

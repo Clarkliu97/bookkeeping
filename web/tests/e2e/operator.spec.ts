@@ -40,6 +40,25 @@ type AccountRecord = {
   account_code: string;
 };
 
+type BankAccountRecord = {
+  id: string;
+};
+
+type BankImportSessionRecord = {
+  id: string;
+};
+
+type ReconciliationSessionRecord = {
+  id: string;
+  note: string | null;
+  status: string;
+};
+
+type BankImportRowRecord = {
+  id: string;
+  status: string;
+};
+
 
 function uniqueSuffix(prefix: string) {
   const randomPart = Math.floor(Math.random() * 100000).toString().padStart(5, "0");
@@ -646,6 +665,100 @@ test.describe.serial("operator workspace journeys", () => {
     releasePeriodPost();
     await expect(page.getByRole("status", { name: "Saving period" })).toBeHidden();
     await expect(page.getByRole("row", { name: new RegExp(periodName) })).toBeVisible();
+  });
+
+  test("deletes an open reconciliation session from the banking route", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Reconciliation Delete Company");
+    const bankAccount = await apiJson<BankAccountRecord>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/bank-accounts`,
+      auth.access_token,
+      {
+        name: uniqueSuffix("E2E Operating Account"),
+        bank_name: "Example Bank",
+        bsb: "123-456",
+        account_number_masked: "xxxx1234",
+        is_active: true,
+      },
+    );
+    const uploadResponse = await page.request.post(
+      `${apiBaseUrl}/api/companies/${company.id}/bank-imports/upload`,
+      {
+        headers: { Authorization: `Bearer ${auth.access_token}` },
+        multipart: {
+          bank_account_id: bankAccount.id,
+          date_column: "date",
+          description_column: "description",
+          debit_column: "debit",
+          credit_column: "credit",
+          reference_column: "reference",
+          note: "Import for reconciliation deletion",
+          file: {
+            name: "reconciliation-delete.csv",
+            mimeType: "text/csv",
+            buffer: Buffer.from(
+              "date,description,debit,credit,reference\n2026-05-12,Delete session coverage,25.00,0.00,E2E-RECON-DELETE\n",
+            ),
+          },
+        },
+      },
+    );
+    const bankImport = await parseResponse<BankImportSessionRecord>(uploadResponse);
+    await apiJson(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/bank-imports/${bankImport.id}/confirm`,
+      auth.access_token,
+      { note: "Confirmed for reconciliation deletion" },
+    );
+    const sessionNote = uniqueSuffix("E2E Delete Session");
+    const reconciliationSession = await apiJson<ReconciliationSessionRecord>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/reconciliation-sessions`,
+      auth.access_token,
+      {
+        bank_account_id: bankAccount.id,
+        accounting_period_id: null,
+        note: sessionNote,
+      },
+    );
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/banking");
+    await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
+
+    const sessionButton = page.getByRole("button").filter({ hasText: sessionNote });
+    await expect(sessionButton).toBeVisible();
+    await sessionButton.click();
+    await expect(page.getByTestId("delete-reconciliation-session")).toBeVisible();
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.type()).toBe("confirm");
+      expect(dialog.message()).toContain("return to staged status");
+      await dialog.accept();
+    });
+    await page.getByTestId("delete-reconciliation-session").click();
+
+    await expect(page.getByRole("status").getByText(`Deleted reconciliation session "${sessionNote}".`)).toBeVisible();
+    await expect(sessionButton).toHaveCount(0);
+    const remainingSessions = await apiJson<ReconciliationSessionRecord[]>(
+      page.request,
+      "GET",
+      `/api/companies/${company.id}/reconciliation-sessions`,
+      auth.access_token,
+    );
+    expect(remainingSessions.some((item) => item.id === reconciliationSession.id)).toBe(false);
+    const rows = await apiJson<BankImportRowRecord[]>(
+      page.request,
+      "GET",
+      `/api/companies/${company.id}/bank-imports/${bankImport.id}/rows`,
+      auth.access_token,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe("staged");
   });
 
   test("generates and exports a BAS run from the banking route", async ({ page }) => {
