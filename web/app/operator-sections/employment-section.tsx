@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { EmptyState, Field, StatusPill } from "../operator-ui";
+import { EmptyState, Field, StatusPill, WorkspaceTabs } from "../operator-ui";
 import { formatDate, formatDateTime, formatMoney, type OperatorState } from "../operator-state";
 
 
@@ -494,6 +494,7 @@ export function EmploymentSection({ operator }: { operator: OperatorState }) {
   const [documentLinkNote, setDocumentLinkNote] = useState("");
   const [uploadDocumentNote, setUploadDocumentNote] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [activeWorkspace, setActiveWorkspace] = useState<"overview" | "workers">("overview");
   const requestRef = useRef(request);
   const runActionRef = useRef(runAction);
   const selectedWorkerIdRef = useRef(selectedWorkerId);
@@ -1072,6 +1073,16 @@ export function EmploymentSection({ operator }: { operator: OperatorState }) {
 
   return (
     <section className="sections-stack">
+      <WorkspaceTabs
+        label="Employment workspaces"
+        activeTab={activeWorkspace}
+        onChange={setActiveWorkspace}
+        options={[
+          { key: "overview", label: "Overview & reports", detail: "Queues, support totals and exports", count: dashboard?.total_workers ?? 0 },
+          { key: "workers", label: "Worker records", detail: "Profiles, evidence and engagements", count: workers.length },
+        ]}
+      />
+      {activeWorkspace === "overview" ? (
       <article className="panel panel-wide">
         <div className="panel-heading">
           <h2>Employment dashboard and support reports</h2>
@@ -1145,7 +1156,9 @@ export function EmploymentSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "workers" ? (
       <article className="panel panel-wide">
         <div className="panel-heading">
           <h2>Worker register, compliance, and traceability</h2>
@@ -1430,6 +1443,7 @@ export function EmploymentSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
     </section>
   );
 }

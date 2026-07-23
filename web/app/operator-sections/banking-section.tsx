@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { formatDateTime, formatMoney, type OperatorState } from "../operator-state";
-import { EmptyState, Field, StatusPill } from "../operator-ui";
+import { EmptyState, Field, StatusPill, WorkspaceTabs } from "../operator-ui";
 
 
 function toDecimalNumber(value: string | number | null | undefined) {
@@ -134,6 +134,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
   const [importNoteDraft, setImportNoteDraft] = useState("");
   const [reconciliationItemNote, setReconciliationItemNote] = useState("");
   const [isReconciliationWorkspaceOpen, setIsReconciliationWorkspaceOpen] = useState(false);
+  const [activeWorkspace, setActiveWorkspace] = useState<"accounts" | "reconciliation" | "bas">("accounts");
 
   useEffect(() => {
     setImportNoteDraft(selectedImportSession?.note ?? "");
@@ -269,6 +270,17 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
 
   return (
     <section className="sections-stack">
+      <WorkspaceTabs
+        label="Banking and BAS workspaces"
+        activeTab={activeWorkspace}
+        onChange={setActiveWorkspace}
+        options={[
+          { key: "accounts", label: "Accounts & imports", detail: "Bank accounts and CSV intake", count: bankImports.length },
+          { key: "reconciliation", label: "Reconciliation", detail: "Match confirmed statement rows", count: reconciliationSessions.length },
+          { key: "bas", label: "BAS support", detail: "Periods, review and exports", count: basPeriods.length },
+        ]}
+      />
+      {activeWorkspace === "accounts" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Bank accounts and imports</h2><span className="pill">{bankAccounts.length} accounts</span></div>
         <div className="workspace-split">
@@ -380,7 +392,9 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "reconciliation" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Reconciliation</h2><span className="pill">{reconciliationSessions.length} sessions</span></div>
         <div className="workspace-split">
@@ -621,7 +635,9 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "bas" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>BAS support</h2><StatusPill value={basRunDetail?.status ?? "no run"} /></div>
         <div className="workspace-split">
@@ -738,6 +754,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
     </section>
   );
 }

@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import Link from "next/link";
 
 import { getServerApiBaseUrl } from "./api-base-url-server";
+import { ThemeToggle } from "./theme-toggle";
 import "./globals.css";
 
 
@@ -29,16 +30,31 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const apiBaseUrl = await getServerApiBaseUrl();
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { try { const saved = localStorage.getItem("bookkeeping-tax-theme"); const theme = saved === "dark" || saved === "light" ? saved : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); document.documentElement.dataset.theme = theme; } catch { document.documentElement.dataset.theme = "light"; } })();`,
+          }}
+        />
+      </head>
       <body className={`${sansFont.variable} ${monoFont.variable}`}>
         <header className="app-header">
           <nav className="app-nav">
-            <Link href="/">Operator Workspace</Link>
-            <Link href="/workbench">Workbench</Link>
-            <Link href="/operations">Operations</Link>
-            <a href={`${apiBaseUrl}/docs`} target="_blank" rel="noreferrer">
-              Swagger
-            </a>
+            <Link className="app-brand" href="/">
+              <span className="app-brand-mark" aria-hidden="true">BT</span>
+              <span className="app-brand-copy">
+                <strong>Bookkeeping Tax</strong>
+                <small>Operator console</small>
+              </span>
+            </Link>
+            <div className="app-nav-links">
+              <Link href="/">Workspace</Link>
+              <Link href="/operations">Operations</Link>
+              <Link href="/workbench">API workbench</Link>
+              <a href={`${apiBaseUrl}/docs`} target="_blank" rel="noreferrer">API docs</a>
+            </div>
+            <ThemeToggle />
           </nav>
         </header>
         {children}

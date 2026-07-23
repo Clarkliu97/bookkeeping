@@ -18,6 +18,7 @@ import { EmptyState, Field, ProcessingVeil, SectionButton, StatusPill } from "./
 
 export function OperatorClient({ activeSection, renderSectionContent }: { activeSection: SectionKey; renderSectionContent?: (operator: OperatorState) => ReactNode }) {
   const operator = useOperatorState();
+  const activeSectionOption = sectionOptions.find((item) => item.key === activeSection) ?? sectionOptions[0];
   const [floatingMessages, setFloatingMessages] = useState(
     operator.flashMessage ? [operator.flashMessage] : [],
   );
@@ -90,8 +91,6 @@ export function OperatorClient({ activeSection, renderSectionContent }: { active
           </div>
         </section>
 
-        {operator.flashMessage ? <section className={`panel banner banner-${operator.flashMessage.tone}`}><p>{operator.flashMessage.text}</p></section> : null}
-
         <section className="grid auth-grid">
           <article className="panel auth-panel">
             <h2>Sign in</h2>
@@ -160,18 +159,15 @@ export function OperatorClient({ activeSection, renderSectionContent }: { active
     <main className="shell shell-operator" data-testid="operator-shell-authenticated">
       {floatingNotice}
       <ProcessingVeil label={operator.busyLabel} />
-      <section className="hero hero-operator hero-operator-compact">
+      <section className="workspace-masthead">
         <div className="hero-copy">
           <p className="eyebrow">Operator Workspace</p>
-          <h1>Internal bookkeeping and tax support operations.</h1>
-          <p className="lede">
-            Work from guided internal screens instead of raw API actions. The application stays review-oriented,
-            traceable, and scoped to manual form-entry support rather than lodgment.
-          </p>
+          <h1>{activeSectionOption.label}</h1>
+          <p className="lede">{activeSectionOption.detail}</p>
         </div>
-        <div className="hero-actions">
+        <div className="workspace-masthead-actions">
           <button className="button-link button-link-small" type="button" onClick={() => operator.runAction("Refreshing workspace", operator.refreshAll)}>
-            Refresh workspace
+            Refresh data
           </button>
           <button className="button-link button-link-small button-link-secondary" type="button" onClick={operator.logout}>
             Sign out
@@ -179,16 +175,10 @@ export function OperatorClient({ activeSection, renderSectionContent }: { active
         </div>
       </section>
 
-      {operator.flashMessage ? (
-        <section className={`panel banner banner-${operator.flashMessage.tone}`}>
-          <p>{operator.flashMessage.text}</p>
-        </section>
-      ) : null}
-
       <section className="operator-layout">
         <aside className="panel operator-sidebar">
-          <div className="panel-heading">
-            <h2>Session</h2>
+          <div className="sidebar-section-heading">
+            <span>Signed in</span>
             {operator.busyLabel ? <span className="pill">{operator.busyLabel}</span> : null}
           </div>
           <div className="session-block">
@@ -206,11 +196,13 @@ export function OperatorClient({ activeSection, renderSectionContent }: { active
               </select>
             </Field>
           </div>
+          <div className="sidebar-section-heading"><span>Workspaces</span></div>
           <div className="section-nav">
             {sectionOptions.map((item) => (
               <SectionButton key={item.key} active={activeSection === item.key} sectionKey={item.key} label={item.label} detail={item.detail} href={item.href} />
             ))}
           </div>
+          <div className="sidebar-section-heading"><span>Technical tools</span></div>
           <div className="sidebar-links">
             <Link href="/operations">Operations</Link>
             <Link href="/workbench">Diagnostic workbench</Link>

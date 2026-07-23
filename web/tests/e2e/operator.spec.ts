@@ -304,6 +304,17 @@ async function createDraftJournal(
 
 
 test.describe.serial("operator workspace journeys", () => {
+  test("switches and persists the global dark theme", async ({ page }) => {
+    await page.goto("/");
+    const darkModeButton = page.getByRole("button", { name: "Switch to dark mode" });
+    await expect(darkModeButton).toBeVisible();
+    await darkModeButton.click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.getByRole("button", { name: "Switch to light mode" })).toBeVisible();
+  });
+
   test("signs in from the UI and navigates the route-specific operator pages", async ({ page }) => {
     await ensureOperatorSession(page.request);
 
@@ -340,6 +351,156 @@ test.describe.serial("operator workspace journeys", () => {
     await expect(page.getByTestId("section-link-year_end")).toHaveClass(/is-active/);
   });
 
+  test("keeps workspace tabs the same size within and across routes", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Tab Layout Company");
+    const workspacePaths = ["/setup", "/bookkeeping", "/banking", "/employment", "/reports", "/year-end"];
+
+    await seedSessionStorage(page, company.id);
+
+    let desktopTabSize: { width: number; height: number } | null = null;
+    let desktopTabStripSize: { width: number; height: number } | null = null;
+    for (const workspacePath of workspacePaths) {
+      await page.goto(workspacePath);
+      await page.waitForLoadState("networkidle");
+      await expect(page.locator(".processing-veil")).toBeHidden();
+      const tabStripSize = await page.locator(".workspace-tabs").evaluate((tabStrip) => {
+        const box = tabStrip.getBoundingClientRect();
+        return { width: box.width, height: box.height, bottom: box.bottom };
+      });
+      const followingPanelTop = await page.locator(".sections-stack > article.panel:visible").first().evaluate((panel) => panel.getBoundingClientRect().top);
+      const tabSizes = await page.locator(".workspace-tab").evaluateAll((tabs) => (
+        tabs.map((tab) => {
+          const box = tab.getBoundingClientRect();
+          return { width: box.width, height: box.height };
+        })
+      ));
+      expect(tabSizes.length).toBeGreaterThan(1);
+      const routeTabSize = tabSizes[0];
+      for (const tabSize of tabSizes) {
+        expect(Math.abs(tabSize.width - routeTabSize.width)).toBeLessThanOrEqual(0.5);
+        expect(Math.abs(tabSize.height - routeTabSize.height)).toBeLessThanOrEqual(0.5);
+      }
+      if (!desktopTabSize) {
+        desktopTabSize = routeTabSize;
+        desktopTabStripSize = tabStripSize;
+      } else {
+        expect(Math.abs(routeTabSize.width - desktopTabSize.width)).toBeLessThanOrEqual(0.5);
+        expect(Math.abs(routeTabSize.height - desktopTabSize.height)).toBeLessThanOrEqual(0.5);
+        expect(desktopTabStripSize).not.toBeNull();
+        expect(Math.abs(tabStripSize.width - desktopTabStripSize!.width)).toBeLessThanOrEqual(0.5);
+        expect(Math.abs(tabStripSize.height - desktopTabStripSize!.height)).toBeLessThanOrEqual(0.5);
+      }
+      expect(Math.abs(tabStripSize.height - 96)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(followingPanelTop - tabStripSize.bottom - 14)).toBeLessThanOrEqual(0.5);
+    }
+
+    await page.setViewportSize({ width: 800, height: 900 });
+    let responsiveTabStripWidth: number | null = null;
+    for (const workspacePath of workspacePaths) {
+      await page.goto(workspacePath);
+      await page.waitForLoadState("networkidle");
+      await expect(page.locator(".processing-veil")).toBeHidden();
+      const tabStripSize = await page.locator(".workspace-tabs").evaluate((tabStrip) => {
+        const box = tabStrip.getBoundingClientRect();
+        return { width: box.width, height: box.height, bottom: box.bottom };
+      });
+      const followingPanelTop = await page.locator(".sections-stack > article.panel:visible").first().evaluate((panel) => panel.getBoundingClientRect().top);
+      const tabSizes = await page.locator(".workspace-tab").evaluateAll((tabs) => (
+        tabs.map((tab) => {
+          const box = tab.getBoundingClientRect();
+          return { width: box.width, height: box.height };
+        })
+      ));
+      for (const tabSize of tabSizes) {
+        expect(Math.abs(tabSize.width - 180)).toBeLessThanOrEqual(0.5);
+        expect(Math.abs(tabSize.height - 78)).toBeLessThanOrEqual(0.5);
+      }
+      if (responsiveTabStripWidth === null) {
+        responsiveTabStripWidth = tabStripSize.width;
+      } else {
+        expect(Math.abs(tabStripSize.width - responsiveTabStripWidth)).toBeLessThanOrEqual(0.5);
+      }
+      expect(Math.abs(tabStripSize.height - 96)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(followingPanelTop - tabStripSize.bottom - 14)).toBeLessThanOrEqual(0.5);
+    }
+  });
+
+  test("keeps user creation and selected-user updates as distinct setup modes", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Setup Company");
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/setup");
+    await page.getByRole("button", { name: "Users & access" }).click();
+
+    await expect(page.getByRole("heading", { name: "Create user" })).toBeVisible();
+    await page.locator("tbody tr").filter({ hasText: operatorEmail }).click();
+    await expect(page.getByRole("heading", { name: "Update selected user" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Switch to create user" }).click();
+    await expect(page.getByRole("heading", { name: "Create user" })).toBeVisible();
+  });
+
+  test("keeps dark journal, ledger, and workbench surfaces subdued", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Dark Surface Company");
+    const debitAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Dark Surface Cash",
+      account_type: "asset",
+    });
+    const creditAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Dark Surface Revenue",
+      account_type: "income",
+    });
+    const period = await createPeriod(page.request, auth.access_token, company.id, uniqueSuffix("E2E Dark Surface Period"));
+    const journal = await createDraftJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      period.id,
+      debitAccount.id,
+      creditAccount.id,
+    );
+    await apiJson<undefined>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/journals/${journal.id}/post`,
+      auth.access_token,
+    );
+
+    const expectSubduedBackground = async (selector: string, maximumChannel = 96) => {
+      const backgroundColor = await page.locator(selector).first().evaluate((element) => getComputedStyle(element).backgroundColor);
+      const channels = backgroundColor.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) ?? [];
+      expect(channels, `${selector} should resolve to an RGB background`).toHaveLength(3);
+      expect(Math.max(...channels), `${selector} is too bright in dark mode: ${backgroundColor}`).toBeLessThanOrEqual(maximumChannel);
+    };
+
+    await seedSessionStorage(page, company.id);
+    await page.getByRole("button", { name: "Switch to dark mode" }).click();
+    await page.goto("/bookkeeping");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+    await page.getByRole("button", { name: "Journals", exact: true }).click();
+    await page.getByRole("row").filter({ hasText: journal.entry_number }).click();
+    await expect(page.locator(".journal-preview-row")).toBeVisible();
+    await expectSubduedBackground(".journal-preview-row td", 64);
+    await expectSubduedBackground(".journal-preview-lines-shell", 64);
+
+    await page.getByRole("button", { name: "Ledger", exact: true }).click();
+    await page.getByRole("button", { name: "Use all time" }).click();
+    await expect(page.locator(".ledger-group-row").first()).toBeVisible();
+    await expectSubduedBackground(".ledger-group-row td", 80);
+    await expectSubduedBackground(".ledger-table thead th", 80);
+
+    await page.goto("/workbench");
+    await expect(page.locator(".method-chip").first()).toBeVisible();
+    await expectSubduedBackground(".method-chip", 90);
+  });
+
   test("creates a period, drafts a journal, and posts it on the bookkeeping route", async ({ page }) => {
     const auth = await ensureOperatorSession(page.request);
     const company = await createCompany(page.request, auth.access_token, "E2E Bookkeeping Company");
@@ -367,6 +528,7 @@ test.describe.serial("operator workspace journeys", () => {
     await createdPeriodRow.click();
 
     const journalDescription = uniqueSuffix("E2E Posted Journal");
+    await page.getByRole("button", { name: "Journals", exact: true }).click();
     await page.getByRole("button", { name: "Create journal", exact: true }).click();
     const journalDialog = page.getByRole("dialog", { name: "Create journal" });
     await expect(journalDialog).toBeVisible();
@@ -604,6 +766,7 @@ test.describe.serial("operator workspace journeys", () => {
     await page.goto("/bookkeeping");
     await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
 
+    await page.getByRole("button", { name: "AI drafting", exact: true }).click();
     await page.getByLabel("Target accounting period").selectOption(period.id);
     await page.getByLabel("Upload mode").selectOption("multiple");
     await page.locator('input[type="file"][multiple]').setInputFiles([
@@ -730,6 +893,7 @@ test.describe.serial("operator workspace journeys", () => {
     await page.goto("/banking");
     await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
 
+    await page.getByRole("button", { name: "Reconciliation", exact: true }).click();
     const sessionButton = page.getByRole("button").filter({ hasText: sessionNote });
     await expect(sessionButton).toBeVisible();
     await sessionButton.click();
@@ -783,6 +947,7 @@ test.describe.serial("operator workspace journeys", () => {
     await page.goto("/banking");
     await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
 
+    await page.getByRole("button", { name: "BAS support", exact: true }).click();
     await page.getByLabel("Generate from").fill("2026-04-01");
     await page.getByLabel("Generate to").fill("2026-06-30");
     await page.getByTestId("generate-bas-periods").click();
@@ -825,6 +990,7 @@ test.describe.serial("operator workspace journeys", () => {
     await page.goto("/year-end");
     await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
 
+    await page.getByRole("button", { name: "Tax workpapers", exact: true }).click();
     await page.getByLabel("Year period").selectOption(yearPeriod.id);
     await page.getByLabel("Pack note").fill("Year-end workpapers for operator e2e");
     await page.getByTestId("save-tax-pack").click();

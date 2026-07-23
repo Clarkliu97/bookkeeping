@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatDateTime, formatMoney, type GeneralLedgerReport, type OperatorState } from "../operator-state";
 import { JournalEditorSection } from "./journal-editor-section";
-import { Field, StatusPill } from "../operator-ui";
+import { Field, StatusPill, WorkspaceTabs } from "../operator-ui";
 
 
 function buildGeneralLedgerQuery(filters: { start_date: string; end_date: string; account_id: string }) {
@@ -330,6 +330,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const [documentPreviewById, setDocumentPreviewById] = useState<Record<string, DocumentPreviewState>>({});
   const [pdfPreviewById, setPdfPreviewById] = useState<Record<string, PdfPreviewState>>({});
   const [activeEvidenceViewer, setActiveEvidenceViewer] = useState<ActiveEvidenceViewer | null>(null);
+  const [activeWorkspace, setActiveWorkspace] = useState<"periods" | "journals" | "ai" | "ledger" | "documents">("periods");
   const documentBlobByIdRef = useRef<Record<string, Blob>>({});
   const documentPreviewUrlsRef = useRef<Record<string, string>>({});
   const documentPreviewRequestsRef = useRef<Record<string, Promise<boolean>>>({});
@@ -1060,6 +1061,19 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
 
   return (
     <section className="sections-stack">
+      <WorkspaceTabs
+        label="Bookkeeping workspaces"
+        activeTab={activeWorkspace}
+        onChange={setActiveWorkspace}
+        options={[
+          { key: "periods", label: "Periods", detail: "Create, approve and lock", count: periods.length },
+          { key: "journals", label: "Journals", detail: "Draft, review and post", count: journals.length },
+          { key: "ai", label: "AI drafting", detail: "Analyze supporting files" },
+          { key: "ledger", label: "Ledger", detail: "Explore account activity" },
+          { key: "documents", label: "Documents", detail: "Evidence library and links", count: documents.length },
+        ]}
+      />
+      {activeWorkspace === "periods" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Accounting periods</h2><span className="pill">{periods.length} periods</span></div>
         <div className="workspace-split">
@@ -1129,7 +1143,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "journals" ? (
       <article className="panel panel-wide">
         <div className="panel-heading">
           <h2>Journals</h2>
@@ -1217,7 +1233,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
             )}
           </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "ai" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>AI journal drafting</h2><span className="pill">Review first</span></div>
         <div className="workspace-split journal-workspace-split">
@@ -1487,7 +1505,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "ledger" ? (
       <article className="panel panel-wide">
         <div className="panel-heading">
           <div className="panel-heading-copy">
@@ -1673,71 +1693,10 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
             </div>
           </div>
         ) : null}
-        {isJournalEditorOpen ? (
-          <div className="journal-popup-backdrop" role="presentation" onClick={closeJournalEditorPopup}>
-            <div className="journal-popup-card journal-editor-popup-card" role="dialog" aria-modal="true" aria-label={journalEditorJournalId ? "Update journal" : "Create journal"} onClick={(event) => event.stopPropagation()}>
-              <JournalEditorSection operator={operator} journalId={journalEditorJournalId} mode="modal" onClose={closeJournalEditorPopup} />
-            </div>
-          </div>
-        ) : null}
-        {activeEvidenceViewer ? (
-          <div className="document-viewer-backdrop" role="presentation" onClick={() => setActiveEvidenceViewer(null)}>
-            <div className="document-viewer-card" role="dialog" aria-modal="true" aria-label={`Document ${activeEvidenceViewer.filename}`} onClick={(event) => event.stopPropagation()}>
-              <div className="document-viewer-header">
-                <div>
-                  <h3>{activeEvidenceViewer.filename}</h3>
-                  <p className="summary-line">Full evidence preview. Click outside this card to close.</p>
-                </div>
-                <div className="request-actions-inline evidence-row-actions">
-                  <button
-                    className="button-link button-link-small button-link-secondary"
-                    type="button"
-                    onClick={() => runAction("Downloading evidence", async () => {
-                      await downloadFromApi(`/api/companies/${selectedCompanyId}/documents/${activeEvidenceViewer.documentId}/download`, activeEvidenceViewer.filename);
-                    })}
-                  >
-                    Download
-                  </button>
-                  <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => setActiveEvidenceViewer(null)}>Close</button>
-                </div>
-              </div>
-              {activeEvidencePreview?.status === "error" || activePdfPreview?.error ? (
-                <div className="empty-state document-viewer-empty-state">
-                  <strong>Preview unavailable.</strong>
-                  <p>{activeEvidencePreview?.error || activePdfPreview?.error || "The document could not be loaded for preview."}</p>
-                </div>
-              ) : null}
-              {activeEvidenceIsLoading ? (
-                <div className="empty-state document-viewer-empty-state">
-                  <strong>Loading document preview...</strong>
-                  <p>The full evidence view will appear here once the file finishes loading.</p>
-                </div>
-              ) : null}
-              {activeEvidenceCanRender ? (
-                activeEvidenceIsImage && activeEvidencePreview?.status === "ready" && activeEvidencePreview.url ? (
-                  <div className="document-viewer-body">
-                    <img className="document-viewer-image" src={activeEvidencePreview.url} alt={activeEvidenceViewer.filename} />
-                  </div>
-                ) : activeEvidenceIsPdf ? (
-                  <div className="document-viewer-body">
-                    <div className="document-viewer-pdf-pages">
-                      {(activePdfPreview?.pageImageUrls ?? []).map((pageUrl, index) => (
-                        <img key={`${activeEvidenceViewer.documentId}-${index + 1}`} className="document-viewer-pdf-page" src={pageUrl} alt={`${activeEvidenceViewer.filename} page ${index + 1}`} />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="empty-state document-viewer-empty-state">
-                    <strong>Inline preview is not available for this file type.</strong>
-                    <p>Use Download to open the full document in the system viewer for this format.</p>
-                  </div>
-                )
-              ) : null}
-            </div>
-          </div>
-        ) : null}
       </article>
+      ) : null}
 
+      {activeWorkspace === "documents" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Documents</h2><span className="pill">{documents.length} files</span></div>
         <div className="workspace-split">
@@ -1842,6 +1801,70 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
+      {isJournalEditorOpen ? (
+        <div className="journal-popup-backdrop" role="presentation" onClick={closeJournalEditorPopup}>
+          <div className="journal-popup-card journal-editor-popup-card" role="dialog" aria-modal="true" aria-label={journalEditorJournalId ? "Update journal" : "Create journal"} onClick={(event) => event.stopPropagation()}>
+            <JournalEditorSection operator={operator} journalId={journalEditorJournalId} mode="modal" onClose={closeJournalEditorPopup} />
+          </div>
+        </div>
+      ) : null}
+      {activeEvidenceViewer ? (
+        <div className="document-viewer-backdrop" role="presentation" onClick={() => setActiveEvidenceViewer(null)}>
+          <div className="document-viewer-card" role="dialog" aria-modal="true" aria-label={`Document ${activeEvidenceViewer.filename}`} onClick={(event) => event.stopPropagation()}>
+            <div className="document-viewer-header">
+              <div>
+                <h3>{activeEvidenceViewer.filename}</h3>
+                <p className="summary-line">Full evidence preview. Click outside this card to close.</p>
+              </div>
+              <div className="request-actions-inline evidence-row-actions">
+                <button
+                  className="button-link button-link-small button-link-secondary"
+                  type="button"
+                  onClick={() => runAction("Downloading evidence", async () => {
+                    await downloadFromApi(`/api/companies/${selectedCompanyId}/documents/${activeEvidenceViewer.documentId}/download`, activeEvidenceViewer.filename);
+                  })}
+                >
+                  Download
+                </button>
+                <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => setActiveEvidenceViewer(null)}>Close</button>
+              </div>
+            </div>
+            {activeEvidencePreview?.status === "error" || activePdfPreview?.error ? (
+              <div className="empty-state document-viewer-empty-state">
+                <strong>Preview unavailable.</strong>
+                <p>{activeEvidencePreview?.error || activePdfPreview?.error || "The document could not be loaded for preview."}</p>
+              </div>
+            ) : null}
+            {activeEvidenceIsLoading ? (
+              <div className="empty-state document-viewer-empty-state">
+                <strong>Loading document preview...</strong>
+                <p>The full evidence view will appear here once the file finishes loading.</p>
+              </div>
+            ) : null}
+            {activeEvidenceCanRender ? (
+              activeEvidenceIsImage && activeEvidencePreview?.status === "ready" && activeEvidencePreview.url ? (
+                <div className="document-viewer-body">
+                  <img className="document-viewer-image" src={activeEvidencePreview.url} alt={activeEvidenceViewer.filename} />
+                </div>
+              ) : activeEvidenceIsPdf ? (
+                <div className="document-viewer-body">
+                  <div className="document-viewer-pdf-pages">
+                    {(activePdfPreview?.pageImageUrls ?? []).map((pageUrl, index) => (
+                      <img key={`${activeEvidenceViewer.documentId}-${index + 1}`} className="document-viewer-pdf-page" src={pageUrl} alt={`${activeEvidenceViewer.filename} page ${index + 1}`} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state document-viewer-empty-state">
+                  <strong>Inline preview is not available for this file type.</strong>
+                  <p>Use Download to open the full document in the system viewer for this format.</p>
+                </div>
+              )
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

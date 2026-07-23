@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { formatDateTime, formatMoney, type OperatorState } from "../operator-state";
-import { EmptyState, Field } from "../operator-ui";
+import { EmptyState, Field, WorkspaceTabs } from "../operator-ui";
 
 
 export function YearEndSection({ operator }: { operator: OperatorState }) {
@@ -46,6 +46,7 @@ export function YearEndSection({ operator }: { operator: OperatorState }) {
     loadTaxPack,
     taxResolveNote,
   } = operator;
+  const [activeWorkspace, setActiveWorkspace] = useState<"assets" | "tax">("assets");
   const selectedAssetAccountIds = [assetDraft.asset_account_id, assetDraft.accumulated_depreciation_account_id, assetDraft.depreciation_expense_account_id].filter(Boolean);
   const assetAccountOptionList = useMemo(() => {
     const activeOptionIds = new Set(activeAccountOptionList.map((item) => item.value));
@@ -63,6 +64,16 @@ export function YearEndSection({ operator }: { operator: OperatorState }) {
 
   return (
     <section className="sections-stack">
+      <WorkspaceTabs
+        label="Year-end workspaces"
+        activeTab={activeWorkspace}
+        onChange={setActiveWorkspace}
+        options={[
+          { key: "assets", label: "Assets & depreciation", detail: "Register, disposal and posting", count: fixedAssetRegister?.assets.length ?? 0 },
+          { key: "tax", label: "Tax workpapers", detail: "Adjustments, review and export", count: taxPacks.length },
+        ]}
+      />
+      {activeWorkspace === "assets" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Fixed assets and depreciation</h2><span className="pill">{fixedAssetRegister?.assets.length ?? 0} assets</span></div>
         <div className="workspace-split">
@@ -141,7 +152,9 @@ export function YearEndSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "tax" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Tax workpapers</h2><span className="pill">{taxPacks.length} packs</span></div>
         <div className="workspace-split">
@@ -240,6 +253,7 @@ export function YearEndSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
     </section>
   );
 }

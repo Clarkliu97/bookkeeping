@@ -65,6 +65,39 @@ export function EmptyState({ title, detail }: { title: string; detail: string })
   );
 }
 
+export function WorkspaceTabs<T extends string>({
+  label,
+  activeTab,
+  options,
+  onChange,
+}: {
+  label: string;
+  activeTab: T;
+  options: Array<{ key: T; label: string; detail: string; count?: number }>;
+  onChange: (tab: T) => void;
+}) {
+  return (
+    <nav className="workspace-tabs" aria-label={label}>
+      {options.map((option) => (
+        <button
+          key={option.key}
+          className={`workspace-tab${activeTab === option.key ? " is-active" : ""}`}
+          type="button"
+          aria-label={option.label}
+          aria-current={activeTab === option.key ? "page" : undefined}
+          onClick={() => onChange(option.key)}
+        >
+          <span className="workspace-tab-label">
+            <strong>{option.label}</strong>
+            {option.count !== undefined ? <span className="workspace-tab-count">{option.count}</span> : null}
+          </span>
+          <small>{option.detail}</small>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 
 export function ProcessingVeil({ label }: { label: string | null }) {
   if (!label) {

@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { OperatorState } from "../operator-state";
 import { formatDate } from "../operator-state";
-import { EmptyState, Field, StatusPill } from "../operator-ui";
+import { EmptyState, Field, StatusPill, WorkspaceTabs } from "../operator-ui";
 
 
 type SelectOption = {
@@ -166,6 +166,7 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
     activeCategoryOptionList,
     activeTaxCodeOptionList,
   } = operator;
+  const [activeWorkspace, setActiveWorkspace] = useState<"company" | "users" | "configuration" | "reference">("company");
 
   const categoryLabelById = new Map(categories.map((item) => [item.id, `${item.code} · ${item.name}`]));
   const taxCodeLabelById = new Map(taxCodes.map((item) => [item.id, `${item.code} · ${item.name}`]));
@@ -388,6 +389,18 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
 
   return (
     <section className="sections-stack">
+      <WorkspaceTabs
+        label="Setup workspaces"
+        activeTab={activeWorkspace}
+        onChange={setActiveWorkspace}
+        options={[
+          { key: "company", label: "Company", detail: "Identity and entity status" },
+          { key: "users", label: "Users & access", detail: "Accounts and permissions", count: users.length },
+          { key: "configuration", label: "Configuration", detail: "Reporting and approval rules", count: configurations.length },
+          { key: "reference", label: "Reference data", detail: "Accounts, tax and reporting codes" },
+        ]}
+      />
+      {activeWorkspace === "company" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Company profile</h2><StatusPill value={selectedCompany?.is_active ? "active" : "inactive"} /></div>
         <div className="form-grid two-up">
@@ -406,7 +419,9 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
           })}>Save company</button>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "users" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Users and access</h2>{adminOverview ? <span className="pill">{adminOverview.users} users</span> : null}</div>
         <div className="workspace-split">
@@ -428,7 +443,13 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
           </div>
           <div className="stacked-cards">
             <div className="mini-card">
-              <h3>Create or update user</h3>
+              <div className="mini-card-heading">
+                <div>
+                  <h3>{selectedUser ? "Update selected user" : "Create user"}</h3>
+                  <p className="reference-form-meta">{selectedUser ? "Editing the account selected in the user register." : "Create a distinct operator account before assigning company access."}</p>
+                </div>
+                {selectedUser ? <StatusPill value={selectedUser.is_active ? "active" : "inactive"} /> : <span className="pill">new</span>}
+              </div>
               <div className="form-grid">
                 <Field label="Email"><input value={userDraft.email} onChange={(event) => setUserDraft((current) => ({ ...current, email: event.target.value }))} /></Field>
                 <Field label="Full name"><input value={userDraft.full_name} onChange={(event) => setUserDraft((current) => ({ ...current, full_name: event.target.value }))} /></Field>
@@ -446,7 +467,7 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
                   showMessage("success", selectedUser ? "Updated user." : "Created user.");
                   await refreshAll();
                 })}>{selectedUser ? "Save selected user" : "Create user"}</button>
-                {selectedUser ? <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => { setSelectedUserId(""); setUserDraft({ email: "reviewer@example.com", full_name: "Reviewer User", password: "StrongPass123", is_superuser: false, is_active: true }); }}>New user</button> : null}
+                {selectedUser ? <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => { setSelectedUserId(""); setUserDraft({ email: "reviewer@example.com", full_name: "Reviewer User", password: "StrongPass123", is_superuser: false, is_active: true }); }}>Switch to create user</button> : null}
               </div>
             </div>
 
@@ -483,7 +504,9 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "configuration" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Configuration versions</h2><span className="pill">{configurations.length} versions</span></div>
         <div className="workspace-split">
@@ -535,7 +558,9 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
 
+      {activeWorkspace === "reference" ? (
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Reference data</h2><span className="pill">Chart and GST mapping</span></div>
         <div className="stacked-cards">
@@ -760,6 +785,7 @@ export function SetupSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
     </section>
   );
 }

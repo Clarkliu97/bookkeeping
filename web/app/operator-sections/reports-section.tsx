@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { formatMoney, type BalanceSheetReport, type GeneralLedgerReport, type OperatorState, type ProfitAndLossReport, type TrialBalanceReport } from "../operator-state";
-import { Field } from "../operator-ui";
+import { Field, WorkspaceTabs } from "../operator-ui";
 
 
 type ReportVersion = "final" | "draft";
@@ -37,12 +37,25 @@ export function ReportsSection({ operator }: { operator: OperatorState }) {
   const [profitAndLossVersion, setProfitAndLossVersion] = useState<ReportVersion>("final");
   const [balanceSheetVersion, setBalanceSheetVersion] = useState<ReportVersion>("final");
   const [generalLedgerVersion, setGeneralLedgerVersion] = useState<ReportVersion>("final");
+  const [activeReport, setActiveReport] = useState<"trial" | "profit_loss" | "balance_sheet" | "ledger">("trial");
 
   return (
     <section className="sections-stack">
+      <WorkspaceTabs
+        label="Financial reports"
+        activeTab={activeReport}
+        onChange={setActiveReport}
+        options={[
+          { key: "trial", label: "Trial balance", detail: "Account balances by date range" },
+          { key: "profit_loss", label: "Profit & loss", detail: "Income, expenses and result" },
+          { key: "balance_sheet", label: "Balance sheet", detail: "Financial position at a date" },
+          { key: "ledger", label: "General ledger", detail: "Transaction-level account detail" },
+        ]}
+      />
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Financial reports</h2><span className="pill">Browser-ready reporting</span></div>
-        <div className="report-grid">
+        <div className="report-focus">
+          {activeReport === "trial" ? (
           <div className="mini-card">
             <h3>Trial balance</h3>
             <div className="form-grid two-up">
@@ -76,7 +89,9 @@ export function ReportsSection({ operator }: { operator: OperatorState }) {
               </table>
             </div>
           </div>
+          ) : null}
 
+          {activeReport === "profit_loss" ? (
           <div className="mini-card">
             <h3>Profit and loss</h3>
             <div className="form-grid two-up">
@@ -99,7 +114,9 @@ export function ReportsSection({ operator }: { operator: OperatorState }) {
             </div>
             {reportState.profitAndLoss ? <p className="summary-line">Net profit: <strong>{formatMoney(reportState.profitAndLoss.net_profit)}</strong></p> : null}
           </div>
+          ) : null}
 
+          {activeReport === "balance_sheet" ? (
           <div className="mini-card">
             <h3>Balance sheet</h3>
             <div className="form-grid two-up">
@@ -121,7 +138,9 @@ export function ReportsSection({ operator }: { operator: OperatorState }) {
             </div>
             {reportState.balanceSheet ? <p className="summary-line">Assets: <strong>{formatMoney(reportState.balanceSheet.total_assets)}</strong></p> : null}
           </div>
+          ) : null}
 
+          {activeReport === "ledger" ? (
           <div className="mini-card">
             <h3>General ledger</h3>
             <div className="form-grid two-up">
@@ -147,6 +166,7 @@ export function ReportsSection({ operator }: { operator: OperatorState }) {
             </div>
             {reportState.generalLedger ? <p className="summary-line">Accounts returned: <strong>{reportState.generalLedger.accounts.length}</strong></p> : null}
           </div>
+          ) : null}
         </div>
       </article>
     </section>

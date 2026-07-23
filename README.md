@@ -118,6 +118,19 @@ The project explicitly does not support:
 
 The Next.js frontend is the main operator interface. It is organized around workflow routes rather than technical modules.
 
+### Navigation And Appearance
+
+- The authenticated shell uses a compact workspace header, company-aware sidebar, and a dashboard directory that links to every business workspace.
+- Dense routes use focused, consistently sized workspace tabs. Switching tabs changes the visible task area without discarding the loaded company data or hiding the other available functions from navigation.
+- Setup separates company details, users and access, configuration versions, and reference data. Selecting a user opens an explicit update workflow; clearing the selection switches to the separate create-user workflow.
+- Bookkeeping separates periods, journals, AI drafting, ledger exploration, and document management.
+- Banking separates bank accounts/imports, reconciliation, and BAS support.
+- Employment separates dashboard/report queues from detailed worker records.
+- Reports separates trial balance, profit and loss, balance sheet, and general ledger.
+- Year-end separates fixed assets/depreciation from tax workpapers.
+- Use the `Dark`/`Light` control in the global header to change appearance. The selected mode is stored in the browser and applies to the operator routes, Operations, and the API workbench.
+- The API workbench remains available from the global header and dashboard directory so advanced or diagnostic API actions stay reachable even when they are not part of a routine business workflow.
+
 ### First Use
 
 1. Start the stack.
@@ -137,11 +150,12 @@ Use Setup to establish the bookkeeping foundation for a company.
 Typical tasks:
 
 1. Create or edit the company record.
-2. Review the active configuration version.
-3. Add or adjust reporting categories.
-4. Add or adjust tax codes.
-5. Create or maintain accounts in the chart of accounts.
-6. Review access rows for the users who can prepare, review, approve, or administer work.
+2. Open `Users & access` to create a new user, select an existing user for a distinct update workflow, and manage company permissions.
+3. Review the active configuration version.
+4. Add or adjust reporting categories.
+5. Add or adjust tax codes.
+6. Create or maintain accounts in the chart of accounts.
+7. Review access rows for the users who can prepare, review, approve, or administer work.
 
 This is the route to visit before operational work if a company is new or its accounting settings have changed.
 
