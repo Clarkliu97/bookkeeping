@@ -171,8 +171,8 @@ Typical tasks:
 4. Search and filter journal lists.
 5. Attach or review journal evidence.
 6. Open the ledger explorer to inspect draft and posted journal lines.
-7. Choose `Single document` when one item should produce one journal, or `Multiple documents` when an evidence bundle may contain several transactions.
-8. Search the existing-document library to reuse previously uploaded PDFs and images, such as a monthly bank statement. You can select stored evidence only, upload new files, or combine both.
+7. Choose `Single document` when one item should produce one journal, or `Multiple documents` when an evidence bundle may contain several transactions. Selecting a second existing document, or combining an existing document with a new upload, automatically switches the frontend to multiple-document mode.
+8. Search the existing-document library to reuse previously uploaded PDFs and images, such as a monthly bank statement. The checkbox list supports selecting several stored documents in a deliberate order; you can use stored evidence only, upload new files, or combine both.
 9. Select up to 50 evidence documents in total. In multiple-document mode, stored documents retain their selection order and are numbered before new uploads; new files can be added in more than one selection and removed individually before analysis.
 10. Review how the AI grouped the numbered evidence. Several documents can support one journal, and one source such as a monthly bank statement can support several journals, while unrelated transactions are returned as separate recommendations.
 11. Review every recommended journal independently, including its evidence, date, reference, assumptions, GST handling, balanced lines, and any verification sources.

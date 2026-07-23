@@ -911,13 +911,6 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       setRecommendationResult(null);
       return;
     }
-    if (recommendationUploadMode === "single") {
-      setRecommendationExistingDocumentIds([documentId]);
-      setRecommendationFiles([]);
-      setRecommendationUploadKey((current) => current + 1);
-      setRecommendationResult(null);
-      return;
-    }
     if (recommendationEvidenceCount >= recommendationFileLimit) {
       showMessage("error", `Select at most ${recommendationFileLimit} evidence documents.`);
       return;
@@ -929,6 +922,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     setRecommendationExistingDocumentIds((current) => (
       current.includes(documentId) ? current : [...current, documentId]
     ));
+    if (recommendationUploadMode === "single" && recommendationEvidenceCount >= 1) {
+      setRecommendationUploadMode("multiple");
+    }
     setRecommendationResult(null);
   }
 
@@ -1346,7 +1342,11 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                     disabled={isRecommendationProcessing}
                     onChange={(event) => {
                       const incomingFiles = Array.from(event.target.files ?? []);
-                      const nextFiles = recommendationUploadMode === "single"
+                      const shouldUseMultipleMode = (
+                        recommendationUploadMode === "multiple"
+                        || recommendationSelectedExistingDocuments.length + incomingFiles.length > 1
+                      );
+                      const nextFiles = !shouldUseMultipleMode
                         ? incomingFiles.slice(0, 1)
                         : Array.from(
                             new Map(
@@ -1361,12 +1361,8 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                         showMessage("error", `${oversizedFile.name} exceeds the per-file upload limit.`);
                         return;
                       }
-                      const existingDocumentCount = recommendationUploadMode === "single" && nextFiles.length > 0
-                        ? 0
-                        : recommendationSelectedExistingDocuments.length;
-                      const existingDocumentBytes = recommendationUploadMode === "single" && nextFiles.length > 0
-                        ? 0
-                        : recommendationSelectedExistingDocuments.reduce((total, document) => total + document.byte_size, 0);
+                      const existingDocumentCount = recommendationSelectedExistingDocuments.length;
+                      const existingDocumentBytes = recommendationSelectedExistingDocuments.reduce((total, document) => total + document.byte_size, 0);
                       if (nextFiles.length + existingDocumentCount > recommendationFileLimit) {
                         showMessage("error", `Select at most ${recommendationFileLimit} evidence documents.`);
                         return;
@@ -1375,8 +1371,8 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                         showMessage("error", `Selected evidence exceeds the ${formatFileSize(recommendationTotalSizeLimit)} batch limit.`);
                         return;
                       }
-                      if (recommendationUploadMode === "single" && nextFiles.length > 0) {
-                        setRecommendationExistingDocumentIds([]);
+                      if (shouldUseMultipleMode && recommendationUploadMode === "single") {
+                        setRecommendationUploadMode("multiple");
                       }
                       setRecommendationFiles(nextFiles);
                       setRecommendationResult(null);
@@ -1388,7 +1384,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                 <div className="mini-card-heading">
                   <div>
                     <h4>Choose existing documents</h4>
-                    <p className="summary-line">Reuse PDFs and images already stored in this company&apos;s Documents workspace. Existing documents are analyzed first, in the order selected.</p>
+                    <p className="summary-line">Select one or more PDFs and images already stored in this company&apos;s Documents workspace. Choosing a second evidence item automatically enables multiple-document analysis. Existing documents are analyzed first, in the order selected.</p>
                   </div>
                   <span className="pill">{recommendationSelectedExistingDocuments.length} selected</span>
                 </div>
@@ -1412,8 +1408,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                             <tr key={document.id} className={isSelected ? "is-selected row-static" : "row-static"}>
                               <td>
                                 <input
-                                  type={recommendationUploadMode === "single" ? "radio" : "checkbox"}
-                                  name={recommendationUploadMode === "single" ? "recommendation-existing-evidence" : undefined}
+                                  type="checkbox"
                                   checked={isSelected}
                                   disabled={isRecommendationProcessing}
                                   aria-label={`Use existing document ${document.original_filename}`}
