@@ -43,7 +43,7 @@ from app.ledger.router import _apply_journal_payload, _ensure_period_not_locked,
 from app.schemas.requests import JournalEntryCreate, JournalLineCreate
 
 
-PROMPT_VERSION = "journal-document-accrual-batch-v7"
+PROMPT_VERSION = "journal-document-reference-map-v8"
 PRICE_ESTIMATE_INPUT_TOKENS = 40000
 PRICE_ESTIMATE_OUTPUT_TOKENS = 3500
 RECOMMENDATION_MAX_OUTPUT_TOKENS = 30000
@@ -305,17 +305,20 @@ def estimate_cost_per_1000_calls(item: ModelCatalogItem) -> Decimal:
 def validate_new_files(files: list[tuple[str, str | None, int]]) -> None:
     settings = get_settings()
     if not files:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Upload at least one invoice or receipt file")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Select or upload at least one evidence document",
+        )
     if len(files) > settings.journal_ai_max_file_count:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Upload at most {settings.journal_ai_max_file_count} files per recommendation run",
+            detail=f"Select at most {settings.journal_ai_max_file_count} evidence documents per recommendation run",
         )
     total_size = sum(size for _, _, size in files)
     if total_size > settings.journal_ai_max_total_size_bytes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded files exceed the configured total size limit for one recommendation run",
+            detail="Selected evidence exceeds the configured total size limit for one recommendation run",
         )
     for filename, media_type, size in files:
         if size > settings.journal_ai_max_file_size_bytes:
@@ -338,7 +341,7 @@ def validate_analysis_mode(analysis_mode: str, file_count: int) -> str:
     if normalized_mode == "single" and file_count != 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Single-file analysis requires exactly one uploaded file",
+            detail="Single-document analysis requires exactly one evidence document",
         )
     return normalized_mode
 
@@ -645,8 +648,8 @@ def accept_run(
         db.flush()
 
         entry_documents = list(
-            db.scalars(
-                select(Document)
+            db.execute(
+                select(Document, JournalRecommendationRunDocument.display_order)
                 .join(
                     JournalRecommendationEntryDocument,
                     JournalRecommendationEntryDocument.document_id == Document.id,
@@ -660,14 +663,14 @@ def accept_run(
                 .order_by(JournalRecommendationRunDocument.display_order.asc())
             ).all()
         )
-        for document_index, document in enumerate(entry_documents, start=1):
+        for document, source_document_number in entry_documents:
             db.add(
                 DocumentLink(
                     company_id=company_id,
                     document_id=document.id,
                     entity_type=DocumentLinkEntityType.JOURNAL_ENTRY,
                     entity_id=str(journal.id),
-                    note=f"AI recommendation evidence #{document_index}",
+                    note=f"AI recommendation source document #{source_document_number}",
                     linked_by_user_id=created_by_user_id,
                 )
             )
@@ -985,12 +988,16 @@ def _build_reference_context(db: Session, company_id: UUID) -> dict[str, Any]:
 def _build_system_prompt() -> str:
     return (
         "Prepare review-only Australian bookkeeping journal recommendations from the numbered source documents. "
-        "In multiple mode, group documents by economic transaction: several files may support one journal, while "
+        "Treat documents selected from the existing company library exactly like newly uploaded documents. Each "
+        "source-document marker immediately precedes its file or image and contains the authoritative document_number "
+        "and document_id. Reference evidence only through document_number in each journal entry's "
+        "source_document_numbers; never infer or renumber evidence from filenames, upload dates, or file position. "
+        "In multiple mode, group documents by economic transaction: several documents may support one journal, while "
         "unrelated invoices, receipts, payments, credits, or settlements must become separate journal_entries. "
         "One source document may support several journal entries; for example, repeat a monthly bank statement's "
         "document number on every recommendation containing a transaction evidenced by that statement. "
         "Assign every source document number to at least one journal entry and never merge transactions merely because "
-        "they were uploaded together. In single mode return exactly one journal entry and assign every uploaded "
+        "they were selected together. In single mode return exactly one journal entry and assign every selected "
         "document to it. "
         "Each journal entry must independently balance, contain at least two one-sided lines, and preserve materially "
         "different fees, adjustments, account classes, and GST treatments as reviewable lines. Use visible document "
@@ -1038,6 +1045,7 @@ def _build_recommendation_request_suffix(
             "documents": [
                 {
                     "document_number": index,
+                    "document_id": str(document.id),
                     "original_filename": document.original_filename,
                     "media_type": document.media_type,
                     "byte_size": document.byte_size,
@@ -1164,6 +1172,7 @@ def _build_document_content_items(documents: list[Document]) -> list[dict[str, A
                     {
                         "source_document": {
                             "document_number": document_number,
+                            "document_id": str(document.id),
                             "original_filename": document.original_filename,
                             "media_type": media_type,
                         }
@@ -1317,7 +1326,7 @@ def _validate_recommendation_batch(
     if analysis_mode == "single" and len(entries) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Single-file analysis must return exactly one journal entry",
+            detail="Single-document analysis must return exactly one journal entry",
         )
 
     expected_sequences = list(range(1, len(entries) + 1))

@@ -19,7 +19,7 @@ The implemented system currently supports:
 - fixed asset register maintenance, disposals, depreciation runs, and depreciation journal posting
 - annual company tax workpaper packs with adjustments, notes, exceptions, approvals, and exports
 - operational health, metrics, alerts, backup and restore guidance, and a browser diagnostics workbench
-- AI-assisted journal drafting in single-file or multi-file mode, with up to 50 invoices or receipts grouped into one or more review-only journal recommendations
+- AI-assisted journal drafting in single-document or multi-document mode, reusing stored evidence or accepting new uploads, with up to 50 PDFs or images grouped into one or more review-only journal recommendations
 
 The project explicitly does not support:
 
@@ -171,15 +171,16 @@ Typical tasks:
 4. Search and filter journal lists.
 5. Attach or review journal evidence.
 6. Open the ledger explorer to inspect draft and posted journal lines.
-7. Choose `Single file` when one document should produce one journal, or `Multiple files` when a batch may contain several transactions.
-8. Upload up to 50 PDF or image files. In multiple-file mode, files can be added in more than one selection and removed individually before analysis.
-9. Review how the AI grouped the numbered source files. Several files can support one journal, and one source such as a monthly bank statement can support several journals, while unrelated transactions are returned as separate recommendations.
-10. Review every recommended journal independently, including its evidence, date, reference, assumptions, GST handling, balanced lines, and any verification sources.
-11. Accept the batch to create all recommended draft journals together, then review and post each draft through the normal bookkeeping workflow.
+7. Choose `Single document` when one item should produce one journal, or `Multiple documents` when an evidence bundle may contain several transactions.
+8. Search the existing-document library to reuse previously uploaded PDFs and images, such as a monthly bank statement. You can select stored evidence only, upload new files, or combine both.
+9. Select up to 50 evidence documents in total. In multiple-document mode, stored documents retain their selection order and are numbered before new uploads; new files can be added in more than one selection and removed individually before analysis.
+10. Review how the AI grouped the numbered evidence. Several documents can support one journal, and one source such as a monthly bank statement can support several journals, while unrelated transactions are returned as separate recommendations.
+11. Review every recommended journal independently, including its evidence, date, reference, assumptions, GST handling, balanced lines, and any verification sources.
+12. Accept the batch to create all recommended draft journals together, then review and post each draft through the normal bookkeeping workflow.
 
-The AI path is assistive only. It does not silently post entries. The backend requires every uploaded file to be assigned to at least one recommendation, validates each recommendation as independently balanced double-entry, and links only the assigned evidence to each accepted draft. Batch acceptance is atomic: if any recommended journal cannot pass the normal account, tax-code, date, period, or balance controls, no journals from that batch are created.
+The AI path is assistive only. It does not silently post entries. The backend requires every selected or uploaded evidence document to be assigned to at least one recommendation, validates each recommendation as independently balanced double-entry, and links only the assigned evidence to each accepted draft. Reusing a document does not create a duplicate upload; the existing company document is linked to the recommendation run and any accepted drafts that use it. Each document receives an authoritative source number for the run, and that same number is preserved in the recommendation review and accepted-journal evidence note, even when one stored document supports several entries. Batch acceptance is atomic: if any recommended journal cannot pass the normal account, tax-code, date, period, or balance controls, no journals from that batch are created.
 
-When more than one file is uploaded in multiple-file mode and the active company configuration uses the `accrual` reporting basis, the model receives an additional timing rule. If visible evidence shows a payment or bank-clearance date at least five calendar days after the invoice date, it should prefer an invoice-date recognition journal and a separate clearance-date journal when supportable. It must use visible dates, retain the relevant evidence on both entries, and avoid inventing or forcing the split when the documents are ambiguous.
+When more than one evidence document is selected in multiple-document mode and the active company configuration uses the `accrual` reporting basis, the model receives an additional timing rule. If visible evidence shows a payment or bank-clearance date at least five calendar days after the invoice date, it should prefer an invoice-date recognition journal and a separate clearance-date journal when supportable. It must use visible dates, retain the relevant evidence on both entries, and avoid inventing or forcing the split when the documents are ambiguous.
 
 ### AI Model Choices And Cost Planning
 

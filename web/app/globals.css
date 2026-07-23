@@ -968,6 +968,27 @@ textarea {
   max-height: 360px;
 }
 
+.evidence-library-picker {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(201, 213, 228, 0.84);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.evidence-library-picker h4 {
+  margin: 0;
+}
+
+.evidence-library-table-shell {
+  max-height: 320px;
+}
+
+.evidence-library-table-shell .data-table {
+  min-width: 720px;
+}
+
 .ledger-table-shell {
   max-height: 860px;
 }
@@ -2405,7 +2426,8 @@ html[data-theme="dark"] .reconciliation-detail-list div,
 html[data-theme="dark"] .journal-evidence-preview,
 html[data-theme="dark"] .journal-evidence-thumb,
 html[data-theme="dark"] .journal-editor-panel,
-html[data-theme="dark"] .line-editor-row {
+html[data-theme="dark"] .line-editor-row,
+html[data-theme="dark"] .evidence-library-picker {
   border-color: var(--line);
   background: var(--surface-muted);
 }

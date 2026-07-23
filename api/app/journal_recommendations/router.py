@@ -65,7 +65,8 @@ def list_recommendation_runs(
 @router.post("", response_model=JournalRecommendationDetailRead, status_code=201)
 async def create_recommendation_run(
     company_id: UUID,
-    files: list[UploadFile] = File(...),
+    files: list[UploadFile] | None = File(default=None),
+    existing_document_ids: list[UUID] | None = Form(default=None),
     model: str = Form(default="gpt-5.4-mini"),
     user_context_note: str | None = Form(default=None),
     target_accounting_period_id: UUID | None = Form(default=None),
@@ -76,14 +77,30 @@ async def create_recommendation_run(
     require_company_permission(company_id, "can_prepare", db, current_user)
     chosen_model = ensure_supported_model(model)
 
+    requested_document_ids = existing_document_ids or []
+    if len(set(requested_document_ids)) != len(requested_document_ids):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Select each existing evidence document only once",
+        )
+    existing_documents: list[Document] = []
+    for document_id in requested_document_ids:
+        document = db.get(Document, document_id)
+        if document is None or document.company_id != company_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Existing evidence document not found")
+        existing_documents.append(document)
+
     file_payloads: list[tuple[UploadFile, bytes, str, int]] = []
-    validation_payloads: list[tuple[str, str | None, int]] = []
-    for file in files:
+    validation_payloads: list[tuple[str, str | None, int]] = [
+        (document.original_filename, document.media_type, document.byte_size)
+        for document in existing_documents
+    ]
+    for file in files or []:
         content = await file.read()
         validation_payloads.append((file.filename or "upload.bin", file.content_type, len(content)))
         file_payloads.append((file, content, file.filename or "upload.bin", len(content)))
     validate_new_files(validation_payloads)
-    normalized_analysis_mode = validate_analysis_mode(analysis_mode, len(file_payloads))
+    normalized_analysis_mode = validate_analysis_mode(analysis_mode, len(validation_payloads))
 
     run = JournalRecommendationRun(
         company_id=company_id,
@@ -99,7 +116,28 @@ async def create_recommendation_run(
     db.add(run)
     db.flush()
 
-    for index, (file, content, filename, _) in enumerate(file_payloads, start=1):
+    for index, document in enumerate(existing_documents, start=1):
+        db.add(
+            JournalRecommendationRunDocument(
+                company_id=company_id,
+                recommendation_run_id=run.id,
+                document_id=document.id,
+                display_order=index,
+            )
+        )
+        db.add(
+            DocumentLink(
+                company_id=company_id,
+                document_id=document.id,
+                entity_type=DocumentLinkEntityType.JOURNAL_RECOMMENDATION_RUN,
+                entity_id=str(run.id),
+                note="Reused as AI-assisted journal recommendation evidence",
+                linked_by_user_id=current_user.id,
+            )
+        )
+
+    first_upload_order = len(existing_documents) + 1
+    for index, (file, content, filename, _) in enumerate(file_payloads, start=first_upload_order):
         stored_filename, storage_path, checksum, byte_size = store_document_bytes(
             company_id=company_id,
             original_filename=filename,
@@ -147,7 +185,9 @@ async def create_recommendation_run(
         metadata={
             "provider": "openai",
             "model": chosen_model.id,
-            "file_count": len(file_payloads),
+            "file_count": len(validation_payloads),
+            "existing_document_count": len(existing_documents),
+            "uploaded_document_count": len(file_payloads),
             "analysis_mode": normalized_analysis_mode,
         },
     )

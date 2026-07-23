@@ -107,6 +107,8 @@ def create_prepare_only_user(company_id: str) -> str:
 
 
 def test_build_document_content_items_uses_data_urls_for_pdf_and_images(tmp_path, monkeypatch):
+    pdf_document_id = uuid4()
+    image_document_id = uuid4()
     pdf_path = tmp_path / "invoice.pdf"
     pdf_path.write_bytes(b"%PDF-1.4 fake invoice")
     image_path = tmp_path / "receipt.png"
@@ -126,11 +128,13 @@ def test_build_document_content_items_uses_data_urls_for_pdf_and_images(tmp_path
     items = recommendation_service._build_document_content_items(
         [
             SimpleNamespace(
+                id=pdf_document_id,
                 storage_path="pdf-storage-key",
                 original_filename="invoice.pdf",
                 media_type="application/pdf",
             ),
             SimpleNamespace(
+                id=image_document_id,
                 storage_path="image-storage-key",
                 original_filename="receipt.png",
                 media_type="image/png",
@@ -140,11 +144,13 @@ def test_build_document_content_items_uses_data_urls_for_pdf_and_images(tmp_path
 
     assert items[0]["type"] == "input_text"
     assert '"document_number":1' in items[0]["text"]
+    assert f'"document_id":"{pdf_document_id}"' in items[0]["text"]
     assert items[1]["type"] == "input_file"
     assert items[1]["filename"] == "invoice.pdf"
     assert items[1]["file_data"].startswith("data:application/pdf;base64,")
     assert items[2]["type"] == "input_text"
     assert '"document_number":2' in items[2]["text"]
+    assert f'"document_id":"{image_document_id}"' in items[2]["text"]
     assert items[3]["type"] == "input_image"
     assert items[3]["detail"] == "high"
     assert items[3]["image_url"].startswith("data:image/png;base64,")
@@ -285,7 +291,10 @@ def test_prompt_cache_key_is_stable_for_reference_prefix_and_changes_when_contex
     assert prefix_hash == same_hash
     assert prefix_hash != changed_hash
     system_prompt = recommendation_service._build_system_prompt()
-    assert "several files may support one journal" in system_prompt
+    assert "several documents may support one journal" in system_prompt
+    assert "existing company library exactly like newly uploaded documents" in system_prompt
+    assert "authoritative document_number and document_id" in system_prompt
+    assert "never infer or renumber evidence" in system_prompt
     assert "unrelated invoices, receipts, payments, credits, or settlements" in system_prompt
     assert "monthly bank statement's document number on every recommendation" in system_prompt
     assert "Assign every source document number" in system_prompt
@@ -318,6 +327,8 @@ def test_prompt_cache_key_is_stable_for_reference_prefix_and_changes_when_contex
 
 
 def test_multiple_accrual_request_adds_five_day_timing_instruction_only_when_applicable():
+    invoice_document_id = uuid4()
+    statement_document_id = uuid4()
     run = SimpleNamespace(
         analysis_mode="multiple",
         user_context_note=None,
@@ -325,11 +336,13 @@ def test_multiple_accrual_request_adds_five_day_timing_instruction_only_when_app
     )
     documents = [
         SimpleNamespace(
+            id=invoice_document_id,
             original_filename="invoice.pdf",
             media_type="application/pdf",
             byte_size=100,
         ),
         SimpleNamespace(
+            id=statement_document_id,
             original_filename="monthly-bank-statement.pdf",
             media_type="application/pdf",
             byte_size=200,
@@ -343,6 +356,10 @@ def test_multiple_accrual_request_adds_five_day_timing_instruction_only_when_app
         )
     )["recommendation_request"]
 
+    assert accrual_payload["documents"][0]["document_id"] == str(invoice_document_id)
+    assert accrual_payload["documents"][0]["document_number"] == 1
+    assert accrual_payload["documents"][1]["document_id"] == str(statement_document_id)
+    assert accrual_payload["documents"][1]["document_number"] == 2
     assert "at least five calendar days after the invoice date" in accrual_payload["accounting_policy_instruction"]
     assert "invoice-date recognition entry" in accrual_payload["accounting_policy_instruction"]
     assert "separate clearance-date entry" in accrual_payload["accounting_policy_instruction"]
@@ -1831,7 +1848,7 @@ def test_journal_recommendation_returns_503_when_openai_runtime_is_missing(clien
     settings.openai_api_key = original_api_key
 
 
-def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(client, monkeypatch):
+def test_multi_document_analysis_reuses_existing_evidence_across_correct_journals(client, monkeypatch):
     settings = get_settings()
     original_api_key = settings.openai_api_key
     settings.openai_api_key = "test-key"
@@ -1887,8 +1904,8 @@ def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(
     def fake_analyze(_db, *, run, documents):
         assert run.analysis_mode == "multiple"
         assert [document.original_filename for document in documents] == [
-            "invoice.pdf",
             "monthly-bank-statement.pdf",
+            "invoice.pdf",
             "parking-receipt.pdf",
         ]
         return recommendation_service.LlmRecommendation(
@@ -1898,7 +1915,7 @@ def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(
             journal_entries=[
                 balanced_entry(
                     sequence_number=1,
-                    source_document_numbers=[1],
+                    source_document_numbers=[2],
                     entry_date=date(2026, 7, 5),
                     reference="INV-1001",
                     description="Recognise office supplies invoice",
@@ -1916,7 +1933,7 @@ def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(
                 ),
                 balanced_entry(
                     sequence_number=3,
-                    source_document_numbers=[2, 3],
+                    source_document_numbers=[1, 3],
                     entry_date=date(2026, 7, 11),
                     reference="PARK-22",
                     description="Client parking",
@@ -1931,17 +1948,30 @@ def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(
     token = bootstrap_superuser(client)
     company_id = create_company(client, token)
     period_id = create_period(client, token, company_id)
+    statement_response = client.post(
+        f"/api/companies/{company_id}/documents",
+        headers=auth_header(token),
+        files={
+            "file": (
+                "monthly-bank-statement.pdf",
+                b"%PDF-1.4 previously uploaded statement",
+                "application/pdf",
+            )
+        },
+    )
+    assert statement_response.status_code == 201, statement_response.text
+    statement_id = statement_response.json()["id"]
     create_response = client.post(
         f"/api/companies/{company_id}/journal-recommendations",
         headers=auth_header(token),
         files=[
             ("files", ("invoice.pdf", b"%PDF-1.4 invoice", "application/pdf")),
-            ("files", ("monthly-bank-statement.pdf", b"%PDF-1.4 statement", "application/pdf")),
             ("files", ("parking-receipt.pdf", b"%PDF-1.4 parking", "application/pdf")),
         ],
         data={
             "analysis_mode": "multiple",
             "model": "gpt-5.4-mini",
+            "existing_document_ids": statement_id,
             "user_context_note": "The bank statement contains the invoice clearance and a separate parking payment.",
             "target_accounting_period_id": period_id,
         },
@@ -1958,8 +1988,8 @@ def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(
     assert len(recommendations) == 3
     assert [document["original_filename"] for document in recommendations[0]["documents"]] == ["invoice.pdf"]
     assert [document["original_filename"] for document in recommendations[1]["documents"]] == [
-        "invoice.pdf",
         "monthly-bank-statement.pdf",
+        "invoice.pdf",
     ]
     assert [document["original_filename"] for document in recommendations[2]["documents"]] == [
         "monthly-bank-statement.pdf",
@@ -1998,6 +2028,21 @@ def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(
         "monthly-bank-statement.pdf",
         "parking-receipt.pdf",
     }
+    second_evidence_by_name = {item["original_filename"]: item for item in second_evidence.json()}
+    third_evidence_by_name = {item["original_filename"]: item for item in third_evidence.json()}
+    assert first_evidence.json()[0]["note"] == "AI recommendation source document #2"
+    assert second_evidence_by_name["monthly-bank-statement.pdf"]["document_id"] == statement_id
+    assert third_evidence_by_name["monthly-bank-statement.pdf"]["document_id"] == statement_id
+    assert second_evidence_by_name["monthly-bank-statement.pdf"]["note"] == (
+        "AI recommendation source document #1"
+    )
+    assert second_evidence_by_name["invoice.pdf"]["note"] == "AI recommendation source document #2"
+    assert third_evidence_by_name["monthly-bank-statement.pdf"]["note"] == (
+        "AI recommendation source document #1"
+    )
+    assert third_evidence_by_name["parking-receipt.pdf"]["note"] == (
+        "AI recommendation source document #3"
+    )
     settings.openai_api_key = original_api_key
 
 
@@ -2015,7 +2060,7 @@ def test_journal_recommendation_upload_modes_enforce_single_and_fifty_file_limit
         data={"analysis_mode": "single", "model": "gpt-5.4-mini"},
     )
     assert single_response.status_code == 400, single_response.text
-    assert single_response.json()["detail"] == "Single-file analysis requires exactly one uploaded file"
+    assert single_response.json()["detail"] == "Single-document analysis requires exactly one evidence document"
 
     too_many_response = client.post(
         f"/api/companies/{company_id}/journal-recommendations",
@@ -2027,7 +2072,85 @@ def test_journal_recommendation_upload_modes_enforce_single_and_fifty_file_limit
         data={"analysis_mode": "multiple", "model": "gpt-5.4-mini"},
     )
     assert too_many_response.status_code == 400, too_many_response.text
-    assert too_many_response.json()["detail"] == "Upload at most 50 files per recommendation run"
+    assert too_many_response.json()["detail"] == "Select at most 50 evidence documents per recommendation run"
+
+
+def test_journal_recommendation_can_reuse_existing_documents_and_mix_new_uploads(client):
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+
+    statement_response = client.post(
+        f"/api/companies/{company_id}/documents",
+        headers=auth_header(token),
+        files={"file": ("existing-bank-statement.pdf", b"%PDF-1.4 existing statement", "application/pdf")},
+    )
+    invoice_response = client.post(
+        f"/api/companies/{company_id}/documents",
+        headers=auth_header(token),
+        files={"file": ("existing-invoice.png", b"existing invoice image", "image/png")},
+    )
+    assert statement_response.status_code == 201, statement_response.text
+    assert invoice_response.status_code == 201, invoice_response.text
+    statement_id = statement_response.json()["id"]
+    invoice_id = invoice_response.json()["id"]
+
+    existing_only_response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations",
+        headers=auth_header(token),
+        data={
+            "analysis_mode": "multiple",
+            "model": "gpt-5.4-mini",
+            "existing_document_ids": [statement_id, invoice_id],
+        },
+    )
+    assert existing_only_response.status_code == 201, existing_only_response.text
+    existing_only_documents = existing_only_response.json()["documents"]
+    assert [item["document_id"] for item in existing_only_documents] == [statement_id, invoice_id]
+    assert [item["display_order"] for item in existing_only_documents] == [1, 2]
+
+    mixed_response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations",
+        headers=auth_header(token),
+        files={"files": ("new-receipt.pdf", b"%PDF-1.4 new receipt", "application/pdf")},
+        data={
+            "analysis_mode": "multiple",
+            "model": "gpt-5.4-mini",
+            "existing_document_ids": statement_id,
+        },
+    )
+    assert mixed_response.status_code == 201, mixed_response.text
+    mixed_documents = mixed_response.json()["documents"]
+    assert [item["document_id"] for item in mixed_documents[:1]] == [statement_id]
+    assert [item["original_filename"] for item in mixed_documents] == [
+        "existing-bank-statement.pdf",
+        "new-receipt.pdf",
+    ]
+    assert [item["display_order"] for item in mixed_documents] == [1, 2]
+
+
+def test_journal_recommendation_rejects_existing_document_from_another_company(client):
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+    other_company_id = create_company(client, token)
+    foreign_document_response = client.post(
+        f"/api/companies/{other_company_id}/documents",
+        headers=auth_header(token),
+        files={"file": ("foreign-statement.pdf", b"%PDF-1.4 foreign", "application/pdf")},
+    )
+    assert foreign_document_response.status_code == 201, foreign_document_response.text
+
+    response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations",
+        headers=auth_header(token),
+        data={
+            "analysis_mode": "single",
+            "model": "gpt-5.4-mini",
+            "existing_document_ids": foreign_document_response.json()["id"],
+        },
+    )
+
+    assert response.status_code == 404, response.text
+    assert response.json()["detail"] == "Existing evidence document not found"
 
 
 def test_journal_recommendation_model_enums_bind_database_values():

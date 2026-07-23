@@ -84,6 +84,10 @@ function isPdfDocument(mediaType: string | null | undefined, filename?: string |
   return inferDocumentMediaType(mediaType, filename) === "application/pdf";
 }
 
+function isSupportedRecommendationEvidence(mediaType: string | null | undefined, filename?: string | null) {
+  return isPdfDocument(mediaType, filename) || isImageDocument(mediaType, filename);
+}
+
 
 function formatDocumentBadge(mediaType: string | null | undefined, filename?: string | null) {
   if (isImageDocument(mediaType, filename)) {
@@ -319,6 +323,8 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const [recommendationModelId, setRecommendationModelId] = useState("gpt-5.4-mini");
   const [recommendationUploadMode, setRecommendationUploadMode] = useState<"single" | "multiple">("single");
   const [recommendationFiles, setRecommendationFiles] = useState<File[]>([]);
+  const [recommendationExistingDocumentIds, setRecommendationExistingDocumentIds] = useState<string[]>([]);
+  const [recommendationDocumentSearch, setRecommendationDocumentSearch] = useState("");
   const [recommendationNote, setRecommendationNote] = useState("");
   const [recommendationTargetPeriodId, setRecommendationTargetPeriodId] = useState("");
   const [recommendationResult, setRecommendationResult] = useState<JournalRecommendationDetail | null>(null);
@@ -751,7 +757,31 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   );
   const recommendationFileLimit = selectedRecommendationModel?.max_file_count ?? 50;
   const recommendationTotalSizeLimit = selectedRecommendationModel?.max_total_size_bytes ?? 100 * 1024 * 1024;
-  const recommendationSelectedBytes = recommendationFiles.reduce((total, file) => total + file.size, 0);
+  const recommendationEligibleDocuments = useMemo(
+    () => documents.filter((document) => isSupportedRecommendationEvidence(document.media_type, document.original_filename)),
+    [documents],
+  );
+  const recommendationSelectedExistingDocuments = useMemo(() => {
+    const documentsById = new Map(recommendationEligibleDocuments.map((document) => [document.id, document]));
+    return recommendationExistingDocumentIds
+      .map((documentId) => documentsById.get(documentId))
+      .filter((document): document is NonNullable<typeof document> => Boolean(document));
+  }, [recommendationEligibleDocuments, recommendationExistingDocumentIds]);
+  const filteredRecommendationDocuments = useMemo(() => {
+    const query = normalizeSearchValue(recommendationDocumentSearch);
+    if (!query) {
+      return recommendationEligibleDocuments;
+    }
+    return recommendationEligibleDocuments.filter((document) => (
+      normalizeSearchValue(document.original_filename).includes(query)
+      || normalizeSearchValue(document.media_type).includes(query)
+    ));
+  }, [recommendationDocumentSearch, recommendationEligibleDocuments]);
+  const recommendationEvidenceCount = recommendationSelectedExistingDocuments.length + recommendationFiles.length;
+  const recommendationSelectedBytes = (
+    recommendationSelectedExistingDocuments.reduce((total, document) => total + document.byte_size, 0)
+    + recommendationFiles.reduce((total, file) => total + file.size, 0)
+  );
   const recommendationEntries: JournalRecommendationEntry[] = recommendationResult?.entries?.length
     ? recommendationResult.entries
     : recommendationResult
@@ -871,6 +901,37 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     [filteredLedgerAccounts],
   );
 
+  function updateExistingRecommendationEvidence(documentId: string, selected: boolean) {
+    const document = recommendationEligibleDocuments.find((item) => item.id === documentId);
+    if (!document) {
+      return;
+    }
+    if (!selected) {
+      setRecommendationExistingDocumentIds((current) => current.filter((item) => item !== documentId));
+      setRecommendationResult(null);
+      return;
+    }
+    if (recommendationUploadMode === "single") {
+      setRecommendationExistingDocumentIds([documentId]);
+      setRecommendationFiles([]);
+      setRecommendationUploadKey((current) => current + 1);
+      setRecommendationResult(null);
+      return;
+    }
+    if (recommendationEvidenceCount >= recommendationFileLimit) {
+      showMessage("error", `Select at most ${recommendationFileLimit} evidence documents.`);
+      return;
+    }
+    if (recommendationSelectedBytes + document.byte_size > recommendationTotalSizeLimit) {
+      showMessage("error", `Selected evidence exceeds the ${formatFileSize(recommendationTotalSizeLimit)} batch limit.`);
+      return;
+    }
+    setRecommendationExistingDocumentIds((current) => (
+      current.includes(documentId) ? current : [...current, documentId]
+    ));
+    setRecommendationResult(null);
+  }
+
   function openCreateJournalPopup() {
     setJournalEditorJournalId(undefined);
     setIsJournalEditorOpen(true);
@@ -947,6 +1008,12 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     setDocumentPreviewById({});
     setPdfPreviewById({});
     setActiveEvidenceViewer(null);
+    setRecommendationFiles([]);
+    setRecommendationExistingDocumentIds([]);
+    setRecommendationDocumentSearch("");
+    setRecommendationResult(null);
+    setAcceptedProposalIds([]);
+    setRecommendationUploadKey((current) => current + 1);
   }, [selectedCompanyId]);
 
   useEffect(() => {
@@ -1241,8 +1308,8 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
         <div className="workspace-split journal-workspace-split">
           <div className="stacked-cards">
             <div className="mini-card">
-              <h3>Analyze invoices or receipts</h3>
-              <p className="summary-line">Analyze one document or upload as many as {recommendationFileLimit}. Multiple-file analysis groups evidence by transaction, can reuse a statement across several journals, and can recommend separate accrual and clearance entries when the configured reporting basis and document dates support them.</p>
+              <h3>Analyze supporting evidence</h3>
+              <p className="summary-line">Choose previously uploaded documents, add new files, or combine both up to {recommendationFileLimit} items. Multiple-document analysis groups evidence by transaction, can reuse a statement across several journals, and can recommend separate accrual and clearance entries when the configured reporting basis and document dates support them.</p>
               <div className="form-grid two-up">
                 <Field label="ChatGPT model">
                   <select value={recommendationModelId} disabled={isRecommendationProcessing} onChange={(event) => setRecommendationModelId(event.target.value)}>
@@ -1255,10 +1322,11 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                     {periodOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </Field>
-                <Field label="Upload mode">
+                <Field label="Evidence mode">
                   <select value={recommendationUploadMode} disabled={isRecommendationProcessing} onChange={(event) => {
                     setRecommendationUploadMode(event.target.value as "single" | "multiple");
                     setRecommendationFiles([]);
+                    setRecommendationExistingDocumentIds([]);
                     setRecommendationResult(null);
                     setRecommendationUploadKey((current) => current + 1);
                   }}>
@@ -1269,7 +1337,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                 <Field label="Transaction context" wide>
                   <textarea rows={4} value={recommendationNote} disabled={isRecommendationProcessing} onChange={(event) => setRecommendationNote(event.target.value)} placeholder="Optional grouping or payment context, for example: file 1 is an invoice; file 2 is a monthly bank statement that may support several payments." />
                 </Field>
-                <Field label={recommendationUploadMode === "single" ? "File" : `Files (up to ${recommendationFileLimit})`} wide>
+                <Field label={recommendationUploadMode === "single" ? "Upload a new file" : "Upload new files"} wide>
                   <input
                     key={recommendationUploadKey}
                     type="file"
@@ -1293,28 +1361,94 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                         showMessage("error", `${oversizedFile.name} exceeds the per-file upload limit.`);
                         return;
                       }
-                      if (nextFiles.length > recommendationFileLimit) {
-                        showMessage("error", `Select at most ${recommendationFileLimit} files.`);
+                      const existingDocumentCount = recommendationUploadMode === "single" && nextFiles.length > 0
+                        ? 0
+                        : recommendationSelectedExistingDocuments.length;
+                      const existingDocumentBytes = recommendationUploadMode === "single" && nextFiles.length > 0
+                        ? 0
+                        : recommendationSelectedExistingDocuments.reduce((total, document) => total + document.byte_size, 0);
+                      if (nextFiles.length + existingDocumentCount > recommendationFileLimit) {
+                        showMessage("error", `Select at most ${recommendationFileLimit} evidence documents.`);
                         return;
                       }
-                      if (nextFiles.reduce((total, file) => total + file.size, 0) > recommendationTotalSizeLimit) {
-                        showMessage("error", `Selected files exceed the ${formatFileSize(recommendationTotalSizeLimit)} batch limit.`);
+                      if (nextFiles.reduce((total, file) => total + file.size, 0) + existingDocumentBytes > recommendationTotalSizeLimit) {
+                        showMessage("error", `Selected evidence exceeds the ${formatFileSize(recommendationTotalSizeLimit)} batch limit.`);
                         return;
+                      }
+                      if (recommendationUploadMode === "single" && nextFiles.length > 0) {
+                        setRecommendationExistingDocumentIds([]);
                       }
                       setRecommendationFiles(nextFiles);
+                      setRecommendationResult(null);
                     }}
                   />
                 </Field>
+              </div>
+              <div className="evidence-library-picker">
+                <div className="mini-card-heading">
+                  <div>
+                    <h4>Choose existing documents</h4>
+                    <p className="summary-line">Reuse PDFs and images already stored in this company&apos;s Documents workspace. Existing documents are analyzed first, in the order selected.</p>
+                  </div>
+                  <span className="pill">{recommendationSelectedExistingDocuments.length} selected</span>
+                </div>
+                <Field label="Search existing documents">
+                  <input
+                    value={recommendationDocumentSearch}
+                    disabled={isRecommendationProcessing}
+                    onChange={(event) => setRecommendationDocumentSearch(event.target.value)}
+                    placeholder="Search by filename or file type"
+                  />
+                </Field>
+                {filteredRecommendationDocuments.length > 0 ? (
+                  <div className="table-shell compact-table-shell evidence-library-table-shell">
+                    <table className="data-table">
+                      <thead><tr><th>Use</th><th>#</th><th>Existing evidence</th><th>Size</th><th>Uploaded</th></tr></thead>
+                      <tbody>
+                        {filteredRecommendationDocuments.map((document) => {
+                          const selectionIndex = recommendationExistingDocumentIds.indexOf(document.id);
+                          const isSelected = selectionIndex >= 0;
+                          return (
+                            <tr key={document.id} className={isSelected ? "is-selected row-static" : "row-static"}>
+                              <td>
+                                <input
+                                  type={recommendationUploadMode === "single" ? "radio" : "checkbox"}
+                                  name={recommendationUploadMode === "single" ? "recommendation-existing-evidence" : undefined}
+                                  checked={isSelected}
+                                  disabled={isRecommendationProcessing}
+                                  aria-label={`Use existing document ${document.original_filename}`}
+                                  onChange={(event) => updateExistingRecommendationEvidence(document.id, event.target.checked)}
+                                />
+                              </td>
+                              <td>{isSelected ? selectionIndex + 1 : "-"}</td>
+                              <td>{document.original_filename}<div className="table-meta">{document.media_type || "Unknown type"}</div></td>
+                              <td>{formatFileSize(document.byte_size)}</td>
+                              <td>{formatDateTime(document.created_at)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-state table-empty-state">
+                    <strong>{recommendationEligibleDocuments.length === 0 ? "No reusable evidence is available yet." : "No existing documents match this search."}</strong>
+                    <p>{recommendationEligibleDocuments.length === 0 ? "Upload a PDF or supported image here, or add one in the Documents workspace for future reuse." : "Clear or change the search text to see eligible documents."}</p>
+                  </div>
+                )}
+                {documents.length > recommendationEligibleDocuments.length ? (
+                  <p className="summary-line">{documents.length - recommendationEligibleDocuments.length} stored document{documents.length - recommendationEligibleDocuments.length === 1 ? "" : "s"} hidden because AI drafting currently supports PDF and image evidence only.</p>
+                ) : null}
               </div>
               {selectedRecommendationModel ? <p className="summary-line">{selectedRecommendationModel.label} {selectedRecommendationModel.reasoning_effort ? `uses ${selectedRecommendationModel.reasoning_effort} reasoning and ` : ""}is estimated at ${selectedRecommendationModel.estimated_cost_per_1000_calls_usd} per 1,000 calls. {selectedRecommendationModel.pricing_note}</p> : null}
               {recommendationFiles.length > 0 ? (
                 <div className="table-shell compact-table-shell evidence-table-shell">
                   <table className="data-table">
-                    <thead><tr><th>#</th><th>Selected file</th><th>Size</th><th>Action</th></tr></thead>
+                    <thead><tr><th>#</th><th>New upload</th><th>Size</th><th>Action</th></tr></thead>
                     <tbody>
                       {recommendationFiles.map((file, index) => (
                         <tr key={`${file.name}-${file.size}`} className="row-static">
-                          <td>{index + 1}</td>
+                          <td>{recommendationSelectedExistingDocuments.length + index + 1}</td>
                           <td>{file.name}<div className="table-meta">{file.type || "Unknown type"}</div></td>
                           <td>{formatFileSize(file.size)}</td>
                           <td><button className="button-link button-link-small button-link-secondary" type="button" disabled={isRecommendationProcessing} onClick={() => {
@@ -1325,24 +1459,28 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                       ))}
                     </tbody>
                   </table>
-                  <p className="summary-line">{recommendationFiles.length} file{recommendationFiles.length === 1 ? "" : "s"} selected · {formatFileSize(recommendationSelectedBytes)} total. File numbers are preserved in the AI grouping result.</p>
+                  <p className="summary-line">{recommendationFiles.length} new file{recommendationFiles.length === 1 ? "" : "s"} selected.</p>
                 </div>
               ) : null}
+              {recommendationEvidenceCount > 0 ? (
+                <p className="summary-line"><strong>{recommendationEvidenceCount} evidence document{recommendationEvidenceCount === 1 ? "" : "s"}</strong> - {formatFileSize(recommendationSelectedBytes)} total. Existing documents are numbered first in selection order, followed by new uploads; these numbers are preserved in the AI grouping result.</p>
+              ) : null}
               <div className="request-actions">
-                <button className="button-link button-link-small" type="button" disabled={isRecommendationProcessing} onClick={() => runAction("Analyzing documents", async () => {
+                <button className="button-link button-link-small" type="button" disabled={isRecommendationProcessing} onClick={() => runAction("Analyzing evidence", async () => {
                   if (!selectedCompanyId) {
                     throw new Error("Select a company before generating a journal recommendation.");
                   }
-                  if (recommendationFiles.length === 0) {
-                    throw new Error("Upload at least one invoice or receipt before analysis.");
+                  if (recommendationEvidenceCount === 0) {
+                    throw new Error("Select or upload at least one evidence document before analysis.");
                   }
-                  if (recommendationUploadMode === "single" && recommendationFiles.length !== 1) {
-                    throw new Error("Single-file mode requires exactly one file.");
+                  if (recommendationUploadMode === "single" && recommendationEvidenceCount !== 1) {
+                    throw new Error("Single-document mode requires exactly one evidence document.");
                   }
-                  if (recommendationFiles.length > recommendationFileLimit) {
-                    throw new Error(`Upload at most ${recommendationFileLimit} files.`);
+                  if (recommendationEvidenceCount > recommendationFileLimit) {
+                    throw new Error(`Select at most ${recommendationFileLimit} evidence documents.`);
                   }
                   const formData = new FormData();
+                  recommendationSelectedExistingDocuments.forEach((document) => formData.append("existing_document_ids", document.id));
                   recommendationFiles.forEach((file) => formData.append("files", file));
                   formData.append("model", recommendationModelId || "gpt-5.4-mini");
                   formData.append("analysis_mode", recommendationUploadMode);
@@ -1358,14 +1496,16 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                   setAcceptedProposalIds([]);
                   const journalCount = analyzedRun.entries?.length || 1;
                   showMessage("success", `Generated ${journalCount} review-only journal recommendation${journalCount === 1 ? "" : "s"}.`);
-                })}>{isRecommendationProcessing ? "Analyzing..." : recommendationUploadMode === "single" ? "Analyze file" : "Analyze files"}</button>
+                })}>{isRecommendationProcessing ? "Analyzing..." : "Analyze evidence"}</button>
                 <button className="button-link button-link-small button-link-secondary" type="button" disabled={isRecommendationProcessing} onClick={() => {
                   setRecommendationFiles([]);
+                  setRecommendationExistingDocumentIds([]);
+                  setRecommendationDocumentSearch("");
                   setRecommendationNote("");
                   setRecommendationResult(null);
                   setAcceptedProposalIds([]);
                   setRecommendationUploadKey((current) => current + 1);
-                }}>Clear</button>
+                }}>Clear evidence</button>
               </div>
             </div>
           </div>
@@ -1376,7 +1516,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                 <h3>Recommendation review</h3>
                 <span className="pill">{recommendationEntries.length} journal{recommendationEntries.length === 1 ? "" : "s"} · {recommendationLineCount} lines</span>
               </div>
-              {!recommendationResult ? <p className="summary-line">No recommendation yet. Upload supporting files and analyze them to generate a draft journal recommendation.</p> : null}
+              {!recommendationResult ? <p className="summary-line">No recommendation yet. Choose existing documents, upload new evidence, or combine both to generate draft journal recommendations.</p> : null}
               {recommendationResult ? (
                 <>
                   <div className="summary-grid two-up">

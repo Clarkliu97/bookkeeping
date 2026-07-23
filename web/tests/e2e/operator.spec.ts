@@ -574,11 +574,26 @@ test.describe.serial("operator workspace journeys", () => {
       expenseAccount.id,
       bankAccount.id,
     );
+    const existingStatementResponse = await page.request.post(
+      `${apiBaseUrl}/api/companies/${company.id}/documents`,
+      {
+        headers: { Authorization: `Bearer ${auth.access_token}` },
+        multipart: {
+          file: {
+            name: "existing-bank-statement.pdf",
+            mimeType: "application/pdf",
+            buffer: Buffer.from("%PDF-1.4 previously uploaded bank statement"),
+          },
+        },
+      },
+    );
+    const existingStatement = await parseResponse<{ id: string }>(existingStatementResponse);
 
     const createdRunId = "11111111-1111-4111-8111-111111111111";
     const analyzedRunId = "22222222-2222-4222-8222-222222222222";
     const proposalId = "33333333-3333-4333-8333-333333333333";
     let acceptRequestCount = 0;
+    let createRequestBody = "";
 
     await page.route(/\/api\/companies\/[^/]+\/journal-recommendations(?:\/[^/]+\/(analyze|accept))?$/, async (route, request) => {
       const url = new URL(request.url());
@@ -588,6 +603,7 @@ test.describe.serial("operator workspace journeys", () => {
         return;
       }
       if (/\/journal-recommendations$/.test(pathname)) {
+        createRequestBody = request.postData() ?? "";
         await route.fulfill({
           status: 201,
           contentType: "application/json",
@@ -636,7 +652,7 @@ test.describe.serial("operator workspace journeys", () => {
                 id: "44444444-4444-4444-8444-444444444444",
                 document_id: "55555555-5555-4555-8555-555555555555",
                 display_order: 1,
-                original_filename: "settlement-letter.pdf",
+                original_filename: "existing-bank-statement.pdf",
                 media_type: "application/pdf",
                 byte_size: 2048,
                 created_at: "2026-07-10T09:00:00Z",
@@ -645,7 +661,7 @@ test.describe.serial("operator workspace journeys", () => {
                 id: "66666666-6666-4666-8666-666666666666",
                 document_id: "77777777-7777-4777-8777-777777777777",
                 display_order: 2,
-                original_filename: "adjustment-sheet.pdf",
+                original_filename: "settlement-letter.pdf",
                 media_type: "application/pdf",
                 byte_size: 1980,
                 created_at: "2026-07-10T09:00:05Z",
@@ -768,15 +784,20 @@ test.describe.serial("operator workspace journeys", () => {
 
     await page.getByRole("button", { name: "AI drafting", exact: true }).click();
     await page.getByLabel("Target accounting period").selectOption(period.id);
-    await page.getByLabel("Upload mode").selectOption("multiple");
+    await page.getByLabel("Evidence mode").selectOption("multiple");
+    await page.getByLabel("Use existing document existing-bank-statement.pdf").check();
     await page.locator('input[type="file"][multiple]').setInputFiles([
       { name: "settlement-letter.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 settlement letter") },
-      { name: "adjustment-sheet.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 adjustment sheet") },
       { name: "title-search.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 title search") },
     ]);
-    await page.getByRole("button", { name: "Analyze files" }).click();
+    await expect(page.getByText("3 evidence documents")).toBeVisible();
+    await page.getByRole("button", { name: "Analyze evidence" }).click();
 
     await expect(page.getByRole("status").getByText("Generated 1 review-only journal recommendation.")).toBeVisible();
+    expect(createRequestBody).toContain("existing_document_ids");
+    expect(createRequestBody).toContain(existingStatement.id);
+    expect(createRequestBody).toContain("settlement-letter.pdf");
+    expect(createRequestBody).toContain("title-search.pdf");
     await expect(page.getByTestId("recommendation-search-sources")).toContainText("www.ato.gov.au");
     await expect(page.getByTestId("recommendation-search-sources")).toContainText("www.nswlrs.com.au");
     await expect(page.locator("table").filter({ hasText: "Evidence" }).getByText("title-search.pdf")).toBeVisible();
