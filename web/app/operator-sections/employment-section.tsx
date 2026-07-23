@@ -693,7 +693,7 @@ export function EmploymentSection({ operator }: { operator: OperatorState }) {
 
   useEffect(() => {
     if (!selectedWorkRights) {
-      setWorkRightsDraft((current) => ({ ...createEmptyWorkRightsDraft(), engagement_id: selectedEngagementId }));
+      setWorkRightsDraft({ ...createEmptyWorkRightsDraft(), engagement_id: selectedEngagementId });
       return;
     }
     setWorkRightsDraft({

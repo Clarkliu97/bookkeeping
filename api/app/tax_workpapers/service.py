@@ -29,7 +29,6 @@ from app.db.models.enums import (
     TaxWorkpaperStatus,
     WorkflowStatus,
 )
-from app.db.models.fixed_assets import FixedAsset
 from app.db.models.tax_workpapers import (
     TaxAdjustment,
     TaxWorkpaperExceptionItem,

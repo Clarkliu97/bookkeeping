@@ -228,8 +228,13 @@ def list_reconciliation_items(
     items = list(
         db.scalars(
             select(ReconciliationItem)
+            .join(BankImportRow, BankImportRow.id == ReconciliationItem.bank_import_row_id)
             .where(ReconciliationItem.reconciliation_session_id == session_id)
-            .order_by(ReconciliationItem.created_at.asc())
+            .order_by(
+                BankImportRow.transaction_date.asc(),
+                BankImportRow.line_number.asc(),
+                ReconciliationItem.id.asc(),
+            )
         ).all()
     )
     return [_item_read(db, item) for item in items]

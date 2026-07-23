@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, Enum, ForeignKey, JSON, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -75,7 +75,7 @@ class TaxWorkpaperExceptionItem(PrimaryKeyMixin, TimestampMixin, Base):
     resolution_note: Mapped[str | None] = mapped_column(Text)
     created_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
     resolved_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
-    resolved_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class TaxWorkpaperExport(PrimaryKeyMixin, TimestampMixin, Base):

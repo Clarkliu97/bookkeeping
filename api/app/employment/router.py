@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_company_permission
 from app.audit.service import log_audit_event
+from app.db.models.accounting import Account
 from app.db.models.auth import User
 from app.db.models.documents import Document, DocumentLink
 from app.db.models.employment import (
@@ -112,6 +113,42 @@ def _load_engagement_or_404(db: Session, company_id: UUID, engagement_id: UUID) 
     if engagement is None or engagement.company_id != company_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employment engagement not found")
     return engagement
+
+
+def _load_worker_engagement_or_400(
+    db: Session,
+    company_id: UUID,
+    worker_id: UUID,
+    engagement_id: UUID,
+) -> EmploymentEngagement:
+    engagement = _load_engagement_or_404(db, company_id, engagement_id)
+    if engagement.worker_id != worker_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Engagement does not belong to the selected worker",
+        )
+    return engagement
+
+
+def _validate_compensation_accounts(
+    db: Session,
+    company_id: UUID,
+    *,
+    expense_account_id: UUID | None,
+    liability_account_id: UUID | None,
+) -> None:
+    for label, account_id in (
+        ("Expense account", expense_account_id),
+        ("Liability account", liability_account_id),
+    ):
+        if account_id is None:
+            continue
+        account = db.get(Account, account_id)
+        if account is None or account.company_id != company_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{label} must belong to the selected company",
+            )
 
 
 def _load_work_rights_or_404(db: Session, company_id: UUID, record_id: UUID) -> EmploymentWorkRightsRecord:
@@ -619,7 +656,7 @@ def create_work_rights_record(
     require_company_permission(company_id, "can_prepare", db, current_user)
     worker = _load_worker_or_404(db, company_id, worker_id)
     if payload.engagement_id:
-        _load_engagement_or_404(db, company_id, payload.engagement_id)
+        _load_worker_engagement_or_400(db, company_id, worker.id, payload.engagement_id)
     payload_data = payload.model_dump()
     vevo_checked_at = payload_data.pop("vevo_checked_at")
     record = EmploymentWorkRightsRecord(
@@ -646,7 +683,7 @@ def update_work_rights_record(
     require_company_permission(company_id, "can_prepare", db, current_user)
     record = _load_work_rights_or_404(db, company_id, record_id)
     if payload.engagement_id:
-        _load_engagement_or_404(db, company_id, payload.engagement_id)
+        _load_worker_engagement_or_400(db, company_id, record.worker_id, payload.engagement_id)
     payload_data = payload.model_dump()
     vevo_checked_at = payload_data.pop("vevo_checked_at")
     for key, value in payload_data.items():
@@ -681,6 +718,12 @@ def upsert_compensation_profile(
 ) -> EmploymentCompensationProfile:
     require_company_permission(company_id, "can_prepare", db, current_user)
     engagement = _load_engagement_or_404(db, company_id, engagement_id)
+    _validate_compensation_accounts(
+        db,
+        company_id,
+        expense_account_id=payload.expense_account_id,
+        liability_account_id=payload.liability_account_id,
+    )
     profile = db.scalar(select(EmploymentCompensationProfile).where(EmploymentCompensationProfile.engagement_id == engagement.id).limit(1))
     if profile is None:
         profile = EmploymentCompensationProfile(company_id=company_id, engagement_id=engagement.id, created_by_user_id=current_user.id, **payload.model_dump())
@@ -766,7 +809,7 @@ def create_reimbursement_item(
     require_company_permission(company_id, "can_prepare", db, current_user)
     worker = _load_worker_or_404(db, company_id, worker_id)
     if payload.engagement_id:
-        _load_engagement_or_404(db, company_id, payload.engagement_id)
+        _load_worker_engagement_or_400(db, company_id, worker.id, payload.engagement_id)
     item = EmploymentReimbursementItem(company_id=company_id, worker_id=worker.id, created_by_user_id=current_user.id, **payload.model_dump())
     db.add(item)
     db.commit()
@@ -785,7 +828,7 @@ def update_reimbursement_item(
     require_company_permission(company_id, "can_prepare", db, current_user)
     item = _load_reimbursement_or_404(db, company_id, reimbursement_id)
     if payload.engagement_id:
-        _load_engagement_or_404(db, company_id, payload.engagement_id)
+        _load_worker_engagement_or_400(db, company_id, item.worker_id, payload.engagement_id)
     for key, value in payload.model_dump().items():
         setattr(item, key, value)
     db.commit()
@@ -818,7 +861,7 @@ def create_issued_asset(
     require_company_permission(company_id, "can_prepare", db, current_user)
     worker = _load_worker_or_404(db, company_id, worker_id)
     if payload.engagement_id:
-        _load_engagement_or_404(db, company_id, payload.engagement_id)
+        _load_worker_engagement_or_400(db, company_id, worker.id, payload.engagement_id)
     item = EmploymentIssuedAsset(company_id=company_id, worker_id=worker.id, created_by_user_id=current_user.id, **payload.model_dump())
     db.add(item)
     db.commit()
@@ -837,7 +880,7 @@ def update_issued_asset(
     require_company_permission(company_id, "can_prepare", db, current_user)
     item = _load_issued_asset_or_404(db, company_id, asset_id)
     if payload.engagement_id:
-        _load_engagement_or_404(db, company_id, payload.engagement_id)
+        _load_worker_engagement_or_400(db, company_id, item.worker_id, payload.engagement_id)
     for key, value in payload.model_dump().items():
         setattr(item, key, value)
     db.commit()

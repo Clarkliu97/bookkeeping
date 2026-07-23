@@ -742,12 +742,16 @@ class JournalRecommendationModelRead(BaseModel):
     label: str
     provider: str
     supports_vision: bool
+    reasoning_effort: str | None
     input_cost_per_million_tokens_usd: Decimal
     output_cost_per_million_tokens_usd: Decimal
     estimated_cost_per_1000_calls_usd: Decimal
     estimated_input_tokens_per_call: int
     estimated_output_tokens_per_call: int
     pricing_note: str
+    max_file_count: int
+    max_file_size_bytes: int
+    max_total_size_bytes: int
 
 
 class JournalRecommendationRunRead(ORMModel):
@@ -760,6 +764,7 @@ class JournalRecommendationRunRead(ORMModel):
     target_journal_entry_id: UUID | None
     accepted_journal_entry_id: UUID | None
     user_context_note: str | None
+    analysis_mode: str
     prompt_version: str
     provider_name: str
     provider_model: str
@@ -786,6 +791,7 @@ class JournalRecommendationRunDocumentRead(BaseModel):
 class JournalRecommendationLineRead(ORMModel):
     id: UUID
     recommendation_run_id: UUID
+    recommendation_entry_id: UUID | None
     line_number: int
     description: str | None
     explanation: str | None
@@ -815,6 +821,27 @@ class JournalRecommendationProposalRead(ORMModel):
     updated_at: datetime
 
 
+class JournalRecommendationEntryRead(ORMModel):
+    id: UUID
+    recommendation_run_id: UUID
+    sequence_number: int
+    summary: str
+    entry_date: date | None
+    vendor_name: str | None
+    total_amount: Decimal | None
+    gst_amount: Decimal | None
+    currency_code: str
+    recommended_description: str
+    recommended_reference: str | None
+    confidence_summary: str | None
+    warning_text: str | None
+    accepted_journal_entry_id: UUID | None
+    documents: list[JournalRecommendationRunDocumentRead] = []
+    lines: list[JournalRecommendationLineRead] = []
+    created_at: datetime
+    updated_at: datetime
+
+
 class JournalRecommendationSearchSourceRead(BaseModel):
     title: str | None = None
     url: str
@@ -824,8 +851,13 @@ class JournalRecommendationSearchSourceRead(BaseModel):
 class JournalRecommendationDetailRead(JournalRecommendationRunRead):
     documents: list[JournalRecommendationRunDocumentRead]
     lines: list[JournalRecommendationLineRead]
+    entries: list[JournalRecommendationEntryRead] = []
     proposals: list[JournalRecommendationProposalRead]
     search_sources: list[JournalRecommendationSearchSourceRead] = []
+
+
+class JournalRecommendationAcceptRead(BaseModel):
+    journals: list[JournalEntryRead]
 
 
 class BankAccountRead(ORMModel):

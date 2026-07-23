@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db, require_company_permission
@@ -12,7 +12,7 @@ from app.db.models.accounting import Account, AccountingPeriod, JournalEntry, Jo
 from app.db.models.auth import User
 from app.db.models.documents import Document, DocumentLink
 from app.db.models.enums import DocumentLinkEntityType, EntityType, JournalSourceType, JournalStatus, WorkflowStatus
-from app.db.models.journal_recommendations import JournalRecommendationRun
+from app.db.models.journal_recommendations import JournalRecommendationEntry, JournalRecommendationRun
 from app.schemas.common import JournalEntryRead, JournalEvidenceRead, TrialBalanceRow
 from app.schemas.requests import JournalEntryCreate, JournalEntryUpdate, JournalEvidenceLinkCreate
 
@@ -227,15 +227,30 @@ def delete_journal(
     )
 
     # Keep recommendation history while allowing accepted draft journals to be deleted.
+    recommendation_entry_run_ids = select(JournalRecommendationEntry.recommendation_run_id).where(
+        JournalRecommendationEntry.accepted_journal_entry_id == journal.id
+    )
     recommendation_runs = list(
         db.scalars(
             select(JournalRecommendationRun).where(
                 JournalRecommendationRun.company_id == company_id,
-                (JournalRecommendationRun.accepted_journal_entry_id == journal.id)
-                | (JournalRecommendationRun.target_journal_entry_id == journal.id),
+                (
+                    (JournalRecommendationRun.accepted_journal_entry_id == journal.id)
+                    | (JournalRecommendationRun.target_journal_entry_id == journal.id)
+                    | JournalRecommendationRun.id.in_(recommendation_entry_run_ids)
+                ),
             )
         ).all()
     )
+    recommendation_entries = list(
+        db.scalars(
+            select(JournalRecommendationEntry).where(
+                JournalRecommendationEntry.accepted_journal_entry_id == journal.id
+            )
+        ).all()
+    )
+    for entry in recommendation_entries:
+        entry.accepted_journal_entry_id = None
     for run in recommendation_runs:
         if run.accepted_journal_entry_id == journal.id:
             run.accepted_journal_entry_id = None

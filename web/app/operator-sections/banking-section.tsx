@@ -211,7 +211,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
         return left.amountGap - right.amountGap || right.tokenHits - left.tokenHits || left.dateGap - right.dateGap;
       })
       .slice(0, 24);
-  }, [journals, reconciliationMatchJournalId, selectedReconciliationItem?.bank_row, selectedReconciliationItem?.matched_journal_entry_id]);
+  }, [journals, reconciliationMatchJournalId, selectedReconciliationItem]);
 
   const activeComparisonJournal = selectedCandidateJournal ?? null;
   const selectedMatchedJournalSummary = selectedReconciliationItem?.matched_journal_entry ?? null;

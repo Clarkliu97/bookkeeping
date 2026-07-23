@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -83,7 +83,7 @@ class DepreciationRun(PrimaryKeyMixin, TimestampMixin, Base):
     journal_entry_id: Mapped[str | None] = mapped_column(ForeignKey("journal_entries.id"))
     generated_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     posted_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
-    posted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text)
 
     lines: Mapped[list["DepreciationRunLine"]] = relationship(

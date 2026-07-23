@@ -15,6 +15,8 @@ from app.db.models.employment import (
     EmploymentWorkRightsRecord,
 )
 from app.db.models.journal_recommendations import (
+    JournalRecommendationEntry,
+    JournalRecommendationEntryDocument,
     JournalRecommendationLine,
     JournalRecommendationProposal,
     JournalRecommendationRun,
@@ -61,6 +63,8 @@ __all__ = [
     "FixedAsset",
     "FixedAssetStatusHistory",
     "JournalEntry",
+    "JournalRecommendationEntry",
+    "JournalRecommendationEntryDocument",
     "JournalRecommendationLine",
     "JournalRecommendationProposal",
     "JournalRecommendationRun",

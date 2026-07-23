@@ -56,7 +56,7 @@ class ObservabilityStore:
         now = datetime.now(timezone.utc)
         with self._lock:
             last_sent = self._last_alert_times.get(code)
-            if last_sent and (now - last_sent) < timedelta(seconds=settings.alert_cooldown_seconds):
+            if last_sent and (now - last_sent) < timedelta(seconds=settings.alert_min_interval_seconds):
                 return
             payload = {
                 "code": code,
@@ -88,7 +88,7 @@ class ObservabilityStore:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=settings.healthcheck_timeout_seconds):
+            with urlopen(request, timeout=settings.alert_webhook_timeout_seconds):
                 return
         except URLError:
             logger.exception(

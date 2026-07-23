@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.audit.service import log_audit_event
@@ -405,13 +405,6 @@ def create_depreciation_run(db: Session, *, company_id: UUID, payload, generated
     period = _load_period_or_raise(db, company_id, payload.accounting_period_id)
     if payload.start_date < period.start_date or payload.end_date > period.end_date:
         raise ValueError("Depreciation run range must fall within the accounting period")
-    assets = list(
-        db.scalars(
-            select(FixedAsset)
-            .where(FixedAsset.company_id == company_id)
-            .order_by(FixedAsset.asset_code.asc())
-        ).all()
-    )
     depreciation_run = DepreciationRun(
         company_id=company_id,
         accounting_period_id=payload.accounting_period_id,

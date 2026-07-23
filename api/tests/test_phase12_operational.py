@@ -1,4 +1,10 @@
+import logging
+from pathlib import Path
+
 import app.documents.service as document_service
+import app.core.observability as observability_module
+from app.core.config import API_DIRECTORY, DEFAULT_ENV_FILES, REPOSITORY_DIRECTORY, Settings
+from app.core.observability import ObservabilityStore
 from app.core.text_repair import repair_windows_mojibake
 from app.main import observability_store
 
@@ -50,6 +56,57 @@ def test_degraded_readiness_records_alert(client, monkeypatch):
     assert payload["items"][0]["severity"] == "warning"
 
 
+def test_alert_configuration_uses_documented_names_and_webhook_timeout(monkeypatch):
+    monkeypatch.setenv("API_ALERT_MIN_INTERVAL_SECONDS", "17")
+    monkeypatch.setenv("API_ALERT_WEBHOOK_TIMEOUT_SECONDS", "4.5")
+    settings = Settings(_env_file=None)
+
+    assert settings.alert_min_interval_seconds == 17
+    assert settings.alert_webhook_timeout_seconds == 4.5
+
+    observed_timeouts: list[float] = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    def fake_urlopen(request, timeout):
+        observed_timeouts.append(timeout)
+        return FakeResponse()
+
+    settings.alert_webhook_url = "https://alerts.example.test/hook"
+    monkeypatch.setattr(observability_module, "urlopen", fake_urlopen)
+    store = ObservabilityStore()
+    store.emit_alert(
+        code="test_alert",
+        severity="warning",
+        message="Test alert",
+        details={},
+        settings=settings,
+        logger=logging.getLogger("test.observability"),
+    )
+
+    assert observed_timeouts == [4.5]
+
+
+def test_alert_configuration_accepts_legacy_cooldown_name(monkeypatch):
+    monkeypatch.delenv("API_ALERT_MIN_INTERVAL_SECONDS", raising=False)
+    monkeypatch.setenv("API_ALERT_COOLDOWN_SECONDS", "23")
+
+    assert Settings(_env_file=None).alert_min_interval_seconds == 23
+
+
+def test_default_environment_files_cover_repository_and_api_directories():
+    assert DEFAULT_ENV_FILES == (
+        REPOSITORY_DIRECTORY / ".env",
+        API_DIRECTORY / ".env",
+    )
+    assert all(isinstance(path, Path) for path in DEFAULT_ENV_FILES)
+
+
 def test_lan_origin_receives_cors_headers(client):
     origin = "http://192.168.1.100:3000"
 
@@ -88,7 +145,9 @@ def test_repair_windows_mojibake_repairs_legacy_windows_transfer_sequences():
 def test_resolve_document_path_supports_legacy_windows_style_restore(tmp_path, monkeypatch):
     storage_root = tmp_path / "documents"
     storage_root.mkdir(parents=True, exist_ok=True)
-    legacy_path = storage_root / "ae38ffe8-6624-45ab-aa94-5aca05a7d12d\\52e06205-7e59-4e0d-9b12-f0c94c9298aa.pdf"
+    legacy_relative_path = "ae38ffe8-6624-45ab-aa94-5aca05a7d12d\\52e06205-7e59-4e0d-9b12-f0c94c9298aa.pdf"
+    legacy_path = storage_root / legacy_relative_path
+    legacy_path.parent.mkdir(parents=True, exist_ok=True)
     legacy_path.write_bytes(b"%PDF-1.4 legacy")
 
     monkeypatch.setattr(document_service, "document_storage_root", lambda: storage_root)

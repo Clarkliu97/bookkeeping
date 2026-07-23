@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatDateTime, formatMoney, type GeneralLedgerReport, type OperatorState } from "../operator-state";
@@ -117,12 +116,16 @@ type JournalRecommendationModel = {
   label: string;
   provider: string;
   supports_vision: boolean;
+  reasoning_effort: string | null;
   input_cost_per_million_tokens_usd: string;
   output_cost_per_million_tokens_usd: string;
   estimated_cost_per_1000_calls_usd: string;
   estimated_input_tokens_per_call: number;
   estimated_output_tokens_per_call: number;
   pricing_note: string;
+  max_file_count: number;
+  max_file_size_bytes: number;
+  max_total_size_bytes: number;
 };
 
 
@@ -153,6 +156,25 @@ type JournalRecommendationLine = {
 };
 
 
+type JournalRecommendationEntry = {
+  id: string;
+  sequence_number: number;
+  summary: string;
+  entry_date: string | null;
+  vendor_name: string | null;
+  total_amount: string | null;
+  gst_amount: string | null;
+  currency_code: string;
+  recommended_description: string;
+  recommended_reference: string | null;
+  confidence_summary: string | null;
+  warning_text: string | null;
+  accepted_journal_entry_id: string | null;
+  documents: JournalRecommendationDocument[];
+  lines: JournalRecommendationLine[];
+};
+
+
 type JournalRecommendationProposal = {
   id: string;
   proposal_type: string;
@@ -177,6 +199,7 @@ type JournalRecommendationDetail = {
   provider_name: string;
   provider_model: string;
   user_context_note: string | null;
+  analysis_mode: "single" | "multiple";
   extracted_entry_date: string | null;
   target_accounting_period_id: string | null;
   accepted_journal_entry_id: string | null;
@@ -186,8 +209,14 @@ type JournalRecommendationDetail = {
   failure_reason: string | null;
   documents: JournalRecommendationDocument[];
   lines: JournalRecommendationLine[];
+  entries: JournalRecommendationEntry[];
   proposals: JournalRecommendationProposal[];
   search_sources: JournalRecommendationSearchSource[];
+};
+
+
+type JournalRecommendationAcceptResult = {
+  journals: Array<{ id: string; entry_number: string }>;
 };
 
 
@@ -252,10 +281,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     periodOptionList,
     accounts,
     accountOptionList,
-    activeAccountOptionList,
     taxCodes,
-    taxCodeOptionList,
-    activeTaxCodeOptionList,
     documents,
     selectedDocumentId,
     setSelectedDocumentId,
@@ -291,6 +317,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const [ledgerStatusFilter, setLedgerStatusFilter] = useState("");
   const [recommendationModels, setRecommendationModels] = useState<JournalRecommendationModel[]>([]);
   const [recommendationModelId, setRecommendationModelId] = useState("gpt-5.4-mini");
+  const [recommendationUploadMode, setRecommendationUploadMode] = useState<"single" | "multiple">("single");
   const [recommendationFiles, setRecommendationFiles] = useState<File[]>([]);
   const [recommendationNote, setRecommendationNote] = useState("");
   const [recommendationTargetPeriodId, setRecommendationTargetPeriodId] = useState("");
@@ -721,6 +748,31 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     () => recommendationModels.find((item) => item.id === recommendationModelId) ?? null,
     [recommendationModelId, recommendationModels],
   );
+  const recommendationFileLimit = selectedRecommendationModel?.max_file_count ?? 50;
+  const recommendationTotalSizeLimit = selectedRecommendationModel?.max_total_size_bytes ?? 100 * 1024 * 1024;
+  const recommendationSelectedBytes = recommendationFiles.reduce((total, file) => total + file.size, 0);
+  const recommendationEntries: JournalRecommendationEntry[] = recommendationResult?.entries?.length
+    ? recommendationResult.entries
+    : recommendationResult
+      ? [{
+          id: `${recommendationResult.id}-legacy-entry`,
+          sequence_number: 1,
+          summary: recommendationResult.analysis_summary || "Journal recommendation",
+          entry_date: recommendationResult.extracted_entry_date,
+          vendor_name: null,
+          total_amount: null,
+          gst_amount: null,
+          currency_code: "AUD",
+          recommended_description: recommendationResult.analysis_summary || "AI-assisted journal draft",
+          recommended_reference: null,
+          confidence_summary: recommendationResult.confidence_summary,
+          warning_text: recommendationResult.warning_text,
+          accepted_journal_entry_id: recommendationResult.accepted_journal_entry_id,
+          documents: recommendationResult.documents,
+          lines: recommendationResult.lines,
+        }]
+      : [];
+  const recommendationLineCount = recommendationEntries.reduce((total, entry) => total + entry.lines.length, 0);
   const journalById = useMemo(() => new Map(journals.map((item) => [item.id, item])), [journals]);
   const expandedJournal = expandedJournalId ? journalById.get(expandedJournalId) ?? null : null;
   const ledgerPreviewJournal = ledgerPreviewJournalId ? journalById.get(ledgerPreviewJournalId) ?? null : null;
@@ -1172,11 +1224,11 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           <div className="stacked-cards">
             <div className="mini-card">
               <h3>Analyze invoices or receipts</h3>
-              <p className="summary-line">Upload one or more files for the same transaction bundle, add optional context, and generate a review-only journal draft recommendation.</p>
+              <p className="summary-line">Analyze one document or upload as many as {recommendationFileLimit}. Multiple-file analysis groups evidence by transaction, can reuse a statement across several journals, and can recommend separate accrual and clearance entries when the configured reporting basis and document dates support them.</p>
               <div className="form-grid two-up">
                 <Field label="ChatGPT model">
                   <select value={recommendationModelId} disabled={isRecommendationProcessing} onChange={(event) => setRecommendationModelId(event.target.value)}>
-                    {recommendationModels.map((item) => <option key={item.id} value={item.id}>{item.label} · est. ${item.estimated_cost_per_1000_calls_usd}/1,000 calls</option>)}
+                    {recommendationModels.map((item) => <option key={item.id} value={item.id}>{item.label}{item.reasoning_effort ? ` · ${item.reasoning_effort} reasoning` : ""} · est. ${item.estimated_cost_per_1000_calls_usd}/1,000 calls</option>)}
                   </select>
                 </Field>
                 <Field label="Target accounting period">
@@ -1185,27 +1237,77 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                     {periodOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </Field>
-                <Field label="Transaction context" wide>
-                  <textarea rows={4} value={recommendationNote} disabled={isRecommendationProcessing} onChange={(event) => setRecommendationNote(event.target.value)} placeholder="Optional details for the model, for example: paid immediately from the operating bank and relates to office stationery." />
+                <Field label="Upload mode">
+                  <select value={recommendationUploadMode} disabled={isRecommendationProcessing} onChange={(event) => {
+                    setRecommendationUploadMode(event.target.value as "single" | "multiple");
+                    setRecommendationFiles([]);
+                    setRecommendationResult(null);
+                    setRecommendationUploadKey((current) => current + 1);
+                  }}>
+                    <option value="single">Single file · one journal</option>
+                    <option value="multiple">Multiple files · one or more journals</option>
+                  </select>
                 </Field>
-                <Field label="Files" wide>
-                  <input key={recommendationUploadKey} type="file" multiple accept=".pdf,image/png,image/jpeg,image/webp,image/gif" disabled={isRecommendationProcessing} onChange={(event) => setRecommendationFiles(Array.from(event.target.files ?? []))} />
+                <Field label="Transaction context" wide>
+                  <textarea rows={4} value={recommendationNote} disabled={isRecommendationProcessing} onChange={(event) => setRecommendationNote(event.target.value)} placeholder="Optional grouping or payment context, for example: file 1 is an invoice; file 2 is a monthly bank statement that may support several payments." />
+                </Field>
+                <Field label={recommendationUploadMode === "single" ? "File" : `Files (up to ${recommendationFileLimit})`} wide>
+                  <input
+                    key={recommendationUploadKey}
+                    type="file"
+                    multiple={recommendationUploadMode === "multiple"}
+                    accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
+                    disabled={isRecommendationProcessing}
+                    onChange={(event) => {
+                      const incomingFiles = Array.from(event.target.files ?? []);
+                      const nextFiles = recommendationUploadMode === "single"
+                        ? incomingFiles.slice(0, 1)
+                        : Array.from(
+                            new Map(
+                              [...recommendationFiles, ...incomingFiles].map((file) => [
+                                `${file.name}:${file.size}:${file.lastModified}`,
+                                file,
+                              ]),
+                            ).values(),
+                          );
+                      const oversizedFile = nextFiles.find((file) => file.size > (selectedRecommendationModel?.max_file_size_bytes ?? 10 * 1024 * 1024));
+                      if (oversizedFile) {
+                        showMessage("error", `${oversizedFile.name} exceeds the per-file upload limit.`);
+                        return;
+                      }
+                      if (nextFiles.length > recommendationFileLimit) {
+                        showMessage("error", `Select at most ${recommendationFileLimit} files.`);
+                        return;
+                      }
+                      if (nextFiles.reduce((total, file) => total + file.size, 0) > recommendationTotalSizeLimit) {
+                        showMessage("error", `Selected files exceed the ${formatFileSize(recommendationTotalSizeLimit)} batch limit.`);
+                        return;
+                      }
+                      setRecommendationFiles(nextFiles);
+                    }}
+                  />
                 </Field>
               </div>
-              {selectedRecommendationModel ? <p className="summary-line">{selectedRecommendationModel.label} is estimated at ${selectedRecommendationModel.estimated_cost_per_1000_calls_usd} per 1,000 calls. {selectedRecommendationModel.pricing_note}</p> : null}
+              {selectedRecommendationModel ? <p className="summary-line">{selectedRecommendationModel.label} {selectedRecommendationModel.reasoning_effort ? `uses ${selectedRecommendationModel.reasoning_effort} reasoning and ` : ""}is estimated at ${selectedRecommendationModel.estimated_cost_per_1000_calls_usd} per 1,000 calls. {selectedRecommendationModel.pricing_note}</p> : null}
               {recommendationFiles.length > 0 ? (
                 <div className="table-shell compact-table-shell evidence-table-shell">
                   <table className="data-table">
-                    <thead><tr><th>Selected file</th><th>Size</th></tr></thead>
+                    <thead><tr><th>#</th><th>Selected file</th><th>Size</th><th>Action</th></tr></thead>
                     <tbody>
-                      {recommendationFiles.map((file) => (
+                      {recommendationFiles.map((file, index) => (
                         <tr key={`${file.name}-${file.size}`} className="row-static">
+                          <td>{index + 1}</td>
                           <td>{file.name}<div className="table-meta">{file.type || "Unknown type"}</div></td>
                           <td>{formatFileSize(file.size)}</td>
+                          <td><button className="button-link button-link-small button-link-secondary" type="button" disabled={isRecommendationProcessing} onClick={() => {
+                            setRecommendationFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+                            setRecommendationUploadKey((current) => current + 1);
+                          }}>Remove</button></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  <p className="summary-line">{recommendationFiles.length} file{recommendationFiles.length === 1 ? "" : "s"} selected · {formatFileSize(recommendationSelectedBytes)} total. File numbers are preserved in the AI grouping result.</p>
                 </div>
               ) : null}
               <div className="request-actions">
@@ -1216,9 +1318,16 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                   if (recommendationFiles.length === 0) {
                     throw new Error("Upload at least one invoice or receipt before analysis.");
                   }
+                  if (recommendationUploadMode === "single" && recommendationFiles.length !== 1) {
+                    throw new Error("Single-file mode requires exactly one file.");
+                  }
+                  if (recommendationFiles.length > recommendationFileLimit) {
+                    throw new Error(`Upload at most ${recommendationFileLimit} files.`);
+                  }
                   const formData = new FormData();
                   recommendationFiles.forEach((file) => formData.append("files", file));
                   formData.append("model", recommendationModelId || "gpt-5.4-mini");
+                  formData.append("analysis_mode", recommendationUploadMode);
                   if (recommendationNote.trim()) {
                     formData.append("user_context_note", recommendationNote.trim());
                   }
@@ -1229,8 +1338,9 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                   const analyzedRun = await request<JournalRecommendationDetail>(`/api/companies/${selectedCompanyId}/journal-recommendations/${createdRun.id}/analyze`, "POST");
                   setRecommendationResult(analyzedRun);
                   setAcceptedProposalIds([]);
-                  showMessage("success", "Generated a review-only journal recommendation.");
-                })}>{isRecommendationProcessing ? "Analyzing..." : "Analyze bundle"}</button>
+                  const journalCount = analyzedRun.entries?.length || 1;
+                  showMessage("success", `Generated ${journalCount} review-only journal recommendation${journalCount === 1 ? "" : "s"}.`);
+                })}>{isRecommendationProcessing ? "Analyzing..." : recommendationUploadMode === "single" ? "Analyze file" : "Analyze files"}</button>
                 <button className="button-link button-link-small button-link-secondary" type="button" disabled={isRecommendationProcessing} onClick={() => {
                   setRecommendationFiles([]);
                   setRecommendationNote("");
@@ -1246,7 +1356,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
             <div className="mini-card">
               <div className="mini-card-heading">
                 <h3>Recommendation review</h3>
-                <span className="pill">{recommendationResult ? recommendationResult.lines.length : 0} lines</span>
+                <span className="pill">{recommendationEntries.length} journal{recommendationEntries.length === 1 ? "" : "s"} · {recommendationLineCount} lines</span>
               </div>
               {!recommendationResult ? <p className="summary-line">No recommendation yet. Upload supporting files and analyze them to generate a draft journal recommendation.</p> : null}
               {recommendationResult ? (
@@ -1254,7 +1364,8 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                   <div className="summary-grid two-up">
                     <div><strong>Status</strong><div><StatusPill value={recommendationResult.status} /></div></div>
                     <div><strong>Model</strong><div>{recommendationResult.provider_model}</div></div>
-                    <div><strong>Transaction date</strong><div>{recommendationResult.extracted_entry_date || "Not extracted"}</div></div>
+                    <div><strong>Analysis mode</strong><div>{recommendationResult.analysis_mode || recommendationUploadMode}</div></div>
+                    <div><strong>Recommended journals</strong><div>{recommendationEntries.length}</div></div>
                     <div><strong>Summary</strong><div>{recommendationResult.analysis_summary || "-"}</div></div>
                     <div><strong>Confidence</strong><div>{recommendationResult.confidence_summary || "-"}</div></div>
                   </div>
@@ -1278,10 +1389,11 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                   {recommendationResult.documents.length > 0 ? (
                     <div className="table-shell compact-table-shell evidence-table-shell">
                       <table className="data-table">
-                        <thead><tr><th>Evidence</th><th>Attached</th></tr></thead>
+                        <thead><tr><th>#</th><th>Evidence</th><th>Attached</th></tr></thead>
                         <tbody>
                           {recommendationResult.documents.map((item) => (
                             <tr key={item.id} className="row-static">
+                              <td>{item.display_order}</td>
                               <td>{item.original_filename}<div className="table-meta">{item.media_type ?? "Unknown type"} · {formatFileSize(item.byte_size)}</div></td>
                               <td>{formatDateTime(item.created_at)}</td>
                             </tr>
@@ -1290,22 +1402,42 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                       </table>
                     </div>
                   ) : null}
-                  <div className="table-shell compact-table-shell evidence-table-shell">
-                    <table className="data-table">
-                      <thead><tr><th>Line</th><th>Account</th><th>Tax</th><th>Reporting</th><th>Debit</th><th>Credit</th></tr></thead>
-                      <tbody>
-                        {recommendationResult.lines.map((line) => (
-                          <tr key={line.id} className="row-static">
-                            <td>{line.line_number}<div className="table-meta">{line.description || line.explanation || "No line note"}</div></td>
-                            <td>{line.suggested_account_id ? accountLabelById.get(line.suggested_account_id) ?? line.suggested_account_code ?? "-" : line.suggested_account_code ?? "-"}</td>
-                            <td>{line.suggested_tax_code_id ? taxCodeLabelById.get(line.suggested_tax_code_id) ?? line.suggested_tax_code_code ?? "-" : line.suggested_tax_code_code ?? "-"}</td>
-                            <td>{line.suggested_reporting_category_id ? categoryNameById.get(line.suggested_reporting_category_id) ?? line.suggested_reporting_category_code ?? "-" : line.suggested_reporting_category_code ?? "-"}</td>
-                            <td>{formatMoney(line.debit_amount)}</td>
-                            <td>{formatMoney(line.credit_amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="stacked-cards">
+                    {recommendationEntries.map((entry) => (
+                      <section className="mini-card" key={entry.id} data-testid={`recommendation-entry-${entry.sequence_number}`}>
+                        <div className="mini-card-heading">
+                          <h4>Journal {entry.sequence_number}: {entry.recommended_description}</h4>
+                          <span className="pill">{entry.lines.length} lines</span>
+                        </div>
+                        <div className="summary-grid two-up">
+                          <div><strong>Transaction date</strong><div>{entry.entry_date || "Not extracted"}</div></div>
+                          <div><strong>Reference</strong><div>{entry.recommended_reference || "-"}</div></div>
+                          <div><strong>Vendor</strong><div>{entry.vendor_name || "-"}</div></div>
+                          <div><strong>Total</strong><div>{entry.total_amount ? `${entry.currency_code} ${formatMoney(entry.total_amount)}` : "-"}</div></div>
+                          <div><strong>Summary</strong><div>{entry.summary}</div></div>
+                          <div><strong>Confidence</strong><div>{entry.confidence_summary || "-"}</div></div>
+                        </div>
+                        <p className="summary-line">Evidence: {entry.documents.length > 0 ? entry.documents.map((document) => `#${document.display_order} ${document.original_filename}`).join(", ") : "No files assigned"}</p>
+                        {entry.warning_text ? <p className="summary-line">Warning: {entry.warning_text}</p> : null}
+                        <div className="table-shell compact-table-shell evidence-table-shell">
+                          <table className="data-table">
+                            <thead><tr><th>Line</th><th>Account</th><th>Tax</th><th>Reporting</th><th>Debit</th><th>Credit</th></tr></thead>
+                            <tbody>
+                              {entry.lines.map((line) => (
+                                <tr key={line.id} className="row-static">
+                                  <td>{line.line_number}<div className="table-meta">{line.description || line.explanation || "No line note"}</div></td>
+                                  <td>{line.suggested_account_id ? accountLabelById.get(line.suggested_account_id) ?? line.suggested_account_code ?? "-" : line.suggested_account_code ?? "-"}</td>
+                                  <td>{line.suggested_tax_code_id ? taxCodeLabelById.get(line.suggested_tax_code_id) ?? line.suggested_tax_code_code ?? "-" : line.suggested_tax_code_code ?? "-"}</td>
+                                  <td>{line.suggested_reporting_category_id ? categoryNameById.get(line.suggested_reporting_category_id) ?? line.suggested_reporting_category_code ?? "-" : line.suggested_reporting_category_code ?? "-"}</td>
+                                  <td>{formatMoney(line.debit_amount)}</td>
+                                  <td>{formatMoney(line.credit_amount)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    ))}
                   </div>
                   {recommendationResult.proposals.length > 0 ? (
                     <div className="table-shell compact-table-shell evidence-table-shell">
@@ -1325,16 +1457,20 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                     </div>
                   ) : null}
                   <div className="request-actions">
-                    <button className="button-link button-link-small" type="button" onClick={() => runAction("Creating recommended draft", async () => {
+                    <button className="button-link button-link-small" type="button" disabled={recommendationResult.status !== "review_ready"} onClick={() => runAction("Creating recommended drafts", async () => {
                       if (!selectedCompanyId || !recommendationResult) {
                         throw new Error("Generate a recommendation before creating a draft journal.");
                       }
-                      const journal = await request<{ id: string; entry_number: string }>(`/api/companies/${selectedCompanyId}/journal-recommendations/${recommendationResult.id}/accept`, "POST", { accepted_proposal_ids: acceptedProposalIds });
+                      const accepted = await request<JournalRecommendationAcceptResult | { id: string; entry_number: string }>(`/api/companies/${selectedCompanyId}/journal-recommendations/${recommendationResult.id}/accept`, "POST", { accepted_proposal_ids: acceptedProposalIds });
+                      const acceptedJournals = "journals" in accepted ? accepted.journals : [accepted];
                       await refreshAll();
-                      setSelectedJournalId(journal.id);
-                      await loadJournalEvidence(journal.id);
-                      showMessage("success", `Created draft journal ${journal.entry_number} from the recommendation.`);
-                    })}>Create draft journal</button>
+                      const firstJournal = acceptedJournals[0];
+                      if (firstJournal) {
+                        setSelectedJournalId(firstJournal.id);
+                        await loadJournalEvidence(firstJournal.id);
+                      }
+                      showMessage("success", `Created ${acceptedJournals.length} draft journal${acceptedJournals.length === 1 ? "" : "s"}: ${acceptedJournals.map((journal) => journal.entry_number).join(", ")}.`);
+                    })}>Create {recommendationEntries.length} draft journal{recommendationEntries.length === 1 ? "" : "s"}</button>
                     <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Rejecting recommendation", async () => {
                       if (!selectedCompanyId || !recommendationResult) {
                         throw new Error("No recommendation selected to reject.");

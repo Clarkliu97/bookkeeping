@@ -10,7 +10,6 @@ import {
   contextFieldGroups,
   defaultWorkbenchContext,
   type ActionConfig,
-  type CaptureSpec,
   type ContextKey,
   type WorkbenchContext,
   workbenchSections,

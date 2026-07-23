@@ -12,13 +12,14 @@ The implemented system currently supports:
 - chart of accounts, tax codes, and reporting categories
 - balanced journal entry drafting, posting, reversal, and audit history
 - source document upload, journal evidence linking, and document download
+- employment support records for workers, engagements, work rights, compensation, leave, reimbursements, and issued assets
 - bank CSV import staging, duplicate detection, confirmation, and reconciliation workflows
 - BAS period generation, BAS runs, adjustments, review notes, approvals, and exports
 - financial reporting including trial balance, profit and loss, balance sheet, and general ledger
 - fixed asset register maintenance, disposals, depreciation runs, and depreciation journal posting
 - annual company tax workpaper packs with adjustments, notes, exceptions, approvals, and exports
 - operational health, metrics, alerts, backup and restore guidance, and a browser diagnostics workbench
-- AI-assisted journal recommendation from uploaded invoice and receipt bundles, with human review before draft-journal creation
+- AI-assisted journal drafting in single-file or multi-file mode, with up to 50 invoices or receipts grouped into one or more review-only journal recommendations
 
 The project explicitly does not support:
 
@@ -62,13 +63,21 @@ The project explicitly does not support:
 - preview linked journal evidence inside Bookkeeping
 - open full evidence views for images and PDFs without leaving the review workflow
 
+### Employment Support
+
+- maintain worker and engagement records without providing payroll or STP lodgment
+- track work-rights reviews, evidence dates, restrictions, and upcoming review items
+- maintain compensation-support settings, leave-liability snapshots, reimbursements, and issued assets
+- review employment dashboard queues for onboarding, expiring work rights, missing evidence, and finalization work
+- export headcount, work-rights, leave-liability-support, and contractor-review CSV reports
+
 ### Banking And Reconciliation
 
 - maintain bank accounts
 - upload bank CSV files into staged import sessions
 - review staged rows and duplicate protection
 - confirm imports before reconciliation
-- create reconciliation sessions, match rows to journals, ignore items, and complete sessions
+- create reconciliation sessions, compare deterministically ordered statement rows with ranked posted-journal candidates, match or ignore items, and complete sessions
 
 ### BAS Support
 
@@ -148,11 +157,52 @@ Typical tasks:
 4. Search and filter journal lists.
 5. Attach or review journal evidence.
 6. Open the ledger explorer to inspect draft and posted journal lines.
-7. Upload invoice or receipt bundles for AI journal recommendation.
-8. Review the returned recommendation, assumptions, GST handling, extracted transaction date, and supporting sources.
-9. Accept the recommendation to create a draft journal, then review and post through the normal bookkeeping workflow.
+7. Choose `Single file` when one document should produce one journal, or `Multiple files` when a batch may contain several transactions.
+8. Upload up to 50 PDF or image files. In multiple-file mode, files can be added in more than one selection and removed individually before analysis.
+9. Review how the AI grouped the numbered source files. Several files can support one journal, and one source such as a monthly bank statement can support several journals, while unrelated transactions are returned as separate recommendations.
+10. Review every recommended journal independently, including its evidence, date, reference, assumptions, GST handling, balanced lines, and any verification sources.
+11. Accept the batch to create all recommended draft journals together, then review and post each draft through the normal bookkeeping workflow.
 
-The AI path is assistive only. It does not silently post entries, and accepted recommendations create draft journals for review.
+The AI path is assistive only. It does not silently post entries. The backend requires every uploaded file to be assigned to at least one recommendation, validates each recommendation as independently balanced double-entry, and links only the assigned evidence to each accepted draft. Batch acceptance is atomic: if any recommended journal cannot pass the normal account, tax-code, date, period, or balance controls, no journals from that batch are created.
+
+When more than one file is uploaded in multiple-file mode and the active company configuration uses the `accrual` reporting basis, the model receives an additional timing rule. If visible evidence shows a payment or bank-clearance date at least five calendar days after the invoice date, it should prefer an invoice-date recognition journal and a separate clearance-date journal when supportable. It must use visible dates, retain the relevant evidence on both entries, and avoid inventing or forcing the split when the documents are ambiguous.
+
+### AI Model Choices And Cost Planning
+
+The model selector is populated by the backend catalog. GPT-5.6 Sol, Terra, and Luna use explicit reasoning efforts of `high`, `medium`, and `low` respectively. OpenAI does not accept a `light` reasoning value, so Luna uses the supported low-effort setting. The configured effort and planning estimate are shown in the selector before analysis begins. See OpenAI's [GPT-5.6 model guidance](https://developers.openai.com/api/docs/guides/latest-model) and [model catalog](https://developers.openai.com/api/docs/models) for the provider contract and current rates.
+
+The estimates below use the current application baseline of 40,000 uncached input tokens and 3,500 total billed output tokens per moderate batch. Output includes any billed reasoning tokens. Rates and estimates are in USD and were reviewed against OpenAI's published model pricing on 2026-07-22.
+
+| Model | Configured reasoning | Input / 1M | Output / 1M | Estimated / 1,000 calls |
+| --- | --- | ---: | ---: | ---: |
+| GPT-5.6 Sol | high | $5.00 | $30.00 | $305.00 |
+| GPT-5.6 Terra | medium | $2.50 | $15.00 | $152.50 |
+| GPT-5.6 Luna | low | $1.00 | $6.00 | $61.00 |
+| GPT-5.5 | provider default | $5.00 | $30.00 | $305.00 |
+| GPT-5.4 | provider default | $2.50 | $15.00 | $152.50 |
+| GPT-5.4 mini | provider default | $0.75 | $4.50 | $45.75 |
+| GPT-5 | minimal | $1.25 | $10.00 | $85.00 |
+| GPT-5 mini | minimal | $0.25 | $2.00 | $17.00 |
+| GPT-5 nano | minimal | $0.05 | $0.40 | $3.40 |
+
+These are comparable planning baselines, not quotes. File count, extracted PDF text, image detail, number of journals, web-search calls, cache writes or hits, and actual reasoning-token use change the final charge. In particular, Sol at high reasoning can exceed the 3,500-output-token assumption on difficult batches. Provider usage is persisted so representative production runs can later replace the baseline with observed per-model averages.
+
+### Employment: `/employment`
+
+Use Employment for employment-support records that sit alongside bookkeeping but do not replace payroll, HR, migration, or legal systems.
+
+Typical tasks:
+
+1. Create workers and record one or more engagements.
+2. Track engagement status, dates, role, department, and work location.
+3. Record work-rights evidence, review status, restrictions, visa dates, and follow-up dates.
+4. Maintain compensation-support settings and account references.
+5. Capture leave-liability snapshots and reimbursement-support items.
+6. Track issued assets and return status.
+7. Review onboarding, work-rights, missing-document, and finalization queues.
+8. Run or export headcount, work-rights, leave-liability-support, and contractor-review reports.
+
+Worker-scoped records can only reference engagements belonging to that worker. Compensation account references must belong to the selected company.
 
 ### Banking: `/banking`
 
@@ -265,7 +315,7 @@ The Operations route exposes readiness, metrics, alerts, and recovery guidance f
 - testing: pytest for backend, Playwright for browser workflows
 - local orchestration: Docker Compose with `db`, `api`, `web`, and optional `e2e`
 
-The development web service runs `next dev --webpack` and mounts `.next` to a dedicated container volume to avoid Windows bind-mount cache issues.
+The development web service runs `next dev --webpack`. Compose keeps the web build cache, web dependencies, and E2E dependencies in dedicated named volumes so Linux container installs do not overwrite Windows host tooling through the repository bind mount.
 
 ## Getting Started
 
@@ -275,9 +325,9 @@ The development web service runs `next dev --webpack` and mounts `.next` to a de
 - Node.js 22+
 - Python 3.12+
 
-### Environment Setup
+### Docker Compose Environment Setup
 
-Copy `.env.example` to `.env`.
+Copy `.env.example` to `.env` in the repository root. This root file is the Docker Compose environment file. Its default `API_DATABASE_URL` uses the Compose service hostname `db` and is not suitable for an API process launched directly on the host.
 
 Important variables:
 
@@ -285,10 +335,16 @@ Important variables:
 - `API_SECRET_KEY`: JWT signing key
 - `OPENAI_API_KEY`: required only for AI journal recommendation analysis
 - `API_JOURNAL_AI_WEB_SEARCH_ENABLED`: enables optional web-search support for recommendation runs
+- `API_JOURNAL_AI_MAX_FILE_COUNT`: maximum files in one recommendation run; defaults to `50` and cannot exceed `50`
+- `API_JOURNAL_AI_MAX_FILE_SIZE_BYTES`: maximum size of each source file; defaults to `10485760` (10 MiB)
+- `API_JOURNAL_AI_MAX_TOTAL_SIZE_BYTES`: maximum combined batch size; defaults to `104857600` (100 MiB)
+- `API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS`: provider request timeout for a recommendation batch
 - `API_ALLOWED_ORIGINS` and `API_ALLOWED_ORIGIN_REGEX`: CORS configuration
 - `API_LOG_LEVEL` and `API_LOG_JSON`: backend logging behavior
 - `API_METRICS_ENABLED`: enable the metrics endpoint
 - `API_ALERT_WEBHOOK_URL`: optional degraded-readiness alert target
+- `API_ALERT_WEBHOOK_TIMEOUT_SECONDS`: webhook delivery timeout
+- `API_ALERT_MIN_INTERVAL_SECONDS`: minimum interval between alerts with the same code
 - `NEXT_PUBLIC_API_BASE_URL`: leave blank when the browser should use the current hostname and `NEXT_PUBLIC_API_PORT`
 - `NEXT_PUBLIC_API_PORT`: default API port used by the frontend
 - `NEXT_ALLOWED_DEV_ORIGINS`: extra Next.js development origins as a comma-separated list or a short LAN range such as `192.168.1.100-253`
@@ -316,6 +372,21 @@ The frontend can be reached from another device on the same LAN through the host
 
 ### Backend
 
+The API loads environment files in this order:
+
+1. repository-root `.env`
+2. `api/.env`, when present, as a local override
+3. process environment variables, which have the highest priority
+
+For a backend launched directly on the host, create `api/.env` with at least a host-reachable database URL. The document path below keeps standalone uploads in the repository-level `storage/` directory:
+
+```dotenv
+API_DATABASE_URL=postgresql+psycopg://bookkeeping:bookkeeping@localhost:5432/bookkeeping_tax
+API_DOCUMENT_STORAGE_PATH=../storage/documents
+```
+
+Then install, migrate, and run the API:
+
 ```bash
 cd api
 pip install -e .[dev]
@@ -332,6 +403,16 @@ python -m pytest tests/test_journal_recommendations.py
 
 ### Frontend
 
+When running the frontend separately, put frontend overrides in `web/.env.local`; Next.js does not load the repository-root Compose file automatically. Defaults work when the browser and API are on the same host and the API uses port `8000`.
+
+Example `web/.env.local`:
+
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=
+NEXT_PUBLIC_API_PORT=8000
+NEXT_ALLOWED_DEV_ORIGINS=192.168.1.100-253,web
+```
+
 ```bash
 cd web
 npm install
@@ -341,6 +422,8 @@ npm run dev
 Useful frontend validation commands:
 
 ```bash
+npm run lint
+npm run typecheck
 npm run build
 npm run test:e2e
 ```
@@ -383,7 +466,7 @@ Current follow-up areas still visible in the project include:
 
 - password reset and account recovery
 - template-management UI for seeded reference data
-- richer reconciliation assistance such as suggested matches or auto-created journals
+- server-side reconciliation suggestions and journal auto-creation beyond the current client-side candidate ranking
 - broader browser coverage for AI recommendation and evidence-heavy negative paths
 - performance testing for import-heavy and report-heavy workflows
 

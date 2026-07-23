@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Date, DateTime, Enum, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -31,6 +31,7 @@ class JournalRecommendationRun(PrimaryKeyMixin, TimestampMixin, Base):
     target_journal_entry_id: Mapped[str | None] = mapped_column(ForeignKey("journal_entries.id"))
     accepted_journal_entry_id: Mapped[str | None] = mapped_column(ForeignKey("journal_entries.id"))
     user_context_note: Mapped[str | None] = mapped_column(Text)
+    analysis_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="single")
     prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
     provider_name: Mapped[str] = mapped_column(String(64), nullable=False)
     provider_model: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -41,8 +42,8 @@ class JournalRecommendationRun(PrimaryKeyMixin, TimestampMixin, Base):
     normalized_result_json: Mapped[dict | None] = mapped_column(JSON)
     provider_usage_json: Mapped[dict | None] = mapped_column(JSON)
     failure_reason: Mapped[str | None] = mapped_column(Text)
-    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class JournalRecommendationRunDocument(PrimaryKeyMixin, TimestampMixin, Base):
@@ -64,13 +65,60 @@ class JournalRecommendationRunDocument(PrimaryKeyMixin, TimestampMixin, Base):
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
 
+class JournalRecommendationEntry(PrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "journal_recommendation_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "recommendation_run_id",
+            "sequence_number",
+            name="uq_journal_recommendation_entry_sequence",
+        ),
+    )
+
+    company_id: Mapped[str] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    recommendation_run_id: Mapped[str] = mapped_column(
+        ForeignKey("journal_recommendation_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sequence_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    summary: Mapped[str] = mapped_column(String(240), nullable=False)
+    entry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    vendor_name: Mapped[str | None] = mapped_column(String(160))
+    total_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    gst_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    currency_code: Mapped[str] = mapped_column(String(3), nullable=False, default="AUD")
+    recommended_description: Mapped[str] = mapped_column(String(240), nullable=False)
+    recommended_reference: Mapped[str | None] = mapped_column(String(128))
+    confidence_summary: Mapped[str | None] = mapped_column(String(240))
+    warning_text: Mapped[str | None] = mapped_column(String(300))
+    accepted_journal_entry_id: Mapped[str | None] = mapped_column(ForeignKey("journal_entries.id"))
+
+
+class JournalRecommendationEntryDocument(PrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "journal_recommendation_entry_documents"
+    __table_args__ = (
+        UniqueConstraint(
+            "recommendation_entry_id",
+            "document_id",
+            name="uq_journal_recommendation_entry_document",
+        ),
+    )
+
+    company_id: Mapped[str] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    recommendation_entry_id: Mapped[str] = mapped_column(
+        ForeignKey("journal_recommendation_entries.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+
+
 class JournalRecommendationLine(PrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "journal_recommendation_lines"
     __table_args__ = (
         UniqueConstraint(
-            "recommendation_run_id",
+            "recommendation_entry_id",
             "line_number",
-            name="uq_journal_recommendation_line_number",
+            name="uq_journal_recommendation_entry_line_number",
         ),
         CheckConstraint(
             "((debit_amount > 0 AND credit_amount = 0) OR (credit_amount > 0 AND debit_amount = 0))",
@@ -82,6 +130,10 @@ class JournalRecommendationLine(PrimaryKeyMixin, TimestampMixin, Base):
     recommendation_run_id: Mapped[str] = mapped_column(
         ForeignKey("journal_recommendation_runs.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    recommendation_entry_id: Mapped[str | None] = mapped_column(
+        ForeignKey("journal_recommendation_entries.id", ondelete="CASCADE"),
+        nullable=True,
     )
     line_number: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)

@@ -1,4 +1,4 @@
-const DEFAULT_ALLOWED_DEV_ORIGINS = "192.168.1.100-253";
+const DEFAULT_ALLOWED_DEV_ORIGINS = "192.168.1.100-253,web";
 
 function isValidOctet(value) {
   return Number.isInteger(value) && value >= 0 && value <= 255;

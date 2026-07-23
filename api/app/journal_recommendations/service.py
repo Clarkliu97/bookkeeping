@@ -8,12 +8,12 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from importlib import import_module
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, WithJsonSchema, model_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,8 @@ from app.db.models.enums import (
     JournalSourceType,
 )
 from app.db.models.journal_recommendations import (
+    JournalRecommendationEntry,
+    JournalRecommendationEntryDocument,
     JournalRecommendationLine,
     JournalRecommendationProposal,
     JournalRecommendationRun,
@@ -41,21 +43,28 @@ from app.ledger.router import _apply_journal_payload, _ensure_period_not_locked,
 from app.schemas.requests import JournalEntryCreate, JournalLineCreate
 
 
-PROMPT_VERSION = "journal-document-v5"
-PRICE_ESTIMATE_INPUT_TOKENS = 24000
-PRICE_ESTIMATE_OUTPUT_TOKENS = 1400
-RECOMMENDATION_MAX_OUTPUT_TOKENS = 5000
+PROMPT_VERSION = "journal-document-accrual-batch-v7"
+PRICE_ESTIMATE_INPUT_TOKENS = 40000
+PRICE_ESTIMATE_OUTPUT_TOKENS = 3500
+RECOMMENDATION_MAX_OUTPUT_TOKENS = 30000
 PRICE_ESTIMATE_NOTE = (
-    "Estimate assumes approximately 24,000 uncached text input tokens and 1,400 output tokens per run "
-    "after loading the expanded company reference-data pack with compact account context. Repeated runs "
-    "for unchanged company reference data may be lower when prompt caching is applied. The request allows "
-    "a higher output cap to avoid truncated structured JSON from smaller models, and the estimate now reflects "
-    "the expanded GST or bundle-separation instructions plus optional search-capable verification. Actual PDF, "
-    "image, and live web-search usage can still be materially higher because file inputs and provider tool calls "
-    "add tokenized content beyond this planning estimate."
+    "Planning estimate assumes approximately 40,000 uncached text or document-input tokens and 3,500 total billed "
+    "output tokens, including reasoning tokens, for a moderate batch. Actual cost scales with file count, page count, "
+    "image detail, reasoning effort, the number of recommended journals, and optional web-search calls. Stable company "
+    "reference data uses a reusable prompt cache key, so repeated runs may have lower cached-input cost."
 )
 SUPPORTED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
 SUPPORTED_FILE_TYPES = {"application/pdf", *SUPPORTED_IMAGE_TYPES}
+SUPPORTED_ANALYSIS_MODES = {"single", "multiple"}
+LlmDecimal = Annotated[Decimal, WithJsonSchema({"type": "number"})]
+MULTI_FILE_ACCRUAL_INSTRUCTION = (
+    "The company uses accrual reporting. When the evidence shows a payment or bank-clearance date at least five "
+    "calendar days after the invoice date, prefer accrual accounting when the documents support it: recommend an "
+    "invoice-date recognition entry against trade creditors or another suitable existing liability, then a separate "
+    "clearance-date entry that clears that liability against bank. Reuse the relevant invoice, remittance, and bank "
+    "statement document numbers on every entry they support. Use only visible dates, do not invent a timing gap, and "
+    "do not split the entries when the evidence is ambiguous."
+)
 
 
 @dataclass(frozen=True)
@@ -67,10 +76,37 @@ class ModelCatalogItem:
     supports_vision: bool = True
     supports_web_search: bool = False
     reasoning_effort: str | None = None
-    prompt_cache_retention: str = "in_memory"
+    prompt_cache_retention: str | None = "in_memory"
 
 
 MODEL_CATALOG: tuple[ModelCatalogItem, ...] = (
+    ModelCatalogItem(
+        id="gpt-5.6-sol",
+        label="GPT-5.6 Sol",
+        input_cost_per_million_tokens_usd=Decimal("5.00"),
+        output_cost_per_million_tokens_usd=Decimal("30.00"),
+        supports_web_search=True,
+        reasoning_effort="high",
+        prompt_cache_retention=None,
+    ),
+    ModelCatalogItem(
+        id="gpt-5.6-terra",
+        label="GPT-5.6 Terra",
+        input_cost_per_million_tokens_usd=Decimal("2.50"),
+        output_cost_per_million_tokens_usd=Decimal("15.00"),
+        supports_web_search=True,
+        reasoning_effort="medium",
+        prompt_cache_retention=None,
+    ),
+    ModelCatalogItem(
+        id="gpt-5.6-luna",
+        label="GPT-5.6 Luna",
+        input_cost_per_million_tokens_usd=Decimal("1.00"),
+        output_cost_per_million_tokens_usd=Decimal("6.00"),
+        supports_web_search=True,
+        reasoning_effort="low",
+        prompt_cache_retention=None,
+    ),
     ModelCatalogItem(
         id="gpt-5.5",
         label="GPT-5.5",
@@ -125,8 +161,8 @@ class LlmRecommendedLine(BaseModel):
     account_code: str
     tax_code_code: str | None
     reporting_category_code: str | None
-    debit_amount: Decimal
-    credit_amount: Decimal
+    debit_amount: LlmDecimal
+    credit_amount: LlmDecimal
 
 
 class LlmProposalAttributes(BaseModel):
@@ -137,7 +173,7 @@ class LlmProposalAttributes(BaseModel):
     default_tax_code_id: str | None = Field(default=None, max_length=64)
     allow_manual_posting: bool | None = None
     description: str | None = Field(default=None, max_length=240)
-    rate: Decimal | None = None
+    rate: LlmDecimal | None = None
     is_gst_applicable: bool | None = None
     bas_label: str | None = Field(default=None, max_length=32)
     input_output_type: str | None = Field(default=None, max_length=64)
@@ -154,9 +190,11 @@ class LlmReferenceProposal(BaseModel):
     suggested_attributes_json: LlmProposalAttributes | None
 
 
-class LlmRecommendation(BaseModel):
+class LlmJournalRecommendation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    sequence_number: int = Field(ge=1, le=50)
+    source_document_numbers: list[int] = Field(max_length=50)
     summary: str = Field(max_length=240)
     entry_date: date | None = Field(
         description=(
@@ -165,30 +203,85 @@ class LlmRecommendation(BaseModel):
         )
     )
     vendor_name: str | None = Field(default=None, max_length=160)
-    total_amount: Decimal | None
-    gst_amount: Decimal | None
+    total_amount: LlmDecimal | None
+    gst_amount: LlmDecimal | None
     currency_code: str
     recommended_description: str = Field(max_length=240)
     recommended_reference: str | None = Field(default=None, max_length=128)
     confidence_summary: str | None = Field(default=None, max_length=240)
     warning_text: str | None = Field(default=None, max_length=300)
     lines: list[LlmRecommendedLine] = Field(min_length=2, max_length=12)
+
+
+class LlmRecommendation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(max_length=240)
+    confidence_summary: str | None = Field(default=None, max_length=240)
+    warning_text: str | None = Field(default=None, max_length=300)
+    journal_entries: list[LlmJournalRecommendation] = Field(min_length=1, max_length=50)
     proposals: list[LlmReferenceProposal] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade_legacy_single_entry(cls, value: Any) -> Any:
+        """Keep internal tests and older provider fixtures readable during the v5-to-v6 transition."""
+        if not isinstance(value, dict) or "journal_entries" in value or "lines" not in value:
+            return value
+        upgraded = dict(value)
+        entry = {
+            "sequence_number": 1,
+            "source_document_numbers": [],
+            "summary": value.get("summary", "Journal recommendation"),
+            "entry_date": upgraded.pop("entry_date", None),
+            "vendor_name": upgraded.pop("vendor_name", None),
+            "total_amount": upgraded.pop("total_amount", None),
+            "gst_amount": upgraded.pop("gst_amount", None),
+            "currency_code": upgraded.pop("currency_code", "AUD"),
+            "recommended_description": upgraded.pop("recommended_description", "AI-assisted journal draft"),
+            "recommended_reference": upgraded.pop("recommended_reference", None),
+            "confidence_summary": value.get("confidence_summary"),
+            "warning_text": value.get("warning_text"),
+            "lines": upgraded.pop("lines"),
+        }
+        upgraded["journal_entries"] = [entry]
+        return upgraded
+
+    @property
+    def lines(self) -> list[LlmRecommendedLine]:
+        return self.journal_entries[0].lines
+
+    @property
+    def entry_date(self) -> date | None:
+        return self.journal_entries[0].entry_date
+
+    @property
+    def recommended_description(self) -> str:
+        return self.journal_entries[0].recommended_description
+
+    @property
+    def recommended_reference(self) -> str | None:
+        return self.journal_entries[0].recommended_reference
 
 
 def list_supported_models() -> list[dict[str, Any]]:
+    settings = get_settings()
     return [
         {
             "id": item.id,
             "label": item.label,
             "provider": "openai",
             "supports_vision": item.supports_vision,
+            "reasoning_effort": item.reasoning_effort,
             "input_cost_per_million_tokens_usd": item.input_cost_per_million_tokens_usd,
             "output_cost_per_million_tokens_usd": item.output_cost_per_million_tokens_usd,
             "estimated_cost_per_1000_calls_usd": estimate_cost_per_1000_calls(item),
             "estimated_input_tokens_per_call": PRICE_ESTIMATE_INPUT_TOKENS,
             "estimated_output_tokens_per_call": PRICE_ESTIMATE_OUTPUT_TOKENS,
             "pricing_note": PRICE_ESTIMATE_NOTE,
+            "max_file_count": settings.journal_ai_max_file_count,
+            "max_file_size_bytes": settings.journal_ai_max_file_size_bytes,
+            "max_total_size_bytes": settings.journal_ai_max_total_size_bytes,
         }
         for item in MODEL_CATALOG
     ]
@@ -238,6 +331,18 @@ def validate_new_files(files: list[tuple[str, str | None, int]]) -> None:
             )
 
 
+def validate_analysis_mode(analysis_mode: str, file_count: int) -> str:
+    normalized_mode = analysis_mode.strip().lower()
+    if normalized_mode not in SUPPORTED_ANALYSIS_MODES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Analysis mode must be single or multiple")
+    if normalized_mode == "single" and file_count != 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Single-file analysis requires exactly one uploaded file",
+        )
+    return normalized_mode
+
+
 def normalize_media_type(filename: str, media_type: str | None) -> str:
     if media_type:
         lowered = media_type.lower()
@@ -273,6 +378,31 @@ def build_run_detail(db: Session, company_id: UUID, run_id: UUID) -> dict[str, A
             .order_by(JournalRecommendationLine.line_number.asc())
         ).all()
     )
+    entries = list(
+        db.scalars(
+            select(JournalRecommendationEntry)
+            .where(JournalRecommendationEntry.recommendation_run_id == run.id)
+            .order_by(JournalRecommendationEntry.sequence_number.asc())
+        ).all()
+    )
+    entry_documents = db.execute(
+        select(JournalRecommendationEntryDocument, Document)
+        .join(Document, Document.id == JournalRecommendationEntryDocument.document_id)
+        .join(
+            JournalRecommendationEntry,
+            JournalRecommendationEntry.id == JournalRecommendationEntryDocument.recommendation_entry_id,
+        )
+        .join(
+            JournalRecommendationRunDocument,
+            (JournalRecommendationRunDocument.document_id == Document.id)
+            & (JournalRecommendationRunDocument.recommendation_run_id == run.id),
+        )
+        .where(JournalRecommendationEntry.recommendation_run_id == run.id)
+        .order_by(
+            JournalRecommendationEntry.sequence_number.asc(),
+            JournalRecommendationRunDocument.display_order.asc(),
+        )
+    ).all()
     proposals = list(
         db.scalars(
             select(JournalRecommendationProposal)
@@ -296,6 +426,33 @@ def build_run_detail(db: Session, company_id: UUID, run_id: UUID) -> dict[str, A
             for link, document in documents
         ],
         "lines": lines,
+        "entries": [
+            {
+                **{key: value for key, value in entry.__dict__.items() if key != "_sa_instance_state"},
+                "documents": [
+                    {
+                        "id": link.id,
+                        "document_id": document.id,
+                        "display_order": next(
+                            (
+                                run_link.display_order
+                                for run_link, run_document in documents
+                                if run_document.id == document.id
+                            ),
+                            0,
+                        ),
+                        "original_filename": document.original_filename,
+                        "media_type": document.media_type,
+                        "byte_size": document.byte_size,
+                        "created_at": document.created_at,
+                    }
+                    for link, document in entry_documents
+                    if link.recommendation_entry_id == entry.id
+                ],
+                "lines": [line for line in lines if line.recommendation_entry_id == entry.id],
+            }
+            for entry in entries
+        ],
         "proposals": proposals,
         "search_sources": _extract_search_sources(run),
     }
@@ -361,7 +518,7 @@ def analyze_run(db: Session, *, company_id: UUID, run_id: UUID) -> JournalRecomm
     try:
         documents = _load_run_documents(db, run.id)
         recommendation = _analyze_with_openai(db, run=run, documents=documents)
-        _persist_recommendation(db, run=run, recommendation=recommendation)
+        _persist_recommendation(db, run=run, recommendation=recommendation, documents=documents)
         run.status = JournalRecommendationStatus.REVIEW_READY
         run.analysis_summary = recommendation.summary
         run.confidence_summary = recommendation.confidence_summary
@@ -390,14 +547,31 @@ def accept_run(
     run_id: UUID,
     created_by_user_id: UUID,
     accepted_proposal_ids: list[UUID],
-) -> JournalEntry:
+) -> list[JournalEntry]:
     run = _load_run_or_404(db, company_id, run_id)
+    entries = list(
+        db.scalars(
+            select(JournalRecommendationEntry)
+            .where(JournalRecommendationEntry.recommendation_run_id == run.id)
+            .order_by(JournalRecommendationEntry.sequence_number.asc())
+        ).all()
+    )
+    if run.status == JournalRecommendationStatus.ACCEPTED:
+        accepted_journals = [
+            journal
+            for entry in entries
+            if entry.accepted_journal_entry_id
+            and (journal := db.get(JournalEntry, entry.accepted_journal_entry_id)) is not None
+        ]
+        if accepted_journals:
+            return accepted_journals
     if run.status != JournalRecommendationStatus.REVIEW_READY:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only review-ready recommendations can create draft journals")
-    if run.accepted_journal_entry_id is not None:
-        journal = db.get(JournalEntry, run.accepted_journal_entry_id)
-        if journal is not None:
-            return journal
+    if not entries:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This legacy recommendation has no journal groups; re-analyze it before acceptance",
+        )
 
     created_entity_map = _create_accepted_proposals(
         db,
@@ -405,26 +579,117 @@ def accept_run(
         run=run,
         accepted_proposal_ids=accepted_proposal_ids,
     )
-    lines = list(
-        db.scalars(
-            select(JournalRecommendationLine)
-            .where(JournalRecommendationLine.recommendation_run_id == run.id)
-            .order_by(JournalRecommendationLine.line_number.asc())
-        ).all()
-    )
-    if not lines:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Recommendation has no journal lines to accept")
-
-    entry_date_value = _extract_recommendation_entry_date(run, strict=True)
-    if entry_date_value is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "The recommendation did not include a document transaction date. Re-analyze with a readable "
-                "invoice or receipt date, add the date in the transaction context, or create the journal manually."
-            ),
+    journals: list[JournalEntry] = []
+    for entry in entries:
+        lines = list(
+            db.scalars(
+                select(JournalRecommendationLine)
+                .where(JournalRecommendationLine.recommendation_entry_id == entry.id)
+                .order_by(JournalRecommendationLine.line_number.asc())
+            ).all()
         )
+        if not lines:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Journal recommendation {entry.sequence_number} has no lines to accept",
+            )
+        if entry.entry_date is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Journal recommendation {entry.sequence_number} did not include a document transaction date. "
+                    "Re-analyze with readable dates, add date context, or create that journal manually."
+                ),
+            )
+        period_id = _resolve_recommendation_period_id(
+            db,
+            company_id=company_id,
+            entry_date_value=entry.entry_date,
+            fallback_period_id=run.target_accounting_period_id,
+        )
+        _ensure_period_not_locked(db, company_id, period_id)
 
+        payload = JournalEntryCreate(
+            entry_date=entry.entry_date,
+            accounting_period_id=period_id,
+            source_type=JournalSourceType.MANUAL.value,
+            description=entry.recommended_description,
+            reference=entry.recommended_reference,
+            lines=[
+                JournalLineCreate(
+                    account_id=_resolve_line_account_id(line, created_entity_map),
+                    description=line.description,
+                    debit_amount=line.debit_amount,
+                    credit_amount=line.credit_amount,
+                    tax_code_id=_resolve_line_tax_code_id(line, created_entity_map),
+                    reporting_category_id=_resolve_line_reporting_category_id(line, created_entity_map),
+                    source_document_reference=None,
+                )
+                for line in lines
+            ],
+        )
+        journal = JournalEntry(
+            company_id=company_id,
+            entry_number=_next_entry_number(db, company_id),
+            entry_date=payload.entry_date,
+            accounting_period_id=payload.accounting_period_id,
+            status=JournalStatus.DRAFT,
+            source_type=JournalSourceType(payload.source_type),
+            description=payload.description,
+            reference=payload.reference,
+            created_by_user_id=created_by_user_id,
+        )
+        _apply_journal_payload(journal, payload, replace_lines=False)
+        _validate_journal_lines(db, company_id, journal.lines)
+        db.add(journal)
+        db.flush()
+
+        entry_documents = list(
+            db.scalars(
+                select(Document)
+                .join(
+                    JournalRecommendationEntryDocument,
+                    JournalRecommendationEntryDocument.document_id == Document.id,
+                )
+                .join(
+                    JournalRecommendationRunDocument,
+                    (JournalRecommendationRunDocument.document_id == Document.id)
+                    & (JournalRecommendationRunDocument.recommendation_run_id == run.id),
+                )
+                .where(JournalRecommendationEntryDocument.recommendation_entry_id == entry.id)
+                .order_by(JournalRecommendationRunDocument.display_order.asc())
+            ).all()
+        )
+        for document_index, document in enumerate(entry_documents, start=1):
+            db.add(
+                DocumentLink(
+                    company_id=company_id,
+                    document_id=document.id,
+                    entity_type=DocumentLinkEntityType.JOURNAL_ENTRY,
+                    entity_id=str(journal.id),
+                    note=f"AI recommendation evidence #{document_index}",
+                    linked_by_user_id=created_by_user_id,
+                )
+            )
+        entry.accepted_journal_entry_id = journal.id
+        journals.append(journal)
+
+    run.status = JournalRecommendationStatus.ACCEPTED
+    run.accepted_journal_entry_id = journals[0].id
+    run.completed_at = datetime.now(timezone.utc)
+    db.commit()
+    for journal in journals:
+        db.refresh(journal)
+    return journals
+
+
+def _resolve_recommendation_period_id(
+    db: Session,
+    *,
+    company_id: UUID,
+    entry_date_value: date,
+    fallback_period_id: UUID | None,
+) -> UUID:
     period = db.scalar(
         select(AccountingPeriod).where(
             AccountingPeriod.company_id == company_id,
@@ -432,79 +697,22 @@ def accept_run(
             AccountingPeriod.end_date >= entry_date_value,
         )
     )
-    period_id = period.id if period is not None else run.target_accounting_period_id
-    if period_id is None:
+    if period is not None:
+        return period.id
+    fallback_period = db.get(AccountingPeriod, fallback_period_id) if fallback_period_id else None
+    if (
+        fallback_period is None
+        or fallback_period.company_id != company_id
+        or not (fallback_period.start_date <= entry_date_value <= fallback_period.end_date)
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Create or choose an accounting period that contains the document transaction date {entry_date_value.isoformat()} before accepting the recommendation",
+            detail=(
+                "Create or choose an accounting period that contains the document transaction date "
+                f"{entry_date_value.isoformat()} before accepting the recommendation"
+            ),
         )
-
-    _ensure_period_not_locked(db, company_id, period_id)
-
-    payload = JournalEntryCreate(
-        entry_date=entry_date_value,
-        accounting_period_id=period_id,
-        source_type=JournalSourceType.MANUAL.value,
-        description=run.normalized_result_json.get("recommended_description") if run.normalized_result_json else run.analysis_summary or "AI-assisted journal draft",
-        reference=run.normalized_result_json.get("recommended_reference") if run.normalized_result_json else None,
-        lines=[
-            JournalLineCreate(
-                account_id=_resolve_line_account_id(line, created_entity_map),
-                description=line.description,
-                debit_amount=line.debit_amount,
-                credit_amount=line.credit_amount,
-                tax_code_id=_resolve_line_tax_code_id(line, created_entity_map),
-                reporting_category_id=_resolve_line_reporting_category_id(line, created_entity_map),
-                source_document_reference=None,
-            )
-            for line in lines
-        ],
-    )
-
-    journal = JournalEntry(
-        company_id=company_id,
-        entry_number=_next_entry_number(db, company_id),
-        entry_date=payload.entry_date,
-        accounting_period_id=payload.accounting_period_id,
-        status=JournalStatus.DRAFT,
-        source_type=JournalSourceType(payload.source_type),
-        description=payload.description,
-        reference=payload.reference,
-        created_by_user_id=created_by_user_id,
-    )
-    _apply_journal_payload(journal, payload, replace_lines=False)
-    _validate_journal_lines(db, company_id, journal.lines)
-    db.add(journal)
-    db.flush()
-
-    run_documents = _load_run_documents(db, run.id)
-    for index, document in enumerate(run_documents, start=1):
-        existing_link = db.scalar(
-            select(DocumentLink).where(
-                DocumentLink.company_id == company_id,
-                DocumentLink.document_id == document.id,
-                DocumentLink.entity_type == DocumentLinkEntityType.JOURNAL_ENTRY,
-                DocumentLink.entity_id == str(journal.id),
-            )
-        )
-        if existing_link is None:
-            db.add(
-                DocumentLink(
-                    company_id=company_id,
-                    document_id=document.id,
-                    entity_type=DocumentLinkEntityType.JOURNAL_ENTRY,
-                    entity_id=str(journal.id),
-                    note=f"AI recommendation evidence #{index}",
-                    linked_by_user_id=created_by_user_id,
-                )
-            )
-
-    run.status = JournalRecommendationStatus.ACCEPTED
-    run.accepted_journal_entry_id = journal.id
-    run.completed_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(journal)
-    return journal
+    return fallback_period.id
 
 
 def reject_run(db: Session, *, company_id: UUID, run_id: UUID) -> JournalRecommendationRun:
@@ -555,7 +763,11 @@ def _analyze_with_openai(db: Session, *, run: JournalRecommendationRun, document
     client = openai_client(api_key=settings.openai_api_key, timeout=settings.journal_ai_request_timeout_seconds)
     reference_context = _build_reference_context(db, run.company_id)
     cached_reference_prefix = _build_cached_reference_prefix(company=company, reference_context=reference_context)
-    request_suffix = _build_recommendation_request_suffix(run=run, documents=documents)
+    request_suffix = _build_recommendation_request_suffix(
+        run=run,
+        documents=documents,
+        reference_context=reference_context,
+    )
     reference_context_hash = _hash_prompt_prefix(cached_reference_prefix)
     prompt_cache_key = _build_prompt_cache_key(
         company_id=run.company_id,
@@ -639,7 +851,11 @@ def _analyze_with_openai(db: Session, *, run: JournalRecommendationRun, document
             )
 
         try:
-            _validate_recommendation_balance(parsed.lines)
+            _validate_recommendation_batch(
+                parsed,
+                document_count=len(documents),
+                analysis_mode=getattr(run, "analysis_mode", "multiple"),
+            )
         except HTTPException as exc:
             if not balance_retry_used and exc.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT:
                 balance_retry_used = True
@@ -768,23 +984,22 @@ def _build_reference_context(db: Session, company_id: UUID) -> dict[str, Any]:
 
 def _build_system_prompt() -> str:
     return (
-        "You prepare internal bookkeeping support recommendations for an Australian internal finance system. "
-        "Analyze one transaction bundle that may contain multiple invoices or receipts. "
-        "Return only one structured JSON object via the supplied schema. "
-        "Do not copy reference_context, prompt instructions, schemas, source text, or markdown into the answer. "
-        "Use only the schema fields; do not invent fields such as notes, debit_tax_amount, or credit_tax_amount. "
-        "Keep all summaries, explanations, warnings, and proposal rationales concise. "
-        "Separate materially distinct bundle components when they reflect different adjustments, settlement items, fees, revenue or expense classes, or different GST treatment; do not collapse them into one line if that would hide the accounting substance. "
-        "Recommend a draft journal entry for review, not a posted journal. "
-        "Set entry_date to the transaction, receipt, invoice, or payment date visible in the documents. "
-        "Never set entry_date to the upload date, analysis date, or today's date unless that is also the visible document date. "
-        "Prefer existing reference data by account_code, tax_code_code, and reporting_category_code when suitable. "
-        "When GST is visible on source documents, recommend separate GST input or output lines where appropriate. "
-        "When GST is not visible and the user has not provided related context, determine whether the transaction would ordinarily involve GST; if the model has access to web search or browsing tools, use them to verify the supplier, product, or service when needed, otherwise state the uncertainty and avoid inventing GST. "
-        "Assess GST involvement separately for each materially distinct bundle component rather than assuming one GST outcome for the whole bundle. "
-        "Only propose new reference data when the existing list is insufficient, and explain why. "
-        "Do not claim that anything is ready to lodge, filed, or final. "
-        "If uncertain, populate warning_text and confidence_summary conservatively."
+        "Prepare review-only Australian bookkeeping journal recommendations from the numbered source documents. "
+        "In multiple mode, group documents by economic transaction: several files may support one journal, while "
+        "unrelated invoices, receipts, payments, credits, or settlements must become separate journal_entries. "
+        "One source document may support several journal entries; for example, repeat a monthly bank statement's "
+        "document number on every recommendation containing a transaction evidenced by that statement. "
+        "Assign every source document number to at least one journal entry and never merge transactions merely because "
+        "they were uploaded together. In single mode return exactly one journal entry and assign every uploaded "
+        "document to it. "
+        "Each journal entry must independently balance, contain at least two one-sided lines, and preserve materially "
+        "different fees, adjustments, account classes, and GST treatments as reviewable lines. Use visible document "
+        "transaction dates only; never substitute upload, analysis, system, or current dates. Prefer existing account, "
+        "tax, and reporting codes. Separate visible GST when appropriate; when GST is absent or uncertain, do not invent "
+        "it, and use concise warnings. Use web search only when available and needed to verify uncertain supplier or GST "
+        "treatment. Propose reference data only when no existing code fits. Return only the supplied structured schema, "
+        "keep text concise, do not transcribe source documents, and never describe a recommendation as posted, lodged, "
+        "filed, or final."
     )
 
 
@@ -797,75 +1012,37 @@ def _build_cached_reference_prefix(*, company: Company, reference_context: dict[
             "country_code": company.country_code,
         },
         "reference_context": reference_context,
-        "instructions": {
-            "bundle_scope": "All attached files relate to one transaction bundle and should be analyzed together.",
-            "required_behavior": [
-                "Recommend a balanced double-entry journal draft.",
-                (
-                    "Extract entry_date from the receipt, invoice, transaction, payment, issue, or sale date shown "
-                    "in the attached source files. Use ISO format YYYY-MM-DD. Do not use the file upload date, "
-                    "system date, analysis date, or current date as a fallback."
-                ),
-                "Keep text fields short; do not quote or transcribe long invoice or receipt passages.",
-                "Do not return this reference_context or instructions object in the answer.",
-                (
-                    "Each line object must contain only line_number, description, explanation, account_code, "
-                    "tax_code_code, reporting_category_code, debit_amount, and credit_amount. Do not add notes, "
-                    "tax amount, quantity, unit price, or source text fields."
-                ),
-                (
-                    "Use one-sided journal lines only: each line must have either a positive debit_amount or a "
-                    "positive credit_amount, never both. Include a separate balancing bank, cash, credit-card, "
-                    "payable, or receivable line when the document indicates payment or settlement."
-                ),
-                (
-                    "Prefer 2 to 4 lines for a simple single-item receipt: net expense or revenue, separate GST "
-                    "input/output when visible, and the balancing payment or receivable/payable line. For bundles "
-                    "with multiple adjustments, pre-settlement items, charges, credits, or materially different "
-                    "accounting or GST treatment, split the recommendation into separate component-level lines or "
-                    "line groups so each component remains reviewable."
-                ),
-                "Use existing account codes from reference_context.accounts[].code where possible.",
-                "Return selected account codes in the output field lines[].account_code.",
-                "Use existing tax_code_code and reporting_category_code where appropriate.",
-                (
-                    "If an invoice or receipt visibly identifies GST and the company is GST registered, separate the GST "
-                    "component from the net revenue or expense using appropriate existing GST input-credit, GST collected, "
-                    "GST payable, or GST clearing accounts from reference_context.accounts. For purchases, GST should "
-                    "normally be a debit/input-credit style line; for sales, GST should normally be a credit/output style "
-                    "line. If GST is not visible or the treatment is uncertain, do not invent GST; explain the uncertainty."
-                ),
-                (
-                    "If GST is not visible and no related context is provided, determine whether the transaction would "
-                    "ordinarily involve GST. If the model has access to web search or browsing tools, use them to verify "
-                    "the supplier, product, or service when needed; otherwise state the uncertainty and avoid inventing GST."
-                ),
-                (
-                    "Assess GST separately for each materially distinct component in the bundle. Different adjustments, "
-                    "fees, products, services, credits, or settlement items may have different GST outcomes and should "
-                    "not be forced into one shared GST assumption."
-                ),
-                "Only propose new reference items when no existing code is suitable.",
-                "Always include the proposals field; use an empty list when no new reference item is proposed.",
-                "If a line depends on a newly proposed reference item, still return the suggested code in the line.",
-            ],
-        },
     }
     return json.dumps(payload, separators=(",", ":"), default=str)
 
 
-def _build_recommendation_request_suffix(*, run: JournalRecommendationRun, documents: list[Document]) -> str:
+def _build_recommendation_request_suffix(
+    *,
+    run: JournalRecommendationRun,
+    documents: list[Document],
+    reference_context: dict[str, Any] | None = None,
+) -> str:
+    configuration = (reference_context or {}).get("configuration")
+    reporting_basis = configuration.get("bas_reporting_basis") if isinstance(configuration, dict) else None
+    accrual_timing_instruction = (
+        MULTI_FILE_ACCRUAL_INSTRUCTION
+        if run.analysis_mode == "multiple" and len(documents) > 1 and str(reporting_basis).lower() == "accrual"
+        else None
+    )
     payload = {
         "recommendation_request": {
+            "analysis_mode": run.analysis_mode,
+            "accounting_policy_instruction": accrual_timing_instruction,
             "operator_note": run.user_context_note,
             "target_accounting_period_id": str(run.target_accounting_period_id) if run.target_accounting_period_id else None,
             "documents": [
                 {
+                    "document_number": index,
                     "original_filename": document.original_filename,
                     "media_type": document.media_type,
                     "byte_size": document.byte_size,
                 }
-                for document in documents
+                for index, document in enumerate(documents, start=1)
             ],
         }
     }
@@ -884,7 +1061,11 @@ def _build_user_text(
             _build_cached_reference_prefix(company=company, reference_context=reference_context)
         ),
         "recommendation_request_suffix": json.loads(
-            _build_recommendation_request_suffix(run=run, documents=documents)
+            _build_recommendation_request_suffix(
+                run=run,
+                documents=documents,
+                reference_context=reference_context,
+            )
         ),
     }
     return json.dumps(payload, separators=(",", ":"), default=str)
@@ -905,19 +1086,35 @@ def _build_prompt_cache_key(
 
 
 def _build_balance_retry_text(recommendation: LlmRecommendation) -> str:
-    debit_total, credit_total = _sum_line_totals(recommendation.lines)
+    entry_totals = [
+        {
+            "sequence_number": entry.sequence_number,
+            "line_count": len(entry.lines),
+            "debit_total": str(sum((line.debit_amount for line in entry.lines), Decimal("0.00"))),
+            "credit_total": str(sum((line.credit_amount for line in entry.lines), Decimal("0.00"))),
+            "source_document_numbers": entry.source_document_numbers,
+        }
+        for entry in recommendation.journal_entries
+    ]
     serialized = json.dumps(recommendation.model_dump(mode="json"), separators=(",", ":"), default=str)
     return (
-        "Your previous recommendation did not satisfy the accounting validation rules. "
-        f"It returned {len(recommendation.lines)} lines, debit_total={debit_total}, and credit_total={credit_total}. "
-        "Return a corrected recommendation with at least two journal lines and exactly equal total debits and credits. "
-        "Preserve the source-document facts, vendor details, and overall accounting intent where possible. "
+        "Your previous batch did not satisfy the accounting or document-grouping validation rules. "
+        f"Per-entry diagnostics: {json.dumps(entry_totals, separators=(',', ':'))}. "
+        "Return sequentially numbered journal entries; each must have sequential line numbers, at least two one-sided "
+        "lines, and exactly equal debit and credit totals. Assign every source document number to at least one entry. "
+        "Preserve source facts, transaction boundaries, vendor details, and accounting intent where possible. "
         f"Previous invalid recommendation JSON: {serialized}"
     )
 
 
 def _extract_recommendation_entry_date(run: JournalRecommendationRun, *, strict: bool) -> date | None:
-    value = (run.normalized_result_json or {}).get("entry_date")
+    normalized = run.normalized_result_json or {}
+    journal_entries = normalized.get("journal_entries")
+    value = (
+        journal_entries[0].get("entry_date")
+        if isinstance(journal_entries, list) and len(journal_entries) == 1 and isinstance(journal_entries[0], dict)
+        else normalized.get("entry_date")
+    )
     if not value:
         return None
     if isinstance(value, date):
@@ -955,11 +1152,26 @@ def _summarize_validation_error(exc: ValidationError) -> str:
 
 def _build_document_content_items(documents: list[Document]) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    for document in documents:
+    for document_number, document in enumerate(documents, start=1):
         path = resolve_document_path(document.storage_path)
         encoded = base64.b64encode(path.read_bytes()).decode("ascii")
         media_type = normalize_media_type(document.original_filename, document.media_type)
         data_url = f"data:{media_type};base64,{encoded}"
+        items.append(
+            {
+                "type": "input_text",
+                "text": json.dumps(
+                    {
+                        "source_document": {
+                            "document_number": document_number,
+                            "original_filename": document.original_filename,
+                            "media_type": media_type,
+                        }
+                    },
+                    separators=(",", ":"),
+                ),
+            }
+        )
         if media_type in SUPPORTED_IMAGE_TYPES:
             items.append(
                 {
@@ -979,9 +1191,28 @@ def _build_document_content_items(documents: list[Document]) -> list[dict[str, A
     return items
 
 
-def _persist_recommendation(db: Session, *, run: JournalRecommendationRun, recommendation: LlmRecommendation) -> None:
-    _validate_recommendation_balance(recommendation.lines)
+def _persist_recommendation(
+    db: Session,
+    *,
+    run: JournalRecommendationRun,
+    recommendation: LlmRecommendation,
+    documents: list[Document],
+) -> None:
+    _validate_recommendation_batch(
+        recommendation,
+        document_count=len(documents),
+        analysis_mode=run.analysis_mode,
+    )
     db.execute(delete(JournalRecommendationLine).where(JournalRecommendationLine.recommendation_run_id == run.id))
+    existing_entry_ids = select(JournalRecommendationEntry.id).where(
+        JournalRecommendationEntry.recommendation_run_id == run.id
+    )
+    db.execute(
+        delete(JournalRecommendationEntryDocument).where(
+            JournalRecommendationEntryDocument.recommendation_entry_id.in_(existing_entry_ids)
+        )
+    )
+    db.execute(delete(JournalRecommendationEntry).where(JournalRecommendationEntry.recommendation_run_id == run.id))
     db.execute(delete(JournalRecommendationProposal).where(JournalRecommendationProposal.recommendation_run_id == run.id))
 
     accounts_by_code = {
@@ -1003,27 +1234,56 @@ def _persist_recommendation(db: Session, *, run: JournalRecommendationRun, recom
         ).all()
     }
 
-    for line in recommendation.lines:
-        account = accounts_by_code.get(line.account_code)
-        tax_code = tax_codes_by_code.get(line.tax_code_code) if line.tax_code_code else None
-        category = categories_by_code.get(line.reporting_category_code) if line.reporting_category_code else None
-        db.add(
-            JournalRecommendationLine(
-                company_id=run.company_id,
-                recommendation_run_id=run.id,
-                line_number=line.line_number,
-                description=line.description,
-                explanation=line.explanation,
-                suggested_account_id=account.id if account else None,
-                suggested_account_code=line.account_code,
-                suggested_tax_code_id=tax_code.id if tax_code else None,
-                suggested_tax_code_code=line.tax_code_code,
-                suggested_reporting_category_id=category.id if category else None,
-                suggested_reporting_category_code=line.reporting_category_code,
-                debit_amount=line.debit_amount,
-                credit_amount=line.credit_amount,
-            )
+    for recommended_entry in recommendation.journal_entries:
+        entry = JournalRecommendationEntry(
+            company_id=run.company_id,
+            recommendation_run_id=run.id,
+            sequence_number=recommended_entry.sequence_number,
+            summary=recommended_entry.summary,
+            entry_date=recommended_entry.entry_date,
+            vendor_name=recommended_entry.vendor_name,
+            total_amount=recommended_entry.total_amount,
+            gst_amount=recommended_entry.gst_amount,
+            currency_code=recommended_entry.currency_code,
+            recommended_description=recommended_entry.recommended_description,
+            recommended_reference=recommended_entry.recommended_reference,
+            confidence_summary=recommended_entry.confidence_summary,
+            warning_text=recommended_entry.warning_text,
         )
+        db.add(entry)
+        db.flush()
+
+        for document_number in recommended_entry.source_document_numbers:
+            db.add(
+                JournalRecommendationEntryDocument(
+                    company_id=run.company_id,
+                    recommendation_entry_id=entry.id,
+                    document_id=documents[document_number - 1].id,
+                )
+            )
+
+        for line in recommended_entry.lines:
+            account = accounts_by_code.get(line.account_code)
+            tax_code = tax_codes_by_code.get(line.tax_code_code) if line.tax_code_code else None
+            category = categories_by_code.get(line.reporting_category_code) if line.reporting_category_code else None
+            db.add(
+                JournalRecommendationLine(
+                    company_id=run.company_id,
+                    recommendation_run_id=run.id,
+                    recommendation_entry_id=entry.id,
+                    line_number=line.line_number,
+                    description=line.description,
+                    explanation=line.explanation,
+                    suggested_account_id=account.id if account else None,
+                    suggested_account_code=line.account_code,
+                    suggested_tax_code_id=tax_code.id if tax_code else None,
+                    suggested_tax_code_code=line.tax_code_code,
+                    suggested_reporting_category_id=category.id if category else None,
+                    suggested_reporting_category_code=line.reporting_category_code,
+                    debit_amount=line.debit_amount,
+                    credit_amount=line.credit_amount,
+                )
+            )
 
     for proposal in recommendation.proposals:
         proposal_type = JournalRecommendationProposalType(proposal.proposal_type)
@@ -1047,6 +1307,59 @@ def _persist_recommendation(db: Session, *, run: JournalRecommendationRun, recom
     run.normalized_result_json = recommendation.model_dump(mode="json")
 
 
+def _validate_recommendation_batch(
+    recommendation: LlmRecommendation,
+    *,
+    document_count: int,
+    analysis_mode: str,
+) -> None:
+    entries = recommendation.journal_entries
+    if analysis_mode == "single" and len(entries) != 1:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Single-file analysis must return exactly one journal entry",
+        )
+
+    expected_sequences = list(range(1, len(entries) + 1))
+    actual_sequences = [entry.sequence_number for entry in entries]
+    if actual_sequences != expected_sequences:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Model returned journal entries with invalid sequence numbers",
+        )
+
+    assigned_documents: set[int] = set()
+    for entry in entries:
+        _validate_recommendation_balance(entry.lines)
+        line_numbers = [line.line_number for line in entry.lines]
+        if line_numbers != list(range(1, len(entry.lines) + 1)):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Journal recommendation {entry.sequence_number} has invalid line numbers",
+            )
+        if document_count == 0:
+            entry.source_document_numbers = []
+            continue
+        if not entry.source_document_numbers and len(entries) == 1:
+            entry.source_document_numbers = list(range(1, document_count + 1))
+        unique_document_numbers = list(dict.fromkeys(entry.source_document_numbers))
+        if not unique_document_numbers or any(number < 1 or number > document_count for number in unique_document_numbers):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Journal recommendation {entry.sequence_number} has invalid source-document assignments",
+            )
+        entry.source_document_numbers = unique_document_numbers
+        assigned_documents.update(unique_document_numbers)
+
+    expected_documents = set(range(1, document_count + 1))
+    if assigned_documents != expected_documents:
+        missing = sorted(expected_documents - assigned_documents)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Model did not analyze every source document; missing document numbers: {missing}",
+        )
+
+
 def _validate_recommendation_balance(lines: list[LlmRecommendedLine]) -> None:
     if len(lines) < 2:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Model returned fewer than two journal lines")
@@ -1058,7 +1371,6 @@ def _validate_recommendation_balance(lines: list[LlmRecommendedLine]) -> None:
 def _sum_line_totals(lines: list[LlmRecommendedLine]) -> tuple[Decimal, Decimal]:
     debit_total = sum((line.debit_amount for line in lines), Decimal("0.00"))
     credit_total = sum((line.credit_amount for line in lines), Decimal("0.00"))
-    return debit_total, credit_total
     for line in lines:
         valid_line = (
             (line.debit_amount > Decimal("0.00") and line.credit_amount == Decimal("0.00"))
@@ -1066,6 +1378,7 @@ def _sum_line_totals(lines: list[LlmRecommendedLine]) -> tuple[Decimal, Decimal]
         )
         if not valid_line:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Model returned an invalid journal line shape")
+    return debit_total, credit_total
 
 
 def _create_accepted_proposals(

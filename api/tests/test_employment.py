@@ -43,6 +43,35 @@ def create_company(client, token: str) -> str:
     return response.json()["id"]
 
 
+def create_worker_with_engagement(client, token: str, company_id: str, code: str) -> tuple[str, str]:
+    worker_response = client.post(
+        f"/api/companies/{company_id}/employment/workers",
+        headers=auth_header(token),
+        json={
+            "worker_code": code,
+            "display_name": f"Worker {code}",
+            "worker_kind": "individual",
+            "is_active": True,
+        },
+    )
+    assert worker_response.status_code == 201, worker_response.text
+    worker_id = worker_response.json()["id"]
+
+    engagement_response = client.post(
+        f"/api/companies/{company_id}/employment/workers/{worker_id}/engagements",
+        headers=auth_header(token),
+        json={
+            "engagement_type": "employee",
+            "employment_basis": "permanent_full_time",
+            "start_date": date.today().isoformat(),
+            "role_name": f"Role {code}",
+            "status": "active",
+        },
+    )
+    assert engagement_response.status_code == 201, engagement_response.text
+    return worker_id, engagement_response.json()["id"]
+
+
 def test_employment_worker_detail_dashboard_and_reports(client):
     today = date.today()
     start_date = today.isoformat()
@@ -289,3 +318,116 @@ def test_employment_contractor_review_report(client):
     assert len(report["rows"]) == 1
     assert report["rows"][0]["worker_name"] == "Northside Consulting Pty Ltd"
     assert report["rows"][0]["abn_provided"] is True
+
+
+def test_employment_worker_scoped_records_reject_another_workers_engagement(client):
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+    worker_a_id, engagement_a_id = create_worker_with_engagement(client, token, company_id, "EMP-A")
+    worker_b_id, engagement_b_id = create_worker_with_engagement(client, token, company_id, "EMP-B")
+
+    work_rights_payload = {
+        "engagement_id": engagement_b_id,
+        "work_rights_basis": "australian_citizen",
+        "review_status": "verified",
+    }
+    work_rights_response = client.post(
+        f"/api/companies/{company_id}/employment/workers/{worker_a_id}/work-rights",
+        headers=auth_header(token),
+        json=work_rights_payload,
+    )
+    assert work_rights_response.status_code == 400, work_rights_response.text
+    assert work_rights_response.json()["detail"] == "Engagement does not belong to the selected worker"
+
+    reimbursement_payload = {
+        "engagement_id": engagement_b_id,
+        "reimbursement_date": date.today().isoformat(),
+        "description": "Invalid cross-worker reimbursement",
+        "amount": "25.00",
+        "status": "draft",
+    }
+    reimbursement_response = client.post(
+        f"/api/companies/{company_id}/employment/workers/{worker_a_id}/reimbursements",
+        headers=auth_header(token),
+        json=reimbursement_payload,
+    )
+    assert reimbursement_response.status_code == 400, reimbursement_response.text
+
+    issued_asset_payload = {
+        "engagement_id": engagement_b_id,
+        "asset_name": "Invalid cross-worker laptop",
+        "assigned_on": date.today().isoformat(),
+        "status": "issued",
+    }
+    issued_asset_response = client.post(
+        f"/api/companies/{company_id}/employment/workers/{worker_a_id}/issued-assets",
+        headers=auth_header(token),
+        json=issued_asset_payload,
+    )
+    assert issued_asset_response.status_code == 400, issued_asset_response.text
+
+    valid_work_rights = client.post(
+        f"/api/companies/{company_id}/employment/workers/{worker_a_id}/work-rights",
+        headers=auth_header(token),
+        json={**work_rights_payload, "engagement_id": engagement_a_id},
+    )
+    assert valid_work_rights.status_code == 201, valid_work_rights.text
+    update_work_rights = client.put(
+        f"/api/companies/{company_id}/employment/work-rights/{valid_work_rights.json()['id']}",
+        headers=auth_header(token),
+        json=work_rights_payload,
+    )
+    assert update_work_rights.status_code == 400, update_work_rights.text
+
+    valid_reimbursement = client.post(
+        f"/api/companies/{company_id}/employment/workers/{worker_a_id}/reimbursements",
+        headers=auth_header(token),
+        json={**reimbursement_payload, "engagement_id": engagement_a_id},
+    )
+    assert valid_reimbursement.status_code == 201, valid_reimbursement.text
+    update_reimbursement = client.put(
+        f"/api/companies/{company_id}/employment/reimbursements/{valid_reimbursement.json()['id']}",
+        headers=auth_header(token),
+        json=reimbursement_payload,
+    )
+    assert update_reimbursement.status_code == 400, update_reimbursement.text
+
+    valid_asset = client.post(
+        f"/api/companies/{company_id}/employment/workers/{worker_a_id}/issued-assets",
+        headers=auth_header(token),
+        json={**issued_asset_payload, "engagement_id": engagement_a_id},
+    )
+    assert valid_asset.status_code == 201, valid_asset.text
+    update_asset = client.put(
+        f"/api/companies/{company_id}/employment/issued-assets/{valid_asset.json()['id']}",
+        headers=auth_header(token),
+        json=issued_asset_payload,
+    )
+    assert update_asset.status_code == 400, update_asset.text
+
+    assert worker_b_id != worker_a_id
+
+
+def test_employment_compensation_rejects_accounts_from_another_company(client):
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+    other_company_id = create_company(client, token)
+    _, engagement_id = create_worker_with_engagement(client, token, company_id, "EMP-ACCOUNT")
+
+    other_accounts_response = client.get(
+        f"/api/companies/{other_company_id}/accounts",
+        headers=auth_header(token),
+    )
+    assert other_accounts_response.status_code == 200, other_accounts_response.text
+    other_account_id = other_accounts_response.json()[0]["id"]
+
+    response = client.put(
+        f"/api/companies/{company_id}/employment/engagements/{engagement_id}/compensation",
+        headers=auth_header(token),
+        json={
+            "remuneration_basis": "salary",
+            "expense_account_id": other_account_id,
+        },
+    )
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"] == "Expense account must belong to the selected company"

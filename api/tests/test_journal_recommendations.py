@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
@@ -137,12 +138,16 @@ def test_build_document_content_items_uses_data_urls_for_pdf_and_images(tmp_path
         ]
     )
 
-    assert items[0]["type"] == "input_file"
-    assert items[0]["filename"] == "invoice.pdf"
-    assert items[0]["file_data"].startswith("data:application/pdf;base64,")
-    assert items[1]["type"] == "input_image"
-    assert items[1]["detail"] == "high"
-    assert items[1]["image_url"].startswith("data:image/png;base64,")
+    assert items[0]["type"] == "input_text"
+    assert '"document_number":1' in items[0]["text"]
+    assert items[1]["type"] == "input_file"
+    assert items[1]["filename"] == "invoice.pdf"
+    assert items[1]["file_data"].startswith("data:application/pdf;base64,")
+    assert items[2]["type"] == "input_text"
+    assert '"document_number":2' in items[2]["text"]
+    assert items[3]["type"] == "input_image"
+    assert items[3]["detail"] == "high"
+    assert items[3]["image_url"].startswith("data:image/png;base64,")
 
 
 def test_llm_proposal_attributes_schema_forbids_additional_properties():
@@ -156,14 +161,62 @@ def test_llm_proposal_attributes_schema_forbids_additional_properties():
 def test_llm_recommendation_schema_limits_free_text_lengths():
     schema = recommendation_service.LlmRecommendation.model_json_schema()
     line_schema = schema["$defs"]["LlmRecommendedLine"]
+    entry_schema = schema["$defs"]["LlmJournalRecommendation"]
 
     assert schema["properties"]["summary"]["maxLength"] == 240
     assert schema["properties"]["warning_text"]["anyOf"][0]["maxLength"] == 300
-    assert schema["properties"]["lines"]["minItems"] == 2
-    assert schema["properties"]["lines"]["maxItems"] == 12
+    assert schema["properties"]["journal_entries"]["minItems"] == 1
+    assert schema["properties"]["journal_entries"]["maxItems"] == 50
+    assert entry_schema["properties"]["lines"]["minItems"] == 2
+    assert entry_schema["properties"]["lines"]["maxItems"] == 12
+    assert entry_schema["properties"]["source_document_numbers"]["maxItems"] == 50
+    assert "source_document_numbers" in entry_schema["required"]
     assert schema["properties"]["proposals"]["maxItems"] == 5
     assert line_schema["properties"]["description"]["anyOf"][0]["maxLength"] == 160
     assert line_schema["properties"]["explanation"]["anyOf"][0]["maxLength"] == 240
+
+
+def test_structured_output_schema_uses_numeric_decimals_without_regex_patterns():
+    schema = recommendation_service.LlmRecommendation.model_json_schema()
+
+    def collect_pattern_paths(value, path="$"):
+        paths = []
+        if isinstance(value, dict):
+            for key, child in value.items():
+                child_path = f"{path}.{key}"
+                if key == "pattern":
+                    paths.append(child_path)
+                paths.extend(collect_pattern_paths(child, child_path))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                paths.extend(collect_pattern_paths(child, f"{path}[{index}]"))
+        return paths
+
+    assert collect_pattern_paths(schema) == []
+    definitions = schema["$defs"]
+    journal_properties = definitions["LlmJournalRecommendation"]["properties"]
+    line_properties = definitions["LlmRecommendedLine"]["properties"]
+    proposal_properties = definitions["LlmProposalAttributes"]["properties"]
+    assert journal_properties["total_amount"]["anyOf"] == [{"type": "number"}, {"type": "null"}]
+    assert journal_properties["gst_amount"]["anyOf"] == [{"type": "number"}, {"type": "null"}]
+    assert line_properties["debit_amount"]["type"] == "number"
+    assert line_properties["credit_amount"]["type"] == "number"
+    assert proposal_properties["rate"]["anyOf"] == [{"type": "number"}, {"type": "null"}]
+
+    parsed = recommendation_service.LlmRecommendedLine.model_validate(
+        {
+            "line_number": 1,
+            "description": "Expense",
+            "explanation": "Numeric provider value",
+            "account_code": "6440",
+            "tax_code_code": None,
+            "reporting_category_code": None,
+            "debit_amount": 110.25,
+            "credit_amount": 0,
+        }
+    )
+    assert parsed.debit_amount == Decimal("110.25")
+    assert isinstance(parsed.debit_amount, Decimal)
 
 
 def test_llm_reference_proposal_schema_limits_proposal_type_values():
@@ -183,6 +236,7 @@ def test_reference_context_uses_compact_account_fields(client):
 
     account = next(item for item in context["accounts"] if item["code"] == "1021")
 
+    assert context["configuration"]["bas_reporting_basis"] == "accrual"
     assert set(account) == {"code", "name", "type", "tax", "posting"}
     assert account["name"] == "Main Business Transaction Account"
     assert account["type"] == "asset"
@@ -230,15 +284,14 @@ def test_prompt_cache_key_is_stable_for_reference_prefix_and_changes_when_contex
 
     assert prefix_hash == same_hash
     assert prefix_hash != changed_hash
-    assert "When GST is visible" in recommendation_service._build_system_prompt()
-    assert "When GST is not visible and the user has not provided related context" in recommendation_service._build_system_prompt()
-    assert "Assess GST involvement separately for each materially distinct bundle component" in recommendation_service._build_system_prompt()
-    assert "Separate materially distinct bundle components" in recommendation_service._build_system_prompt()
-    assert "Never set entry_date to the upload date" in recommendation_service._build_system_prompt()
-    assert "separate the GST component from the net revenue or expense" in prefix
-    assert "If GST is not visible and no related context is provided" in prefix
-    assert "Assess GST separately for each materially distinct component in the bundle" in prefix
-    assert "For bundles with multiple adjustments, pre-settlement items, charges, credits" in prefix
+    system_prompt = recommendation_service._build_system_prompt()
+    assert "several files may support one journal" in system_prompt
+    assert "unrelated invoices, receipts, payments, credits, or settlements" in system_prompt
+    assert "monthly bank statement's document number on every recommendation" in system_prompt
+    assert "Assign every source document number" in system_prompt
+    assert "Each journal entry must independently balance" in system_prompt
+    assert "never substitute upload, analysis, system, or current dates" in system_prompt
+    assert "instructions" not in prefix
     assert "operator_note" not in prefix
     assert "documents" not in prefix
     prompt_cache_key = recommendation_service._build_prompt_cache_key(
@@ -262,6 +315,68 @@ def test_prompt_cache_key_is_stable_for_reference_prefix_and_changes_when_contex
         prompt_version=recommendation_service.PROMPT_VERSION,
         reference_context_hash=changed_hash,
     )
+
+
+def test_multiple_accrual_request_adds_five_day_timing_instruction_only_when_applicable():
+    run = SimpleNamespace(
+        analysis_mode="multiple",
+        user_context_note=None,
+        target_accounting_period_id=None,
+    )
+    documents = [
+        SimpleNamespace(
+            original_filename="invoice.pdf",
+            media_type="application/pdf",
+            byte_size=100,
+        ),
+        SimpleNamespace(
+            original_filename="monthly-bank-statement.pdf",
+            media_type="application/pdf",
+            byte_size=200,
+        ),
+    ]
+    accrual_payload = json.loads(
+        recommendation_service._build_recommendation_request_suffix(
+            run=run,
+            documents=documents,
+            reference_context={"configuration": {"bas_reporting_basis": "accrual"}},
+        )
+    )["recommendation_request"]
+
+    assert "at least five calendar days after the invoice date" in accrual_payload["accounting_policy_instruction"]
+    assert "invoice-date recognition entry" in accrual_payload["accounting_policy_instruction"]
+    assert "separate clearance-date entry" in accrual_payload["accounting_policy_instruction"]
+    assert "bank statement document numbers on every entry they support" in accrual_payload[
+        "accounting_policy_instruction"
+    ]
+
+    cash_payload = json.loads(
+        recommendation_service._build_recommendation_request_suffix(
+            run=run,
+            documents=documents,
+            reference_context={"configuration": {"bas_reporting_basis": "cash"}},
+        )
+    )["recommendation_request"]
+    assert cash_payload["accounting_policy_instruction"] is None
+
+    one_file_payload = json.loads(
+        recommendation_service._build_recommendation_request_suffix(
+            run=run,
+            documents=documents[:1],
+            reference_context={"configuration": {"bas_reporting_basis": "accrual"}},
+        )
+    )["recommendation_request"]
+    assert one_file_payload["accounting_policy_instruction"] is None
+
+    run.analysis_mode = "single"
+    single_payload = json.loads(
+        recommendation_service._build_recommendation_request_suffix(
+            run=run,
+            documents=documents[:1],
+            reference_context={"configuration": {"bas_reporting_basis": "accrual"}},
+        )
+    )["recommendation_request"]
+    assert single_payload["accounting_policy_instruction"] is None
 
 
 def test_analyze_with_openai_retries_once_when_first_recommendation_is_unbalanced(monkeypatch):
@@ -386,8 +501,8 @@ def test_analyze_with_openai_retries_once_when_first_recommendation_is_unbalance
     assert parse_calls[0]["input"][0]["content"][0]["text"] == "stable-reference-prefix"
     assert parse_calls[0]["input"][0]["content"][1]["text"] == "request-suffix"
     assert len(parse_calls[1]["input"]) == 2
-    assert "debit_total=110.00" in parse_calls[1]["input"][1]["content"][0]["text"]
-    assert "credit_total=100.00" in parse_calls[1]["input"][1]["content"][0]["text"]
+    assert '"debit_total":"110.00"' in parse_calls[1]["input"][1]["content"][0]["text"]
+    assert '"credit_total":"100.00"' in parse_calls[1]["input"][1]["content"][0]["text"]
 
 
 def test_analyze_with_openai_retries_once_when_provider_returns_invalid_json(monkeypatch):
@@ -584,7 +699,7 @@ def test_analyze_with_openai_disables_web_search_tools_on_structured_retry(monke
     assert "max_tool_calls" not in parse_calls[1]
 
 
-def test_analyze_with_openai_uses_model_prompt_cache_retention(monkeypatch):
+def test_analyze_with_openai_uses_model_prompt_cache_settings(monkeypatch):
     parse_calls: list[dict[str, object]] = []
     balanced = recommendation_service.LlmRecommendation(
         summary="Cache-compatible run",
@@ -662,6 +777,27 @@ def test_analyze_with_openai_uses_model_prompt_cache_retention(monkeypatch):
     assert parsed.summary == "Cache-compatible run"
     assert len(parse_calls) == 1
     assert parse_calls[0]["prompt_cache_retention"] == "24h"
+
+    monkeypatch.setattr(
+        recommendation_service,
+        "ensure_supported_model",
+        lambda _model: SimpleNamespace(reasoning_effort="high", supports_web_search=False, prompt_cache_retention=None),
+    )
+    sol_run = SimpleNamespace(
+        company_id=run.company_id,
+        provider_model="gpt-5.6-sol",
+        id=uuid4(),
+        prompt_version=recommendation_service.PROMPT_VERSION,
+    )
+
+    parsed = recommendation_service._analyze_with_openai(
+        SimpleNamespace(get=lambda _model, _id: SimpleNamespace()), run=sol_run, documents=[]
+    )
+
+    assert parsed.summary == "Cache-compatible run"
+    assert len(parse_calls) == 2
+    assert "prompt_cache_retention" not in parse_calls[1]
+    assert parse_calls[1]["reasoning"] == {"effort": "high"}
 
 
 def test_analyze_with_openai_omits_temperature_for_all_models(monkeypatch):
@@ -978,6 +1114,9 @@ def test_journal_recommendation_models_and_accept_flow(client, monkeypatch):
     assert models_response.status_code == 200, models_response.text
     models = models_response.json()
     assert [item["id"] for item in models] == [
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
         "gpt-5.5",
         "gpt-5.4",
         "gpt-5.4-mini",
@@ -987,13 +1126,21 @@ def test_journal_recommendation_models_and_accept_flow(client, monkeypatch):
     ]
     estimated_costs = {item["id"]: item["estimated_cost_per_1000_calls_usd"] for item in models}
     assert estimated_costs == {
-        "gpt-5.5": "162.00",
-        "gpt-5.4": "81.00",
-        "gpt-5.4-mini": "24.30",
-        "gpt-5": "44.00",
-        "gpt-5-mini": "8.80",
-        "gpt-5-nano": "1.76",
+        "gpt-5.6-sol": "305.00",
+        "gpt-5.6-terra": "152.50",
+        "gpt-5.6-luna": "61.00",
+        "gpt-5.5": "305.00",
+        "gpt-5.4": "152.50",
+        "gpt-5.4-mini": "45.75",
+        "gpt-5": "85.00",
+        "gpt-5-mini": "17.00",
+        "gpt-5-nano": "3.40",
     }
+    reasoning_efforts = {item["id"]: item["reasoning_effort"] for item in models}
+    assert reasoning_efforts["gpt-5.6-sol"] == "high"
+    assert reasoning_efforts["gpt-5.6-terra"] == "medium"
+    assert reasoning_efforts["gpt-5.6-luna"] == "low"
+    assert all(item["max_file_count"] == 50 for item in models)
 
     create_response = client.post(
         f"/api/companies/{company_id}/journal-recommendations",
@@ -1030,10 +1177,11 @@ def test_journal_recommendation_models_and_accept_flow(client, monkeypatch):
         json={"accepted_proposal_ids": []},
     )
     assert accept_response.status_code == 200, accept_response.text
-    journal_id = accept_response.json()["id"]
-    assert accept_response.json()["status"] == "draft"
-    assert accept_response.json()["entry_date"] == "2026-07-05"
-    assert accept_response.json()["description"] == "Office supplies purchase"
+    accepted_journal = accept_response.json()["journals"][0]
+    journal_id = accepted_journal["id"]
+    assert accepted_journal["status"] == "draft"
+    assert accepted_journal["entry_date"] == "2026-07-05"
+    assert accepted_journal["description"] == "Office supplies purchase"
 
     evidence_response = client.get(
         f"/api/companies/{company_id}/journals/{journal_id}/documents",
@@ -1194,7 +1342,7 @@ def test_delete_draft_journal_clears_recommendation_accept_link(client, monkeypa
         json={"accepted_proposal_ids": []},
     )
     assert accept_response.status_code == 200, accept_response.text
-    journal_id = accept_response.json()["id"]
+    journal_id = accept_response.json()["journals"][0]["id"]
 
     delete_journal_response = client.delete(
         f"/api/companies/{company_id}/journals/{journal_id}",
@@ -1337,7 +1485,7 @@ def test_accept_recommendation_uses_next_highest_entry_number_after_deleted_gap(
         json={"accepted_proposal_ids": []},
     )
     assert accept_response.status_code == 200, accept_response.text
-    assert accept_response.json()["entry_number"] == "JE-000003"
+    assert accept_response.json()["journals"][0]["entry_number"] == "JE-000003"
 
     settings.openai_api_key = original_api_key
 
@@ -1421,7 +1569,7 @@ def test_journal_recommendation_can_create_new_account_proposal(client, monkeypa
         json={"accepted_proposal_ids": [proposal_id]},
     )
     assert accept_response.status_code == 200, accept_response.text
-    assert accept_response.json()["status"] == "draft"
+    assert accept_response.json()["journals"][0]["status"] == "draft"
 
     accounts_response = client.get(f"/api/companies/{company_id}/accounts", headers=auth_header(token))
     assert accounts_response.status_code == 200, accounts_response.text
@@ -1627,7 +1775,7 @@ def test_journal_recommendation_accepts_multi_adjustment_bundle_with_separate_gs
         json={"accepted_proposal_ids": []},
     )
     assert accept_response.status_code == 200, accept_response.text
-    accepted_lines = accept_response.json()["lines"]
+    accepted_lines = accept_response.json()["journals"][0]["lines"]
     assert len(accepted_lines) == 4
 
     accepted_by_description = {line["description"]: line for line in accepted_lines}
@@ -1681,6 +1829,205 @@ def test_journal_recommendation_returns_503_when_openai_runtime_is_missing(clien
     assert run_response.json()["status"] == "failed"
 
     settings.openai_api_key = original_api_key
+
+
+def test_multi_file_analysis_groups_supporting_documents_into_multiple_journals(client, monkeypatch):
+    settings = get_settings()
+    original_api_key = settings.openai_api_key
+    settings.openai_api_key = "test-key"
+
+    def balanced_entry(
+        *,
+        sequence_number: int,
+        source_document_numbers: list[int],
+        entry_date: date,
+        reference: str,
+        description: str,
+        amount: str,
+        debit_account_code: str = "6440",
+        credit_account_code: str = "1021",
+    ) -> recommendation_service.LlmJournalRecommendation:
+        return recommendation_service.LlmJournalRecommendation(
+            sequence_number=sequence_number,
+            source_document_numbers=source_document_numbers,
+            summary=description,
+            entry_date=entry_date,
+            vendor_name="Example Supplier",
+            total_amount=Decimal(amount),
+            gst_amount=None,
+            currency_code="AUD",
+            recommended_description=description,
+            recommended_reference=reference,
+            confidence_summary="Source documents agree.",
+            warning_text=None,
+            lines=[
+                recommendation_service.LlmRecommendedLine(
+                    line_number=1,
+                    description=description,
+                    explanation="Expense recognised from source evidence.",
+                    account_code=debit_account_code,
+                    tax_code_code=None,
+                    reporting_category_code=None,
+                    debit_amount=Decimal(amount),
+                    credit_amount=Decimal("0.00"),
+                ),
+                recommendation_service.LlmRecommendedLine(
+                    line_number=2,
+                    description="Operating bank",
+                    explanation="Balancing payment line.",
+                    account_code=credit_account_code,
+                    tax_code_code=None,
+                    reporting_category_code=None,
+                    debit_amount=Decimal("0.00"),
+                    credit_amount=Decimal(amount),
+                ),
+            ],
+        )
+
+    def fake_analyze(_db, *, run, documents):
+        assert run.analysis_mode == "multiple"
+        assert [document.original_filename for document in documents] == [
+            "invoice.pdf",
+            "monthly-bank-statement.pdf",
+            "parking-receipt.pdf",
+        ]
+        return recommendation_service.LlmRecommendation(
+            summary="Accrual recognition, later clearance, and parking journals found across three documents.",
+            confidence_summary="The invoice and bank statement show a five-day recognition-to-clearance gap.",
+            warning_text=None,
+            journal_entries=[
+                balanced_entry(
+                    sequence_number=1,
+                    source_document_numbers=[1],
+                    entry_date=date(2026, 7, 5),
+                    reference="INV-1001",
+                    description="Recognise office supplies invoice",
+                    amount="110.00",
+                    credit_account_code="2011",
+                ),
+                balanced_entry(
+                    sequence_number=2,
+                    source_document_numbers=[1, 2],
+                    entry_date=date(2026, 7, 10),
+                    reference="INV-1001-PAY",
+                    description="Clear office supplies payable",
+                    amount="110.00",
+                    debit_account_code="2011",
+                ),
+                balanced_entry(
+                    sequence_number=3,
+                    source_document_numbers=[2, 3],
+                    entry_date=date(2026, 7, 11),
+                    reference="PARK-22",
+                    description="Client parking",
+                    amount="24.00",
+                ),
+            ],
+            proposals=[],
+        )
+
+    monkeypatch.setattr(recommendation_service, "_analyze_with_openai", fake_analyze)
+
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+    period_id = create_period(client, token, company_id)
+    create_response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations",
+        headers=auth_header(token),
+        files=[
+            ("files", ("invoice.pdf", b"%PDF-1.4 invoice", "application/pdf")),
+            ("files", ("monthly-bank-statement.pdf", b"%PDF-1.4 statement", "application/pdf")),
+            ("files", ("parking-receipt.pdf", b"%PDF-1.4 parking", "application/pdf")),
+        ],
+        data={
+            "analysis_mode": "multiple",
+            "model": "gpt-5.4-mini",
+            "user_context_note": "The bank statement contains the invoice clearance and a separate parking payment.",
+            "target_accounting_period_id": period_id,
+        },
+    )
+    assert create_response.status_code == 201, create_response.text
+    assert create_response.json()["analysis_mode"] == "multiple"
+
+    analyze_response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations/{create_response.json()['id']}/analyze",
+        headers=auth_header(token),
+    )
+    assert analyze_response.status_code == 200, analyze_response.text
+    recommendations = analyze_response.json()["entries"]
+    assert len(recommendations) == 3
+    assert [document["original_filename"] for document in recommendations[0]["documents"]] == ["invoice.pdf"]
+    assert [document["original_filename"] for document in recommendations[1]["documents"]] == [
+        "invoice.pdf",
+        "monthly-bank-statement.pdf",
+    ]
+    assert [document["original_filename"] for document in recommendations[2]["documents"]] == [
+        "monthly-bank-statement.pdf",
+        "parking-receipt.pdf",
+    ]
+    assert [len(entry["lines"]) for entry in recommendations] == [2, 2, 2]
+
+    accept_response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations/{create_response.json()['id']}/accept",
+        headers=auth_header(token),
+        json={"accepted_proposal_ids": []},
+    )
+    assert accept_response.status_code == 200, accept_response.text
+    journals = accept_response.json()["journals"]
+    assert len(journals) == 3
+    assert [journal["reference"] for journal in journals] == ["INV-1001", "INV-1001-PAY", "PARK-22"]
+
+    first_evidence = client.get(
+        f"/api/companies/{company_id}/journals/{journals[0]['id']}/documents",
+        headers=auth_header(token),
+    )
+    second_evidence = client.get(
+        f"/api/companies/{company_id}/journals/{journals[1]['id']}/documents",
+        headers=auth_header(token),
+    )
+    third_evidence = client.get(
+        f"/api/companies/{company_id}/journals/{journals[2]['id']}/documents",
+        headers=auth_header(token),
+    )
+    assert [item["original_filename"] for item in first_evidence.json()] == ["invoice.pdf"]
+    assert {item["original_filename"] for item in second_evidence.json()} == {
+        "invoice.pdf",
+        "monthly-bank-statement.pdf",
+    }
+    assert {item["original_filename"] for item in third_evidence.json()} == {
+        "monthly-bank-statement.pdf",
+        "parking-receipt.pdf",
+    }
+    settings.openai_api_key = original_api_key
+
+
+def test_journal_recommendation_upload_modes_enforce_single_and_fifty_file_limits(client):
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+
+    single_response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations",
+        headers=auth_header(token),
+        files=[
+            ("files", ("one.pdf", b"%PDF-1.4 one", "application/pdf")),
+            ("files", ("two.pdf", b"%PDF-1.4 two", "application/pdf")),
+        ],
+        data={"analysis_mode": "single", "model": "gpt-5.4-mini"},
+    )
+    assert single_response.status_code == 400, single_response.text
+    assert single_response.json()["detail"] == "Single-file analysis requires exactly one uploaded file"
+
+    too_many_response = client.post(
+        f"/api/companies/{company_id}/journal-recommendations",
+        headers=auth_header(token),
+        files=[
+            ("files", (f"document-{number:02}.pdf", b"%PDF-1.4 tiny", "application/pdf"))
+            for number in range(1, 52)
+        ],
+        data={"analysis_mode": "multiple", "model": "gpt-5.4-mini"},
+    )
+    assert too_many_response.status_code == 400, too_many_response.text
+    assert too_many_response.json()["detail"] == "Upload at most 50 files per recommendation run"
 
 
 def test_journal_recommendation_model_enums_bind_database_values():

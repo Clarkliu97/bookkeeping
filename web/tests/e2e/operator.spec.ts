@@ -308,6 +308,10 @@ test.describe.serial("operator workspace journeys", () => {
     await expect(page).toHaveURL(/\/banking$/);
     await expect(page.getByTestId("section-link-banking")).toHaveClass(/is-active/);
 
+    await page.getByTestId("section-link-employment").click();
+    await expect(page).toHaveURL(/\/employment$/);
+    await expect(page.getByTestId("section-link-employment")).toHaveClass(/is-active/);
+
     await page.getByTestId("section-link-reports").click();
     await expect(page).toHaveURL(/\/reports$/);
     await expect(page.getByTestId("section-link-reports")).toHaveClass(/is-active/);
@@ -344,26 +348,27 @@ test.describe.serial("operator workspace journeys", () => {
     await createdPeriodRow.click();
 
     const journalDescription = uniqueSuffix("E2E Posted Journal");
-    await page.getByLabel("Accounting period").nth(0).selectOption({ index: 1 });
-    await page.getByLabel("Description").fill(journalDescription);
+    await page.getByRole("button", { name: "Create journal", exact: true }).click();
+    const journalDialog = page.getByRole("dialog", { name: "Create journal" });
+    await expect(journalDialog).toBeVisible();
+    await journalDialog.getByLabel("Accounting period").selectOption({ index: 1 });
+    await journalDialog.getByLabel("Description").fill(journalDescription);
 
-    const lineRows = page.locator(".line-editor-row");
-    await lineRows.nth(0).getByLabel("Line 1 account").selectOption(cashAccount.id);
-    await lineRows.nth(0).getByRole("textbox", { name: "Debit", exact: true }).fill("110.00");
-    await lineRows.nth(0).getByRole("textbox", { name: "Credit", exact: true }).fill("0.00");
+    const lineRows = journalDialog.locator(".line-editor-row");
+    await lineRows.nth(0).locator("select").first().selectOption(cashAccount.id);
+    await lineRows.nth(0).locator("input").nth(0).fill("110.00");
+    await lineRows.nth(0).locator("input").nth(1).fill("0.00");
 
-    await lineRows.nth(1).getByLabel("Line 2 account").selectOption(revenueAccount.id);
-    await lineRows.nth(1).getByRole("textbox", { name: "Debit", exact: true }).fill("0.00");
-    await lineRows.nth(1).getByRole("textbox", { name: "Credit", exact: true }).fill("110.00");
+    await lineRows.nth(1).locator("select").first().selectOption(revenueAccount.id);
+    await lineRows.nth(1).locator("input").nth(0).fill("0.00");
+    await lineRows.nth(1).locator("input").nth(1).fill("110.00");
 
-    await page.getByTestId("save-journal").click();
-    await expect(page.getByText("Saved journal draft.")).toBeVisible();
-
-    await page.getByRole("row", { name: new RegExp(journalDescription) }).click();
-    await page.getByTestId("post-journal").click();
+    await journalDialog.getByTestId("save-journal").click();
+    await expect(journalDialog.getByRole("heading", { name: /^Update / })).toBeVisible();
+    await journalDialog.getByTestId("post-journal").click();
 
     await expect(page.getByRole("row", { name: new RegExp(`${journalDescription}.*posted`) })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Reverse selected" })).toBeVisible();
+    await expect(journalDialog.getByRole("button", { name: "Reverse selected" })).toBeVisible();
   });
 
   test("analyzes a multi-document bundle, shows search verification sources, and accepts a selected proposal", async ({ page }) => {
@@ -410,6 +415,7 @@ test.describe.serial("operator workspace journeys", () => {
             status: "draft",
             provider_name: "openai",
             provider_model: "gpt-5.4",
+            analysis_mode: "multiple",
             user_context_note: "Three-file bundle for settlement adjustments.",
             extracted_entry_date: null,
             target_accounting_period_id: period.id,
@@ -435,6 +441,7 @@ test.describe.serial("operator workspace journeys", () => {
             status: "review_ready",
             provider_name: "openai",
             provider_model: "gpt-5.4",
+            analysis_mode: "multiple",
             user_context_note: "Three-file bundle for settlement adjustments.",
             extracted_entry_date: "2026-07-09",
             target_accounting_period_id: period.id,
@@ -567,7 +574,7 @@ test.describe.serial("operator workspace journeys", () => {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({ id: seededJournal.id, entry_number: seededJournal.entry_number }),
+          body: JSON.stringify({ journals: [{ id: seededJournal.id, entry_number: seededJournal.entry_number }] }),
         });
         return;
       }
@@ -579,23 +586,24 @@ test.describe.serial("operator workspace journeys", () => {
     await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
 
     await page.getByLabel("Target accounting period").selectOption(period.id);
+    await page.getByLabel("Upload mode").selectOption("multiple");
     await page.locator('input[type="file"][multiple]').setInputFiles([
       { name: "settlement-letter.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 settlement letter") },
       { name: "adjustment-sheet.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 adjustment sheet") },
       { name: "title-search.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 title search") },
     ]);
-    await page.getByRole("button", { name: "Analyze bundle" }).click();
+    await page.getByRole("button", { name: "Analyze files" }).click();
 
-    await expect(page.getByText("Generated a review-only journal recommendation.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Generated 1 review-only journal recommendation.")).toBeVisible();
     await expect(page.getByTestId("recommendation-search-sources")).toContainText("www.ato.gov.au");
     await expect(page.getByTestId("recommendation-search-sources")).toContainText("www.nswlrs.com.au");
     await expect(page.locator("table").filter({ hasText: "Evidence" }).getByText("title-search.pdf")).toBeVisible();
 
     const proposalRow = page.getByRole("row", { name: /Title Search Fees/ });
     await proposalRow.locator('input[type="checkbox"]').check();
-    await page.getByRole("button", { name: "Create draft journal" }).click();
+    await page.getByRole("button", { name: "Create 1 draft journal" }).click();
 
-    await expect(page.getByText(new RegExp(`Created draft journal ${seededJournal.entry_number}`))).toBeVisible();
+    await expect(page.getByRole("status").getByText(`Created 1 draft journal: ${seededJournal.entry_number}.`)).toBeVisible();
     expect(acceptRequestCount).toBe(1);
   });
 
@@ -665,18 +673,18 @@ test.describe.serial("operator workspace journeys", () => {
     await page.getByLabel("Generate from").fill("2026-04-01");
     await page.getByLabel("Generate to").fill("2026-06-30");
     await page.getByTestId("generate-bas-periods").click();
-    await expect(page.getByText("Generated BAS periods.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Generated BAS periods.")).toBeVisible();
 
     await page.getByRole("button", { name: /2026-04-01 to 2026-06-30/i }).click();
     await page.getByTestId("generate-bas-run").click();
-    await expect(page.getByText("Generated BAS run.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Generated BAS run.")).toBeVisible();
     await expect(page.getByText("G1")).toBeVisible();
 
     await page.getByRole("button", { name: "Submit" }).click();
-    await expect(page.getByText("Submitted BAS run.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Submitted BAS run.")).toBeVisible();
 
     await page.getByRole("button", { name: "Approve" }).click();
-    await expect(page.getByText("Approved BAS run.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Approved BAS run.")).toBeVisible();
 
     await page.getByTestId("create-bas-csv-export").click();
     await expect(page.getByRole("button", { name: /csv export/i })).toBeVisible();
@@ -707,20 +715,20 @@ test.describe.serial("operator workspace journeys", () => {
     await page.getByLabel("Year period").selectOption(yearPeriod.id);
     await page.getByLabel("Pack note").fill("Year-end workpapers for operator e2e");
     await page.getByTestId("save-tax-pack").click();
-    await expect(page.getByText("Saved tax workpaper pack.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Saved tax workpaper pack.")).toBeVisible();
 
     await expect(page.locator('[data-testid^="tax-pack-row-"]')).toHaveCount(1);
     await page.locator('[data-testid^="tax-pack-row-"]').first().click();
     await expect(page.getByTestId("selected-tax-pack-detail")).toContainText("Taxable income");
 
     await page.getByTestId("submit-tax-pack").click();
-    await expect(page.getByText("Submitted tax pack.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Submitted tax pack.")).toBeVisible();
 
     await page.getByTestId("approve-tax-pack").click();
-    await expect(page.getByText("Approved tax pack.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Approved tax pack.")).toBeVisible();
 
     await page.getByTestId("create-tax-pack-pdf-export").click();
-    await expect(page.getByText("Created tax pack PDF export.")).toBeVisible();
+    await expect(page.getByRole("status").getByText("Created tax pack PDF export.")).toBeVisible();
     await expect(page.getByTestId("selected-tax-pack-detail")).toContainText("Exports: 1");
   });
 });

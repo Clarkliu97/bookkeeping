@@ -1,6 +1,5 @@
 from decimal import Decimal
 
-from app.db.models.fixed_assets import DepreciationRun, FixedAsset
 
 from tests.test_milestone_d import (
     auth_header,

@@ -18,12 +18,14 @@ from app.journal_recommendations.service import (
     ensure_supported_model,
     list_supported_models,
     reject_run,
+    validate_analysis_mode,
     validate_new_files,
     normalize_media_type,
     accept_run,
 )
 from app.schemas.common import (
     JournalEntryRead,
+    JournalRecommendationAcceptRead,
     JournalRecommendationDetailRead,
     JournalRecommendationModelRead,
     JournalRecommendationRunRead,
@@ -67,6 +69,7 @@ async def create_recommendation_run(
     model: str = Form(default="gpt-5.4-mini"),
     user_context_note: str | None = Form(default=None),
     target_accounting_period_id: UUID | None = Form(default=None),
+    analysis_mode: str = Form(default="multiple"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -80,6 +83,7 @@ async def create_recommendation_run(
         validation_payloads.append((file.filename or "upload.bin", file.content_type, len(content)))
         file_payloads.append((file, content, file.filename or "upload.bin", len(content)))
     validate_new_files(validation_payloads)
+    normalized_analysis_mode = validate_analysis_mode(analysis_mode, len(file_payloads))
 
     run = JournalRecommendationRun(
         company_id=company_id,
@@ -87,6 +91,7 @@ async def create_recommendation_run(
         status=JournalRecommendationStatus.DRAFT,
         target_accounting_period_id=target_accounting_period_id,
         user_context_note=user_context_note,
+        analysis_mode=normalized_analysis_mode,
         prompt_version=PROMPT_VERSION,
         provider_name="openai",
         provider_model=chosen_model.id,
@@ -139,7 +144,12 @@ async def create_recommendation_run(
         entity_id=run.id,
         actor_user_id=current_user.id,
         company_id=company_id,
-        metadata={"provider": "openai", "model": chosen_model.id, "file_count": len(file_payloads)},
+        metadata={
+            "provider": "openai",
+            "model": chosen_model.id,
+            "file_count": len(file_payloads),
+            "analysis_mode": normalized_analysis_mode,
+        },
     )
     db.commit()
     return build_run_detail(db, company_id, run.id)
@@ -179,16 +189,16 @@ def analyze_recommendation_run(
     return build_run_detail(db, company_id, run_id)
 
 
-@router.post("/{run_id}/accept", response_model=JournalEntryRead)
+@router.post("/{run_id}/accept", response_model=JournalRecommendationAcceptRead)
 def accept_recommendation_run(
     company_id: UUID,
     run_id: UUID,
     payload: JournalRecommendationAcceptRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> JournalEntryRead:
+) -> JournalRecommendationAcceptRead:
     require_company_permission(company_id, "can_prepare", db, current_user)
-    journal = accept_run(
+    journals = accept_run(
         db,
         company_id=company_id,
         run_id=run_id,
@@ -203,10 +213,16 @@ def accept_recommendation_run(
         entity_id=run_id,
         actor_user_id=current_user.id,
         company_id=company_id,
-        metadata={"accepted_journal_entry_id": str(journal.id), "accepted_proposal_count": len(payload.accepted_proposal_ids)},
+        metadata={
+            "accepted_journal_entry_ids": [str(journal.id) for journal in journals],
+            "accepted_journal_count": len(journals),
+            "accepted_proposal_count": len(payload.accepted_proposal_ids),
+        },
     )
     db.commit()
-    return JournalEntryRead.model_validate(journal)
+    return JournalRecommendationAcceptRead(
+        journals=[JournalEntryRead.model_validate(journal) for journal in journals]
+    )
 
 
 @router.post("/{run_id}/reject", response_model=JournalRecommendationDetailRead)

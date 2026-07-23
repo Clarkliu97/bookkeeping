@@ -33,7 +33,7 @@ This stays aligned with the repository scope: internal use, traceable review wor
 
 ## Deployment Steps
 
-1. Create `.env` from `.env.example` with production credentials and paths.
+1. Create the repository-root `.env` from `.env.example` with production credentials and container-reachable paths. This is the Docker Compose environment file; do not reuse a host-only `localhost` database URL in the API container.
 2. Ensure document storage and backup directories are on persistent disk.
 3. Start services with `docker compose up --build -d`.
 4. Confirm `docker compose ps` shows healthy `db` and `api` services.
@@ -43,5 +43,10 @@ This stays aligned with the repository scope: internal use, traceable review wor
 
 - set a strong `API_SECRET_KEY`
 - restrict `API_ALLOWED_ORIGINS` to the internal frontend origin
+- set `API_ALERT_WEBHOOK_TIMEOUT_SECONDS` and `API_ALERT_MIN_INTERVAL_SECONDS` when webhook alerting is enabled
+- size API memory, request-body limits, reverse-proxy timeouts, and persistent document storage for AI batches of up to 50 files and 100 MiB by default
+- review `API_JOURNAL_AI_MAX_FILE_COUNT`, `API_JOURNAL_AI_MAX_FILE_SIZE_BYTES`, `API_JOURNAL_AI_MAX_TOTAL_SIZE_BYTES`, and `API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS` together before changing any AI upload limit
 - keep PostgreSQL and document storage on persistent disks
 - direct backup output to a path outside ephemeral container filesystems
+
+For non-Compose development, use `api/.env` to override the root Docker values with host-reachable settings. The API deliberately loads `api/.env` after the repository-root file.

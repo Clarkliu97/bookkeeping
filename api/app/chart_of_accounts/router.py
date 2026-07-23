@@ -8,7 +8,7 @@ from app.api.deps import get_current_user, get_db, require_company_permission
 from app.audit.service import log_audit_event
 from app.db.models.accounting import Account, JournalLine
 from app.db.models.auth import User
-from app.db.models.enums import AccountType, EntityType, ReportingCategoryType, TaxInputOutputType
+from app.db.models.enums import AccountType, EntityType
 from app.db.models.reference import ReportingCategory, TaxCode
 from app.schemas.common import AccountRead, ReportingCategoryRead, TaxCodeRead
 from app.schemas.requests import (

@@ -16,6 +16,8 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL,
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
     headless: true,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",

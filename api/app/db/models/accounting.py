@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -47,9 +47,9 @@ class PeriodLock(PrimaryKeyMixin, Base):
     )
     lock_reason: Mapped[str] = mapped_column(Text, nullable=False)
     locked_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
-    locked_at: Mapped[datetime] = mapped_column(nullable=False)
+    locked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     unlocked_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
-    unlocked_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    unlocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     unlock_reason: Mapped[str | None] = mapped_column(Text)
 
 
@@ -66,7 +66,7 @@ class JournalEntry(PrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     reference: Mapped[str | None] = mapped_column(String(128))
     currency_code: Mapped[str] = mapped_column(String(3), nullable=False, default="AUD")
-    posted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     posted_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
     reversal_of_entry_id: Mapped[str | None] = mapped_column(ForeignKey("journal_entries.id"))
     created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)

@@ -1,11 +1,21 @@
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+API_DIRECTORY = Path(__file__).resolve().parents[2]
+REPOSITORY_DIRECTORY = API_DIRECTORY.parent
+DEFAULT_ENV_FILES = (REPOSITORY_DIRECTORY / ".env", API_DIRECTORY / ".env")
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=DEFAULT_ENV_FILES,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "Bookkeeping Tax API"
     api_prefix: str = "/api"
@@ -35,16 +45,28 @@ class Settings(BaseSettings):
     journal_ai_enabled: bool = Field(default=True, alias="API_JOURNAL_AI_ENABLED")
     journal_ai_web_search_enabled: bool = Field(default=True, alias="API_JOURNAL_AI_WEB_SEARCH_ENABLED")
     journal_ai_default_model: str = Field(default="gpt-5.4-mini", alias="API_JOURNAL_AI_DEFAULT_MODEL")
-    journal_ai_max_file_count: int = Field(default=5, alias="API_JOURNAL_AI_MAX_FILE_COUNT")
+    journal_ai_max_file_count: int = Field(default=50, ge=1, le=50, alias="API_JOURNAL_AI_MAX_FILE_COUNT")
     journal_ai_max_file_size_bytes: int = Field(default=10 * 1024 * 1024, alias="API_JOURNAL_AI_MAX_FILE_SIZE_BYTES")
-    journal_ai_max_total_size_bytes: int = Field(default=25 * 1024 * 1024, alias="API_JOURNAL_AI_MAX_TOTAL_SIZE_BYTES")
+    journal_ai_max_total_size_bytes: int = Field(default=100 * 1024 * 1024, alias="API_JOURNAL_AI_MAX_TOTAL_SIZE_BYTES")
     journal_ai_request_timeout_seconds: float = Field(default=90.0, alias="API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS")
     log_level: str = Field(default="INFO", alias="API_LOG_LEVEL")
     log_json: bool = Field(default=True, alias="API_LOG_JSON")
     healthcheck_timeout_seconds: float = Field(default=2.0, alias="API_HEALTHCHECK_TIMEOUT_SECONDS")
     metrics_enabled: bool = Field(default=True, alias="API_METRICS_ENABLED")
     alert_webhook_url: str | None = Field(default=None, alias="API_ALERT_WEBHOOK_URL")
-    alert_cooldown_seconds: int = Field(default=300, alias="API_ALERT_COOLDOWN_SECONDS")
+    alert_webhook_timeout_seconds: float = Field(
+        default=1.0,
+        gt=0,
+        alias="API_ALERT_WEBHOOK_TIMEOUT_SECONDS",
+    )
+    alert_min_interval_seconds: int = Field(
+        default=300,
+        ge=0,
+        validation_alias=AliasChoices(
+            "API_ALERT_MIN_INTERVAL_SECONDS",
+            "API_ALERT_COOLDOWN_SECONDS",
+        ),
+    )
 
 
 @lru_cache

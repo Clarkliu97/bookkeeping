@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -85,7 +85,7 @@ class EmploymentWorkRightsRecord(PrimaryKeyMixin, TimestampMixin, Base):
     hours_restriction_summary: Mapped[str | None] = mapped_column(Text)
     sponsorship_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sponsoring_entity_note: Mapped[str | None] = mapped_column(Text)
-    vevo_checked_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    vevo_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     next_review_due_at: Mapped[date | None] = mapped_column(nullable=True)
     reviewer_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
     review_note: Mapped[str | None] = mapped_column(Text)
