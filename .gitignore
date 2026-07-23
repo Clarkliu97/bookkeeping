@@ -38,7 +38,8 @@ build/
 # OS and editor files
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # Local storage
 storage/

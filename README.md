@@ -349,13 +349,20 @@ Important variables:
 - `NEXT_PUBLIC_API_PORT`: default API port used by the frontend
 - `NEXT_ALLOWED_DEV_ORIGINS`: extra Next.js development origins as a comma-separated list or a short LAN range such as `192.168.1.100-253`
 
-### Run Everything With Docker Compose
+### Development Docker Compose
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
-This command uses the development targets: the API runs with autoreload and the web app runs `next dev --webpack` with bind-mounted source.
+This command starts the normal development stack:
+
+- `docker compose up` creates or recreates and starts the `db`, `api`, and `web` services in dependency order
+- `-d` leaves the containers running in the background and returns control of the terminal
+- `--build` rebuilds the development images before the containers start
+- the optional `e2e` service is not started because it belongs to the `test` profile
+
+The development targets use dedicated `:development` image tags. The API runs with autoreload and the web app runs `next dev --webpack` with bind-mounted source. Ordinary source edits are picked up by the development servers; use `--build` again after changing a Dockerfile, package lock, or installed dependency.
 
 Expected local endpoints:
 
@@ -366,15 +373,59 @@ Expected local endpoints:
 
 The API container runs Alembic migrations on startup before launching Uvicorn.
 
+Inspect or follow the development services:
+
+```bash
+docker compose ps
+docker compose logs -f api web
+```
+
+Build the development images without starting containers:
+
+```bash
+docker compose build
+```
+
+Stop and remove the development containers and network:
+
+```bash
+docker compose down
+```
+
+Running `docker compose up -d` without `--build` starts from the existing development images. Named volumes, including PostgreSQL data, are preserved by a normal `docker compose down`.
+
 ### Production Compose Override
 
 For a long-lived server deployment, layer the production override on top of the base compose file:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-The production override switches both services to production image targets, removes the source bind mounts, runs the API without `--reload`, and runs the frontend with `next start` instead of `next dev`. By default it binds ports `3000` and `8000` to `127.0.0.1`; set `WEB_BIND_ADDRESS` or `API_BIND_ADDRESS` in `.env` if the services must listen on another interface.
+The production override switches both services to dedicated `:production` image tags, removes the source bind mounts, runs the API without `--reload`, and runs the compiled frontend with `next start` instead of `next dev`. By default it binds ports `3000` and `8000` to `127.0.0.1`; set `WEB_BIND_ADDRESS` or `API_BIND_ADDRESS` in `.env` if the services must listen on another interface.
+
+Inspect or follow the production services:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f api web
+```
+
+Build the production images without starting containers:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+```
+
+Stop and remove the production containers and network:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+```
+
+Development and production use the same container names and published ports, so they cannot run simultaneously with the default configuration. Stop the active mode with its matching `down` command before starting the other mode. Do not add `-v` to `down` unless you intentionally want to delete named-volume data such as the PostgreSQL database.
+
+The production file uses Docker Compose's `!override` YAML tag so inherited port and volume lists are replaced rather than appended. The repository's VS Code settings register this Compose tag with the YAML extension; it is not an application-specific value.
 
 ### LAN Access
 

@@ -19,6 +19,7 @@ services:
       start_period: 10s
 
   api:
+    image: bookkeeping-tax-api:development
     build:
       context: ./api
       target: development
@@ -66,6 +67,7 @@ services:
       start_period: 15s
 
   web:
+    image: bookkeeping-tax-web:development
     build:
       context: ./web
       target: development
@@ -86,7 +88,7 @@ services:
       - ./web:/app
       - web_node_modules:/app/node_modules
       - web_next_data:/app/.next
-    command: ["sh", "-lc", "npm install && npm run dev -- --webpack --hostname 0.0.0.0 --port 3000"]
+    command: ["sh", "-lc", "npm ci && npm run dev -- --webpack --hostname 0.0.0.0 --port 3000"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
