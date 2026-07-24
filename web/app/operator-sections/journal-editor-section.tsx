@@ -422,7 +422,7 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
                   router.replace("/bookkeeping");
                 }
               })}>Delete selected</button> : null}
-              {selectedJournal ? <button className="button-link button-link-small" type="button" data-testid="post-journal" onClick={() => runAction("Posting journal", async () => {
+              {selectedJournal?.status === "draft" ? <button className="button-link button-link-small" type="button" data-testid="post-journal" onClick={() => runAction("Posting journal", async () => {
                 await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/post`, "POST");
                 await refreshAll();
                 showMessage("success", "Posted journal.");

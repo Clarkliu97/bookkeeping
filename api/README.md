@@ -40,6 +40,22 @@ API_DATABASE_URL=postgresql+psycopg://bookkeeping:bookkeeping@localhost:5432/boo
 API_DOCUMENT_STORAGE_PATH=../storage/documents
 ```
 
+## Accounting Period Rollover
+
+`POST /companies/{company_id}/periods/{period_id}/lock` automatically closes the period's posted income and expense balances into retained earnings before marking the period locked. The service detects an active equity account with code `3110` or the name `Retained Earnings`. If one is not available, it creates a system-managed, non-manual-posting retained-earnings account and uses the standard retained-earnings reporting category when present.
+
+The lock endpoint returns `400` while any draft journal remains assigned to the period, including when an older locked period is being rechecked. Draft entries must be reviewed and posted or removed; they are never silently included in a posted equity close. The close is a balanced, posted `SYSTEM` journal dated on the period end date and identified by `PERIOD-ROLLOVER:{period_id}`. Repeated calls are idempotent. Calling the lock endpoint for an already locked period rechecks it and backfills a missing rollover without adding another lock or duplicating an existing journal; this supports periods locked before the feature was introduced. Periods with no posted profit-and-loss activity do not need a close journal.
+
+Unlocking a period voids its active rollover and records an audit event. Relocking recalculates the current posted balances and creates a new rollover version. BAS approval and tax-workpaper approval call the same service when their policy automatically locks accounting periods.
+
+Financial reports handle the close deliberately: profit-and-loss reports exclude rollover journals, while the trial balance and general ledger include them. Balance-sheet current earnings start at the later of the configured financial-year start and the day after the latest active rollover, avoiding duplicate equity.
+
+## Journal Posting
+
+`POST /companies/{company_id}/journals/{journal_id}/post` posts one draft journal. `POST /companies/{company_id}/journals/bulk-post` accepts `{ "journal_ids": [...] }` with between 1 and 500 unique company journal IDs and returns the posted journals in the submitted order.
+
+Both routes require prepare permission and apply the same controls: every journal must still be a draft, belong to an unlocked accounting period, contain at least two valid one-sided lines, balance exactly, and reference valid accounts that allow manual posting. Bulk posting validates the complete selection before changing any journal, uses one posting timestamp, records an audit event for every entry, and commits once. If any selected journal is missing or invalid, no journal in that batch is posted.
+
 ## AI Journal Drafting
 
 The journal-recommendation API accepts PDF and supported image evidence in two explicit modes:

@@ -28,6 +28,7 @@ type PeriodRecord = {
 type JournalRecord = {
   id: string;
   entry_number: string;
+  status: string;
 };
 
 type TaxCodeRecord = {
@@ -272,18 +273,24 @@ async function createDraftJournal(
   periodId: string,
   debitAccountId: string,
   creditAccountId: string,
+  options: {
+    description?: string;
+    reference?: string;
+    amount?: string;
+  } = {},
 ) {
+  const amount = options.amount ?? "165.00";
   return apiJson<JournalRecord>(request, "POST", `/api/companies/${companyId}/journals`, token, {
     entry_date: "2026-05-12",
     accounting_period_id: periodId,
     source_type: "manual",
-    description: "Seeded recommendation draft",
-    reference: "E2E-AI-ACCEPT-01",
+    description: options.description ?? "Seeded recommendation draft",
+    reference: options.reference ?? "E2E-AI-ACCEPT-01",
     lines: [
       {
         account_id: debitAccountId,
         description: "Seeded debit",
-        debit_amount: "165.00",
+        debit_amount: amount,
         credit_amount: "0.00",
         tax_code_id: null,
         reporting_category_id: null,
@@ -293,7 +300,7 @@ async function createDraftJournal(
         account_id: creditAccountId,
         description: "Seeded credit",
         debit_amount: "0.00",
-        credit_amount: "165.00",
+        credit_amount: amount,
         tax_code_id: null,
         reporting_category_id: null,
         source_document_reference: null,
@@ -443,6 +450,8 @@ test.describe.serial("operator workspace journeys", () => {
   });
 
   test("keeps dark journal, ledger, and workbench surfaces subdued", async ({ page }) => {
+    const pageErrors: Error[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error));
     const auth = await ensureOperatorSession(page.request);
     const company = await createCompany(page.request, auth.access_token, "E2E Dark Surface Company");
     const debitAccount = await createAccount(page.request, auth.access_token, company.id, {
@@ -495,6 +504,11 @@ test.describe.serial("operator workspace journeys", () => {
     await expect(page.locator(".ledger-group-row").first()).toBeVisible();
     await expectSubduedBackground(".ledger-group-row td", 80);
     await expectSubduedBackground(".ledger-table thead th", 80);
+    await page.getByRole("button", { name: "Journals", exact: true }).click();
+    await page.getByRole("row").filter({ hasText: journal.entry_number }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Maximum update depth exceeded")).toHaveCount(0);
+    expect(pageErrors).toEqual([]);
 
     await page.goto("/workbench");
     await expect(page.locator(".method-chip").first()).toBeVisible();
@@ -550,6 +564,82 @@ test.describe.serial("operator workspace journeys", () => {
 
     await expect(page.getByRole("row", { name: new RegExp(`${journalDescription}.*posted`) })).toBeVisible();
     await expect(journalDialog.getByRole("button", { name: "Reverse selected" })).toBeVisible();
+
+    await journalDialog.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Periods", exact: true }).click();
+    await createdPeriodRow.click();
+    await expect(page.getByRole("heading", { name: "Period-end earnings rollover" })).toBeVisible();
+    await expect(page.getByText(/Locking this period automatically detects or creates the Retained Earnings/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Lock", exact: true }).click();
+    await expect(page.getByRole("status").getByText("Locked period and updated retained earnings.")).toBeVisible();
+    await expect(page.getByText(/System journal .* transferred .*110\.00 to retained earnings/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Unlock", exact: true }).click();
+    await expect(page.getByRole("status").getByText("Unlocked period and voided its previous earnings rollover.")).toBeVisible();
+    await expect(page.getByText(/previous system rollover was voided with an audit event/)).toBeVisible();
+  });
+
+  test("selects and posts multiple draft journals from the Journals popup", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Bulk Journal Company");
+    const period = await createPeriod(page.request, auth.access_token, company.id, uniqueSuffix("E2E Bulk Quarter"));
+    const cashAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Bulk Post Cash",
+      account_type: "asset",
+    });
+    const revenueAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Bulk Post Revenue",
+      account_type: "income",
+    });
+    const firstDescription = uniqueSuffix("Bulk post first");
+    const secondDescription = uniqueSuffix("Bulk post second");
+    const firstJournal = await createDraftJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      period.id,
+      cashAccount.id,
+      revenueAccount.id,
+      { description: firstDescription, reference: "E2E-BULK-01", amount: "125.00" },
+    );
+    const secondJournal = await createDraftJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      period.id,
+      cashAccount.id,
+      revenueAccount.id,
+      { description: secondDescription, reference: "E2E-BULK-02", amount: "275.00" },
+    );
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/bookkeeping");
+    await page.getByRole("button", { name: "Journals", exact: true }).click();
+    await page.getByRole("button", { name: "Post multiple", exact: true }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Post multiple journal entries" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel("Accounting period").selectOption(period.id);
+    await dialog.getByLabel(`Select ${firstJournal.entry_number}`).check();
+    await dialog.getByLabel(`Select ${secondJournal.entry_number}`).check();
+    await expect(dialog.getByText("2 selected", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Combined debit total: $400.00")).toBeVisible();
+    await dialog.getByTestId("bulk-post-journals").click();
+
+    await expect(page.getByRole("status").getByText("Posted 2 journal entries.")).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    const journals = await apiJson<Array<JournalRecord>>(
+      page.request,
+      "GET",
+      `/api/companies/${company.id}/journals`,
+      auth.access_token,
+    );
+    const journalById = new Map(journals.map((journal) => [journal.id, journal]));
+    expect(journalById.get(firstJournal.id)?.status).toBe("posted");
+    expect(journalById.get(secondJournal.id)?.status).toBe("posted");
   });
 
   test("multi-selects existing evidence, preserves source order, and accepts a selected proposal", async ({ page }) => {

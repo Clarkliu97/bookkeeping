@@ -12,10 +12,18 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.audit.service import log_audit_event, log_approval_action
+from app.accounting_periods.service import create_period_earnings_rollover
+from app.audit.service import log_approval_action, log_audit_event
 from app.db.models.accounting import AccountingPeriod, JournalEntry, JournalLine, PeriodLock
 from app.db.models.audit import ApprovalAction
-from app.db.models.bas import BasAdjustment, BasExport, BasLineResult, BasPeriod, BasReviewNote, BasRun
+from app.db.models.bas import (
+    BasAdjustment,
+    BasExport,
+    BasLineResult,
+    BasPeriod,
+    BasReviewNote,
+    BasRun,
+)
 from app.db.models.companies import CompanyConfigurationVersion
 from app.db.models.documents import Document
 from app.db.models.enums import (
@@ -30,7 +38,6 @@ from app.db.models.enums import (
 )
 from app.db.models.reference import TaxCode
 from app.documents.service import store_document_bytes
-
 
 DISCLAIMER = (
     "Internal calculation support only. This report does not lodge anything with the ATO and "
@@ -50,7 +57,9 @@ def _end_of_period(start_date: date, frequency: str) -> date:
         return year, month
 
     if frequency == "monthly":
-        return date(start_date.year, start_date.month, _last_day_of_month(start_date.year, start_date.month))
+        return date(
+            start_date.year, start_date.month, _last_day_of_month(start_date.year, start_date.month)
+        )
     if frequency == "quarterly":
         end_year, end_month = add_months(2)
         return date(end_year, end_month, _last_day_of_month(end_year, end_month))
@@ -66,7 +75,9 @@ def _next_period_start(period_end: date) -> date:
     return date(period_end.year, period_end.month + 1, 1)
 
 
-def _configuration_for_date(db: Session, company_id: UUID, target_date: date) -> CompanyConfigurationVersion:
+def _configuration_for_date(
+    db: Session, company_id: UUID, target_date: date
+) -> CompanyConfigurationVersion:
     configuration = db.scalar(
         select(CompanyConfigurationVersion)
         .where(CompanyConfigurationVersion.company_id == company_id)
@@ -75,7 +86,10 @@ def _configuration_for_date(db: Session, company_id: UUID, target_date: date) ->
             (CompanyConfigurationVersion.effective_to.is_(None))
             | (CompanyConfigurationVersion.effective_to >= target_date)
         )
-        .order_by(CompanyConfigurationVersion.effective_from.desc(), CompanyConfigurationVersion.version_number.desc())
+        .order_by(
+            CompanyConfigurationVersion.effective_from.desc(),
+            CompanyConfigurationVersion.version_number.desc(),
+        )
         .limit(1)
     )
     if configuration is None:
@@ -87,7 +101,9 @@ def _configuration_snapshot(configuration: CompanyConfigurationVersion) -> dict:
     return {
         "version_number": configuration.version_number,
         "effective_from": configuration.effective_from.isoformat(),
-        "effective_to": configuration.effective_to.isoformat() if configuration.effective_to else None,
+        "effective_to": configuration.effective_to.isoformat()
+        if configuration.effective_to
+        else None,
         "gst_registered": configuration.gst_registered,
         "bas_frequency": configuration.bas_frequency.value,
         "bas_reporting_basis": configuration.bas_reporting_basis.value,
@@ -99,7 +115,9 @@ def _configuration_snapshot(configuration: CompanyConfigurationVersion) -> dict:
     }
 
 
-def generate_bas_periods(db: Session, *, company_id: UUID, start_date: date, end_date: date) -> list[BasPeriod]:
+def generate_bas_periods(
+    db: Session, *, company_id: UUID, start_date: date, end_date: date
+) -> list[BasPeriod]:
     periods: list[BasPeriod] = []
     current_start = start_date
     while current_start <= end_date:
@@ -139,12 +157,18 @@ def _amount_for_line(line: JournalLine) -> Decimal:
 
 
 def _refresh_line_results(db: Session, bas_run: BasRun) -> None:
-    adjustments = list(db.scalars(select(BasAdjustment).where(BasAdjustment.bas_run_id == bas_run.id)).all())
+    adjustments = list(
+        db.scalars(select(BasAdjustment).where(BasAdjustment.bas_run_id == bas_run.id)).all()
+    )
     adjustment_totals: dict[str, Decimal] = {}
     for adjustment in adjustments:
-        adjustment_totals[adjustment.label] = adjustment_totals.get(adjustment.label, Decimal("0.00")) + adjustment.amount
+        adjustment_totals[adjustment.label] = (
+            adjustment_totals.get(adjustment.label, Decimal("0.00")) + adjustment.amount
+        )
 
-    line_results = list(db.scalars(select(BasLineResult).where(BasLineResult.bas_run_id == bas_run.id)).all())
+    line_results = list(
+        db.scalars(select(BasLineResult).where(BasLineResult.bas_run_id == bas_run.id)).all()
+    )
     existing_by_label = {line_result.label: line_result for line_result in line_results}
     for label, adjustment_total in adjustment_totals.items():
         if label not in existing_by_label:
@@ -164,7 +188,9 @@ def _refresh_line_results(db: Session, bas_run: BasRun) -> None:
         line_result.final_amount = line_result.system_amount + line_result.adjustment_amount
 
 
-def _bas_lines_and_warnings(db: Session, company_id: UUID, bas_period: BasPeriod) -> tuple[dict[str, dict[str, Decimal | int]], list[BasReviewNote]]:
+def _bas_lines_and_warnings(
+    db: Session, company_id: UUID, bas_period: BasPeriod
+) -> tuple[dict[str, dict[str, Decimal | int]], list[BasReviewNote]]:
     lines = db.execute(
         select(JournalLine, JournalEntry, TaxCode)
         .join(JournalEntry, JournalEntry.id == JournalLine.journal_entry_id)
@@ -214,7 +240,9 @@ def _bas_lines_and_warnings(db: Session, company_id: UUID, bas_period: BasPeriod
     return totals, review_notes
 
 
-def create_bas_run(db: Session, *, company_id: UUID, bas_period: BasPeriod, generated_by_user_id: UUID) -> BasRun:
+def create_bas_run(
+    db: Session, *, company_id: UUID, bas_period: BasPeriod, generated_by_user_id: UUID
+) -> BasRun:
     configuration = db.get(CompanyConfigurationVersion, bas_period.configuration_version_id)
     if configuration is None:
         raise ValueError("BAS period has no valid configuration reference")
@@ -260,7 +288,9 @@ def create_bas_run(db: Session, *, company_id: UUID, bas_period: BasPeriod, gene
     return bas_run
 
 
-def rebuild_bas_run(db: Session, *, bas_run: BasRun, bas_period: BasPeriod, acting_user_id: UUID) -> BasRun:
+def rebuild_bas_run(
+    db: Session, *, bas_run: BasRun, bas_period: BasPeriod, acting_user_id: UUID
+) -> BasRun:
     configuration = db.get(CompanyConfigurationVersion, bas_period.configuration_version_id)
     if configuration is None:
         raise ValueError("BAS period has no valid configuration reference")
@@ -320,7 +350,9 @@ def check_self_approval_block(db: Session, *, bas_run: BasRun, acting_user_id: U
         raise ValueError("Company policy blocks self-approval for this BAS run")
 
 
-def _lock_periods_for_bas(db: Session, *, company_id: UUID, bas_period: BasPeriod, acting_user_id: UUID) -> None:
+def _lock_periods_for_bas(
+    db: Session, *, company_id: UUID, bas_period: BasPeriod, acting_user_id: UUID
+) -> None:
     periods = list(
         db.scalars(
             select(AccountingPeriod)
@@ -340,6 +372,11 @@ def _lock_periods_for_bas(db: Session, *, company_id: UUID, bas_period: BasPerio
         )
         if active_lock is not None:
             continue
+        create_period_earnings_rollover(
+            db,
+            period=accounting_period,
+            actor_user_id=acting_user_id,
+        )
         accounting_period.status = WorkflowStatus.LOCKED
         db.add(
             PeriodLock(
@@ -352,25 +389,43 @@ def _lock_periods_for_bas(db: Session, *, company_id: UUID, bas_period: BasPerio
         )
 
 
-def maybe_lock_periods_for_policy(db: Session, *, bas_run: BasRun, acting_user_id: UUID, on_export: bool = False) -> None:
+def maybe_lock_periods_for_policy(
+    db: Session, *, bas_run: BasRun, acting_user_id: UUID, on_export: bool = False
+) -> None:
     configuration = db.get(CompanyConfigurationVersion, bas_run.configuration_version_id)
     bas_period = db.get(BasPeriod, bas_run.bas_period_id)
     if configuration is None or bas_period is None:
         return
     if configuration.period_lock_policy == PeriodLockPolicy.AFTER_APPROVAL and not on_export:
-        _lock_periods_for_bas(db, company_id=bas_run.company_id, bas_period=bas_period, acting_user_id=acting_user_id)
+        _lock_periods_for_bas(
+            db, company_id=bas_run.company_id, bas_period=bas_period, acting_user_id=acting_user_id
+        )
         bas_period.status = BasPeriodStatus.LOCKED
     if configuration.period_lock_policy == PeriodLockPolicy.AFTER_EXPORT and on_export:
-        _lock_periods_for_bas(db, company_id=bas_run.company_id, bas_period=bas_period, acting_user_id=acting_user_id)
+        _lock_periods_for_bas(
+            db, company_id=bas_run.company_id, bas_period=bas_period, acting_user_id=acting_user_id
+        )
         bas_period.status = BasPeriodStatus.LOCKED
 
 
-def build_bas_csv(bas_run: BasRun, line_results: list[BasLineResult], review_notes: list[BasReviewNote]) -> bytes:
+def build_bas_csv(
+    bas_run: BasRun, line_results: list[BasLineResult], review_notes: list[BasReviewNote]
+) -> bytes:
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["BAS Label", "System Amount", "Adjustment Amount", "Final Amount", "Detail Count"])
+    writer.writerow(
+        ["BAS Label", "System Amount", "Adjustment Amount", "Final Amount", "Detail Count"]
+    )
     for line in sorted(line_results, key=lambda item: item.label):
-        writer.writerow([line.label, f"{line.system_amount:.2f}", f"{line.adjustment_amount:.2f}", f"{line.final_amount:.2f}", line.detail_count])
+        writer.writerow(
+            [
+                line.label,
+                f"{line.system_amount:.2f}",
+                f"{line.adjustment_amount:.2f}",
+                f"{line.final_amount:.2f}",
+                line.detail_count,
+            ]
+        )
     writer.writerow([])
     writer.writerow(["Warnings"])
     for note in review_notes:
@@ -380,7 +435,9 @@ def build_bas_csv(bas_run: BasRun, line_results: list[BasLineResult], review_not
     return output.getvalue().encode("utf-8")
 
 
-def build_bas_pdf(bas_run: BasRun, line_results: list[BasLineResult], review_notes: list[BasReviewNote]) -> bytes:
+def build_bas_pdf(
+    bas_run: BasRun, line_results: list[BasLineResult], review_notes: list[BasReviewNote]
+) -> bytes:
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -398,7 +455,11 @@ def build_bas_pdf(bas_run: BasRun, line_results: list[BasLineResult], review_not
     cursor_y -= 18
     pdf.setFont("Helvetica", 10)
     for line in sorted(line_results, key=lambda item: item.label):
-        pdf.drawString(50, cursor_y, f"{line.label}: final {line.final_amount:.2f} (system {line.system_amount:.2f}, adj {line.adjustment_amount:.2f})")
+        pdf.drawString(
+            50,
+            cursor_y,
+            f"{line.label}: final {line.final_amount:.2f} (system {line.system_amount:.2f}, adj {line.adjustment_amount:.2f})",
+        )
         cursor_y -= 14
         if cursor_y < 70:
             pdf.showPage()

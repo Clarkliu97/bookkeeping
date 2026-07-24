@@ -10,7 +10,8 @@ The implemented system currently supports:
 
 - company setup with versioned bookkeeping and reporting configuration
 - chart of accounts, tax codes, and reporting categories
-- balanced journal entry drafting, posting, reversal, and audit history
+- balanced journal entry drafting, single or atomic multi-entry posting, reversal, and audit history
+- automatic period-end profit-and-loss rollover into retained earnings
 - source document upload, journal evidence linking, and document download
 - employment support records for workers, engagements, work rights, compensation, leave, reimbursements, and issued assets
 - bank CSV import staging, duplicate detection, confirmation, and reconciliation workflows
@@ -51,7 +52,10 @@ The project explicitly does not support:
 
 - create draft journals
 - post journals through the normal validation path
+- select and post up to 500 reviewed draft journals together from a searchable, period-aware popup; the batch is all-or-nothing
 - reverse journals
+- lock periods with an automatic, balanced system journal that closes posted profit-and-loss balances into retained earnings
+- unlock periods with an audited void of the prior rollover so corrections can be posted before relocking
 - review journal detail including source type, lines, status, references, and audit-relevant metadata
 - search and filter journal lists by text and status
 - inspect a ledger explorer that can show both draft and posted lines for review
@@ -167,16 +171,25 @@ Typical tasks:
 
 1. Create accounting periods.
 2. Draft journals manually.
-3. Post or reverse journals after review.
-4. Search and filter journal lists.
-5. Attach or review journal evidence.
-6. Open the ledger explorer to inspect draft and posted journal lines.
-7. Choose `Single document` when one item should produce one journal, or `Multiple documents` when an evidence bundle may contain several transactions. Selecting a second existing document, or combining an existing document with a new upload, automatically switches the frontend to multiple-document mode.
-8. Search the existing-document library to reuse previously uploaded PDFs and images, such as a monthly bank statement. The checkbox list supports selecting several stored documents in a deliberate order; you can use stored evidence only, upload new files, or combine both.
-9. Select up to 50 evidence documents in total. In multiple-document mode, stored documents retain their selection order and are numbered before new uploads; new files can be added in more than one selection and removed individually before analysis.
-10. Review how the AI grouped the numbered evidence. Several documents can support one journal, and one source such as a monthly bank statement can support several journals, while unrelated transactions are returned as separate recommendations.
-11. Review every recommended journal independently, including its evidence, date, reference, assumptions, GST handling, balanced lines, and any verification sources.
-12. Accept the batch to create all recommended draft journals together, then review and post each draft through the normal bookkeeping workflow.
+3. Post a single reviewed draft, or use `Post multiple` to search, filter by accounting period, and select several drafts for one atomic posting action. Drafts in locked periods remain visible but cannot be selected until the period is unlocked.
+4. Lock a completed period to close its posted profit-and-loss balances into retained earnings.
+5. Search and filter journal lists.
+6. Attach or review journal evidence.
+7. Open the ledger explorer to inspect draft and posted journal lines.
+8. Choose `Single document` when one item should produce one journal, or `Multiple documents` when an evidence bundle may contain several transactions. Selecting a second existing document, or combining an existing document with a new upload, automatically switches the frontend to multiple-document mode.
+9. Search the existing-document library to reuse previously uploaded PDFs and images, such as a monthly bank statement. The checkbox list supports selecting several stored documents in a deliberate order; you can use stored evidence only, upload new files, or combine both.
+10. Select up to 50 evidence documents in total. In multiple-document mode, stored documents retain their selection order and are numbered before new uploads; new files can be added in more than one selection and removed individually before analysis.
+11. Review how the AI grouped the numbered evidence. Several documents can support one journal, and one source such as a monthly bank statement can support several journals, while unrelated transactions are returned as separate recommendations.
+12. Review every recommended journal independently, including its evidence, date, reference, assumptions, GST handling, balanced lines, and any verification sources.
+13. Accept the batch to create all recommended draft journals together, then review and post drafts individually or through the Journals tab's multi-entry posting popup.
+
+### Period-End Earnings Rollover
+
+Locking an accounting period first requires every journal assigned to it to be posted, reversed, voided, or removed; any remaining draft blocks the lock and the Periods workspace displays the blocking count. This prevents unreviewed balances from being silently omitted from equity. Once ready, the system checks the posted journals for non-zero income and expense balances. It reuses an active equity account with code `3110` or the name `Retained Earnings`; if neither exists, it creates a non-manual-posting `Retained Earnings` account and assigns the retained-earnings reporting category when available. It then posts a balanced `SYSTEM` journal on the period end date that closes each profit-and-loss account and transfers the net profit or loss to retained earnings. If the period has no posted profit-and-loss activity, no rollover journal is needed.
+
+The rollover is idempotent while the period remains locked. Choosing `Lock` again safely checks an older locked period and backfills a missing rollover without duplicating one that is already posted. This is the upgrade path for periods locked before automatic rollover was introduced. Unlocking the period voids the active rollover and records the action in the audit trail; locking it again recalculates the balances and creates a new posted rollover. BAS approval policies and annual tax-workpaper approval use the same rollover behavior when they lock accounting periods automatically.
+
+Profit-and-loss reports exclude these closing journals so the period's operating result remains visible. The trial balance and general ledger include them because they reflect the posted ledger. Balance-sheet `Current Earnings` begins at the later of the configured financial-year start and the day after the latest active rollover, preventing profit from appearing both in retained earnings and current earnings.
 
 The AI path is assistive only. It does not silently post entries. The backend requires every selected or uploaded evidence document to be assigned to at least one recommendation, validates each recommendation as independently balanced double-entry, and links only the assigned evidence to each accepted draft. Reusing a document does not create a duplicate upload; the existing company document is linked to the recommendation run and any accepted drafts that use it. Each document receives an authoritative source number for the run, and that same number is preserved in the recommendation review and accepted-journal evidence note, even when one stored document supports several entries. Batch acceptance is atomic: if any recommended journal cannot pass the normal account, tax-code, date, period, or balance controls, no journals from that batch are created.
 

@@ -11,6 +11,10 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.accounting_periods.service import (
+    current_earnings_start_date,
+    period_rollover_journal_condition,
+)
 from app.db.models.accounting import Account, JournalEntry, JournalLine
 from app.db.models.enums import AccountType, JournalStatus
 from app.schemas.common import (
@@ -23,7 +27,6 @@ from app.schemas.common import (
     TrialBalanceReportRead,
     TrialBalanceRow,
 )
-
 
 ZERO = Decimal("0.00")
 POSTED_REPORT_STATUSES = (JournalStatus.POSTED,)
@@ -96,6 +99,7 @@ def _aggregate_accounts(
     end_date: date | None = None,
     account_types: set[AccountType] | None = None,
     include_draft: bool = False,
+    exclude_period_rollovers: bool = False,
 ) -> list[AccountAggregate]:
     query = (
         select(
@@ -112,9 +116,13 @@ def _aggregate_accounts(
         .where(JournalEntry.status.in_(_visible_statuses(include_draft=include_draft)))
     )
     query = _date_filters(query, start_date=start_date, end_date=end_date)
+    if exclude_period_rollovers:
+        query = query.where(~period_rollover_journal_condition())
     if account_types is not None:
         query = query.where(Account.account_type.in_(account_types))
-    query = query.group_by(Account.id, Account.account_code, Account.name, Account.account_type).order_by(Account.account_code.asc())
+    query = query.group_by(
+        Account.id, Account.account_code, Account.name, Account.account_type
+    ).order_by(Account.account_code.asc())
     rows = db.execute(query).all()
     return [
         AccountAggregate(
@@ -183,6 +191,7 @@ def build_profit_and_loss_report(
         end_date=end_date,
         account_types=pnl_types,
         include_draft=include_draft,
+        exclude_period_rollovers=True,
     )
     income_lines: list[FinancialReportLine] = []
     expense_lines: list[FinancialReportLine] = []
@@ -265,7 +274,11 @@ def build_balance_sheet_report(
     earnings_report = build_profit_and_loss_report(
         db,
         company_id=company_id,
-        start_date=date(as_of_date.year, 1, 1),
+        start_date=current_earnings_start_date(
+            db,
+            company_id=company_id,
+            as_of_date=as_of_date,
+        ),
         end_date=as_of_date,
         include_draft=include_draft,
     )
@@ -351,7 +364,12 @@ def build_general_ledger_report(
     )
     if account_id is not None:
         query = query.where(Account.id == account_id)
-    query = query.order_by(Account.account_code.asc(), JournalEntry.entry_date.asc(), JournalEntry.entry_number.asc(), JournalLine.line_number.asc())
+    query = query.order_by(
+        Account.account_code.asc(),
+        JournalEntry.entry_date.asc(),
+        JournalEntry.entry_number.asc(),
+        JournalLine.line_number.asc(),
+    )
     rows = db.execute(query).all()
 
     grouped_entries: dict[UUID, list[GeneralLedgerEntryRead]] = defaultdict(list)
@@ -376,7 +394,9 @@ def build_general_ledger_report(
             GeneralLedgerEntryRead(
                 journal_entry_id=row.journal_entry_id,
                 entry_number=row.entry_number,
-                journal_status=row.journal_status.value if hasattr(row.journal_status, "value") else str(row.journal_status),
+                journal_status=row.journal_status.value
+                if hasattr(row.journal_status, "value")
+                else str(row.journal_status),
                 entry_date=row.entry_date,
                 line_number=row.line_number,
                 journal_description=row.journal_description,
@@ -420,7 +440,15 @@ def build_trial_balance_csv(report: TrialBalanceReportRead) -> bytes:
     writer = csv.writer(output)
     writer.writerow(["Account Code", "Account Name", "Debit Total", "Credit Total", "Balance"])
     for row in report.rows:
-        writer.writerow([row.account_code, row.account_name, f"{row.debit_total:.2f}", f"{row.credit_total:.2f}", f"{row.balance:.2f}"])
+        writer.writerow(
+            [
+                row.account_code,
+                row.account_name,
+                f"{row.debit_total:.2f}",
+                f"{row.credit_total:.2f}",
+                f"{row.balance:.2f}",
+            ]
+        )
     return output.getvalue().encode("utf-8")
 
 
@@ -449,33 +477,59 @@ def build_balance_sheet_csv(report: BalanceSheetReportRead) -> bytes:
         writer.writerow(["liability", line.account_code, line.account_name, f"{line.amount:.2f}"])
     for line in report.equity_lines:
         writer.writerow(["equity", line.account_code, line.account_name, f"{line.amount:.2f}"])
-    writer.writerow(["equity", report.current_earnings.account_code, report.current_earnings.account_name, f"{report.current_earnings.amount:.2f}"])
+    writer.writerow(
+        [
+            "equity",
+            report.current_earnings.account_code,
+            report.current_earnings.account_name,
+            f"{report.current_earnings.amount:.2f}",
+        ]
+    )
     writer.writerow([])
     writer.writerow(["Total Assets", "", "", f"{report.total_assets:.2f}"])
     writer.writerow(["Total Liabilities", "", "", f"{report.total_liabilities:.2f}"])
     writer.writerow(["Total Equity", "", "", f"{report.total_equity:.2f}"])
-    writer.writerow(["Total Liabilities and Equity", "", "", f"{report.total_liabilities_and_equity:.2f}"])
+    writer.writerow(
+        ["Total Liabilities and Equity", "", "", f"{report.total_liabilities_and_equity:.2f}"]
+    )
     return output.getvalue().encode("utf-8")
 
 
 def build_general_ledger_csv(report: GeneralLedgerReportRead) -> bytes:
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Account Code", "Account Name", "Entry Number", "Status", "Entry Date", "Line Number", "Journal Description", "Line Description", "Reference", "Debit", "Credit", "Running Balance"])
+    writer.writerow(
+        [
+            "Account Code",
+            "Account Name",
+            "Entry Number",
+            "Status",
+            "Entry Date",
+            "Line Number",
+            "Journal Description",
+            "Line Description",
+            "Reference",
+            "Debit",
+            "Credit",
+            "Running Balance",
+        ]
+    )
     for account in report.accounts:
         for entry in account.entries:
-            writer.writerow([
-                account.account_code,
-                account.account_name,
-                entry.entry_number,
-                entry.journal_status,
-                entry.entry_date.isoformat(),
-                entry.line_number,
-                entry.journal_description,
-                entry.line_description or "",
-                entry.reference or "",
-                f"{entry.debit_amount:.2f}",
-                f"{entry.credit_amount:.2f}",
-                f"{entry.running_balance:.2f}",
-            ])
+            writer.writerow(
+                [
+                    account.account_code,
+                    account.account_name,
+                    entry.entry_number,
+                    entry.journal_status,
+                    entry.entry_date.isoformat(),
+                    entry.line_number,
+                    entry.journal_description,
+                    entry.line_description or "",
+                    entry.reference or "",
+                    f"{entry.debit_amount:.2f}",
+                    f"{entry.credit_amount:.2f}",
+                    f"{entry.running_balance:.2f}",
+                ]
+            )
     return output.getvalue().encode("utf-8")

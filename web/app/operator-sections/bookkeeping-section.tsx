@@ -232,6 +232,18 @@ type RemovableDocumentLink = {
 type JournalEvidenceItem = OperatorState["journalEvidence"][number];
 
 
+function journalEvidenceMatches(
+  current: JournalEvidenceItem[] | undefined,
+  incoming: JournalEvidenceItem[],
+) {
+  return current === incoming || (
+    current !== undefined
+    && current.length === incoming.length
+    && JSON.stringify(current) === JSON.stringify(incoming)
+  );
+}
+
+
 type DocumentPreviewState = {
   status: "loading" | "ready" | "error";
   url: string | null;
@@ -317,6 +329,10 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
   const [journalSearchQuery, setJournalSearchQuery] = useState("");
   const [journalStatusFilter, setJournalStatusFilter] = useState("");
+  const [isBulkPostOpen, setIsBulkPostOpen] = useState(false);
+  const [bulkPostSearchQuery, setBulkPostSearchQuery] = useState("");
+  const [bulkPostPeriodId, setBulkPostPeriodId] = useState("");
+  const [bulkPostSelectedJournalIds, setBulkPostSelectedJournalIds] = useState<string[]>([]);
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState("");
   const [ledgerStatusFilter, setLedgerStatusFilter] = useState("");
   const [recommendationModels, setRecommendationModels] = useState<JournalRecommendationModel[]>([]);
@@ -751,6 +767,34 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const categoryNameById = useMemo(() => new Map(categories.map((item) => [item.id, item.name])), [categories]);
   const accountLabelById = useMemo(() => new Map(accounts.map((item) => [item.id, `${item.account_code} ${item.name}`])), [accounts]);
   const taxCodeLabelById = useMemo(() => new Map(taxCodes.map((item) => [item.id, `${item.code} ${item.name}`])), [taxCodes]);
+  const periodById = useMemo(() => new Map(periods.map((item) => [item.id, item])), [periods]);
+  const selectedPeriodRolloverJournal = useMemo(
+    () => journals.find((item) => (
+      item.accounting_period_id === selectedPeriodId
+      && item.source_type === "system"
+      && item.reference === `PERIOD-ROLLOVER:${selectedPeriodId}`
+    )) ?? null,
+    [journals, selectedPeriodId],
+  );
+  const selectedPeriodRolloverAmount = useMemo(() => {
+    if (!selectedPeriodRolloverJournal) {
+      return null;
+    }
+    const equityAccountIds = new Set(
+      accounts.filter((account) => account.account_type === "equity").map((account) => account.id),
+    );
+    const equityLine = selectedPeriodRolloverJournal.lines.find((line) => equityAccountIds.has(line.account_id));
+    return equityLine
+      ? Number(equityLine.credit_amount) - Number(equityLine.debit_amount)
+      : 0;
+  }, [accounts, selectedPeriodRolloverJournal]);
+  const selectedPeriodDraftJournalCount = useMemo(
+    () => journals.filter((item) => (
+      item.accounting_period_id === selectedPeriodId
+      && item.status === "draft"
+    )).length,
+    [journals, selectedPeriodId],
+  );
   const selectedRecommendationModel = useMemo(
     () => recommendationModels.find((item) => item.id === recommendationModelId) ?? null,
     [recommendationModelId, recommendationModels],
@@ -846,6 +890,58 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const journalStatusOptions = useMemo(
     () => Array.from(new Set(journals.map((item) => item.status))).sort(),
     [journals],
+  );
+  const draftJournals = useMemo(
+    () => journals.filter((item) => item.status === "draft"),
+    [journals],
+  );
+  const postableDraftJournalCount = useMemo(
+    () => draftJournals.filter((item) => periodById.get(item.accounting_period_id)?.status !== "locked").length,
+    [draftJournals, periodById],
+  );
+  const bulkPostPeriodOptions = useMemo(
+    () => periods
+      .filter((period) => draftJournals.some((journal) => journal.accounting_period_id === period.id))
+      .sort((left, right) => left.start_date.localeCompare(right.start_date)),
+    [draftJournals, periods],
+  );
+  const bulkPostVisibleJournals = useMemo(() => {
+    const query = normalizeSearchValue(bulkPostSearchQuery);
+    return draftJournals.filter((item) => {
+      if (bulkPostPeriodId && item.accounting_period_id !== bulkPostPeriodId) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      const period = periodById.get(item.accounting_period_id);
+      return [
+        item.entry_number,
+        item.entry_date,
+        item.description,
+        item.reference,
+        item.source_type,
+        period?.name,
+      ].some((value) => normalizeSearchValue(value).includes(query));
+    });
+  }, [bulkPostPeriodId, bulkPostSearchQuery, draftJournals, periodById]);
+  const bulkPostVisiblePostableIds = useMemo(
+    () => bulkPostVisibleJournals
+      .filter((item) => periodById.get(item.accounting_period_id)?.status !== "locked")
+      .map((item) => item.id),
+    [bulkPostVisibleJournals, periodById],
+  );
+  const bulkPostSelectedTotal = useMemo(
+    () => draftJournals
+      .filter((item) => bulkPostSelectedJournalIds.includes(item.id))
+      .reduce(
+        (total, item) => total + item.lines.reduce(
+          (journalTotal, line) => journalTotal + Number(line.debit_amount),
+          0,
+        ),
+        0,
+      ),
+    [bulkPostSelectedJournalIds, draftJournals],
   );
   const filteredJournals = useMemo(() => {
     const query = normalizeSearchValue(journalSearchQuery);
@@ -943,13 +1039,37 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     setJournalEditorJournalId(undefined);
   }
 
+  function openBulkPostPopup() {
+    setBulkPostSearchQuery("");
+    setBulkPostPeriodId("");
+    setBulkPostSelectedJournalIds([]);
+    setIsBulkPostOpen(true);
+  }
+
+  function closeBulkPostPopup() {
+    setIsBulkPostOpen(false);
+    setBulkPostSelectedJournalIds([]);
+  }
+
   useEffect(() => {
     if (!selectedJournalId) {
       return;
     }
-    setJournalEvidenceCache((current) => ({ ...current, [selectedJournalId]: journalEvidence }));
-    setJournalEvidenceLoadingIds((current) => ({ ...current, [selectedJournalId]: false }));
-    setJournalEvidenceErrorById((current) => ({ ...current, [selectedJournalId]: null }));
+    setJournalEvidenceCache((current) => (
+      journalEvidenceMatches(current[selectedJournalId], journalEvidence)
+        ? current
+        : { ...current, [selectedJournalId]: journalEvidence }
+    ));
+    setJournalEvidenceLoadingIds((current) => (
+      current[selectedJournalId] === false
+        ? current
+        : { ...current, [selectedJournalId]: false }
+    ));
+    setJournalEvidenceErrorById((current) => (
+      current[selectedJournalId] === null
+        ? current
+        : { ...current, [selectedJournalId]: null }
+    ));
   }, [journalEvidence, selectedJournalId]);
 
   useEffect(() => {
@@ -1010,6 +1130,10 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     setRecommendationResult(null);
     setAcceptedProposalIds([]);
     setRecommendationUploadKey((current) => current + 1);
+    setIsBulkPostOpen(false);
+    setBulkPostSearchQuery("");
+    setBulkPostPeriodId("");
+    setBulkPostSelectedJournalIds([]);
   }, [selectedCompanyId]);
 
   useEffect(() => {
@@ -1065,6 +1189,24 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       document.removeEventListener("mousedown", handlePointerDown);
     };
   }, [expandedJournalId]);
+
+  useEffect(() => {
+    if (!isBulkPostOpen) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsBulkPostOpen(false);
+        setBulkPostSelectedJournalIds([]);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isBulkPostOpen]);
 
   useEffect(() => {
     if (!ledgerPreviewJournalId || activeEvidenceViewer) {
@@ -1177,6 +1319,33 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
             </div>
             {selectedPeriod ? (
               <div className="mini-card">
+                <div className="mini-card-heading">
+                  <h3>Period-end earnings rollover</h3>
+                  <StatusPill value={
+                    selectedPeriodRolloverJournal?.status === "posted"
+                      ? "posted"
+                      : selectedPeriodRolloverJournal?.status === "voided"
+                        ? "voided"
+                        : selectedPeriod.status === "locked"
+                          ? "no_activity"
+                          : "pending"
+                  } />
+                </div>
+                {selectedPeriodRolloverJournal?.status === "posted" ? (
+                  <p className="summary-line">System journal {selectedPeriodRolloverJournal.entry_number} closed the period&apos;s income and expense balances and transferred {formatMoney(selectedPeriodRolloverAmount ?? 0)} to retained earnings. It is visible in Journals and the general ledger.</p>
+                ) : selectedPeriodRolloverJournal?.status === "voided" ? (
+                  <p className="summary-line">The previous system rollover was voided with an audit event when this period was unlocked. Locking the period again will calculate and post a fresh rollover.</p>
+                ) : selectedPeriodDraftJournalCount > 0 ? (
+                  <p className="summary-line">{selectedPeriodDraftJournalCount} draft journal{selectedPeriodDraftJournalCount === 1 ? " remains" : "s remain"}. Unlock this period if necessary, then review and post or remove every draft before locking it again. Draft balances are never transferred into retained earnings.</p>
+                ) : selectedPeriod.status === "locked" ? (
+                  <p className="summary-line">No active rollover journal is present. Choose Lock to check this period and backfill a missing rollover; no journal is created when there is no posted profit-and-loss balance.</p>
+                ) : (
+                  <p className="summary-line">Locking this period automatically detects or creates the Retained Earnings equity account, closes posted income and expense balances, and posts the balanced system journal.</p>
+                )}
+              </div>
+            ) : null}
+            {selectedPeriod ? (
+              <div className="mini-card">
                 <h3>Workflow actions</h3>
                 <Field label="Note or reason"><input value={periodActionNote} onChange={(event) => setPeriodActionNote(event.target.value)} /></Field>
                 <div className="request-actions">
@@ -1190,15 +1359,15 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                     await refreshAll();
                     showMessage("success", "Approved period.");
                   })}>Approve</button>
-                  <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Locking period", async () => {
+                  <button className="button-link button-link-small button-link-secondary" type="button" disabled={selectedPeriodDraftJournalCount > 0} title={selectedPeriodDraftJournalCount > 0 ? "Review and post or remove all draft journals before locking." : undefined} onClick={() => runAction("Locking period", async () => {
                     await request(`/api/companies/${selectedCompanyId}/periods/${selectedPeriod.id}/lock`, "POST", { reason: periodActionNote });
                     await refreshAll();
-                    showMessage("success", "Locked period.");
+                    showMessage("success", "Locked period and updated retained earnings.");
                   })}>Lock</button>
                   <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Unlocking period", async () => {
                     await request(`/api/companies/${selectedCompanyId}/periods/${selectedPeriod.id}/unlock`, "POST", { reason: periodActionNote });
                     await refreshAll();
-                    showMessage("success", "Unlocked period.");
+                    showMessage("success", "Unlocked period and voided its previous earnings rollover.");
                   })}>Unlock</button>
                 </div>
               </div>
@@ -1214,6 +1383,15 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           <h2>Journals</h2>
           <div className="request-actions-inline">
             <span className="pill">{journals.length} journals</span>
+            <button
+              className="button-link button-link-small button-link-secondary"
+              type="button"
+              disabled={postableDraftJournalCount === 0}
+              title={postableDraftJournalCount === 0 ? "No draft journals in unlocked periods are available to post." : undefined}
+              onClick={openBulkPostPopup}
+            >
+              Post multiple
+            </button>
             <button className="button-link button-link-small" type="button" onClick={openCreateJournalPopup}>Create journal</button>
           </div>
         </div>
@@ -1936,6 +2114,142 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
           </div>
         </div>
       </article>
+      ) : null}
+      {isBulkPostOpen ? (
+        <div className="journal-popup-backdrop" role="presentation" onClick={closeBulkPostPopup}>
+          <div className="journal-popup-card bulk-post-popup-card" role="dialog" aria-modal="true" aria-label="Post multiple journal entries" onClick={(event) => event.stopPropagation()}>
+            <div className="journal-popup-header">
+              <div>
+                <h3>Post multiple journal entries</h3>
+                <p className="summary-line">Select reviewed drafts to post together. Every entry is validated first, so the batch is not posted if any selected entry is invalid.</p>
+              </div>
+              <button className="button-link button-link-small button-link-secondary" type="button" onClick={closeBulkPostPopup}>Close</button>
+            </div>
+            <div className="form-grid two-up">
+              <Field label="Search draft journals">
+                <input
+                  autoFocus
+                  value={bulkPostSearchQuery}
+                  onChange={(event) => setBulkPostSearchQuery(event.target.value)}
+                  placeholder="Entry, date, period, description, reference"
+                />
+              </Field>
+              <Field label="Accounting period">
+                <select value={bulkPostPeriodId} onChange={(event) => setBulkPostPeriodId(event.target.value)}>
+                  <option value="">All periods with drafts</option>
+                  {bulkPostPeriodOptions.map((period) => (
+                    <option key={period.id} value={period.id}>{period.name} ({period.status})</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <div className="table-filter-footer">
+              <p className="summary-line">
+                Showing {bulkPostVisibleJournals.length} of {draftJournals.length} drafts. Locked-period entries are visible but cannot be selected.
+              </p>
+              <div className="request-actions-inline">
+                <button
+                  className="button-link button-link-small button-link-secondary"
+                  type="button"
+                  disabled={bulkPostVisiblePostableIds.length === 0}
+                  onClick={() => setBulkPostSelectedJournalIds((current) => Array.from(new Set([
+                    ...current,
+                    ...bulkPostVisiblePostableIds,
+                  ])).slice(0, 500))}
+                >
+                  Select visible
+                </button>
+                <button
+                  className="button-link button-link-small button-link-secondary"
+                  type="button"
+                  disabled={bulkPostSelectedJournalIds.length === 0}
+                  onClick={() => setBulkPostSelectedJournalIds([])}
+                >
+                  Clear selection
+                </button>
+              </div>
+            </div>
+            {bulkPostVisibleJournals.length > 0 ? (
+              <div className="table-shell bulk-post-table-shell">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Select</th>
+                      <th>Entry</th>
+                      <th>Date</th>
+                      <th>Period</th>
+                      <th>Description</th>
+                      <th className="amount-cell">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkPostVisibleJournals.map((journal) => {
+                      const period = periodById.get(journal.accounting_period_id);
+                      const isLocked = period?.status === "locked";
+                      const isSelected = bulkPostSelectedJournalIds.includes(journal.id);
+                      const total = journal.lines.reduce((sum, line) => sum + Number(line.debit_amount), 0);
+                      return (
+                        <tr key={journal.id} className={isSelected ? "is-selected row-static" : "row-static"}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${journal.entry_number}`}
+                              checked={isSelected}
+                              disabled={isLocked || (!isSelected && bulkPostSelectedJournalIds.length >= 500)}
+                              title={isLocked ? "Unlock this accounting period before posting." : undefined}
+                              onChange={(event) => setBulkPostSelectedJournalIds((current) => (
+                                event.target.checked
+                                  ? [...current, journal.id]
+                                  : current.filter((journalId) => journalId !== journal.id)
+                              ))}
+                            />
+                          </td>
+                          <td>{journal.entry_number}<div className="table-meta">{journal.reference || "No reference"}</div></td>
+                          <td>{journal.entry_date}</td>
+                          <td>{period?.name ?? "Unknown period"}{isLocked ? <div className="table-meta">Unlock before posting</div> : null}</td>
+                          <td>{journal.description}</td>
+                          <td className="amount-cell">{formatMoney(total)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state table-empty-state">
+                <strong>No draft journals match the current filters.</strong>
+                <p>Change the search text or accounting period to see other drafts.</p>
+              </div>
+            )}
+            <div className="bulk-post-footer">
+              <div>
+                <strong>{bulkPostSelectedJournalIds.length} selected</strong>
+                <p className="summary-line">Combined debit total: {formatMoney(bulkPostSelectedTotal)}. Posted entries must be reversed instead of edited or deleted.</p>
+                {bulkPostSelectedJournalIds.length >= 500 ? <p className="field-error">A maximum of 500 journals can be posted in one batch.</p> : null}
+              </div>
+              <div className="request-actions-inline">
+                <button className="button-link button-link-small button-link-secondary" type="button" onClick={closeBulkPostPopup}>Cancel</button>
+                <button
+                  className="button-link button-link-small"
+                  type="button"
+                  data-testid="bulk-post-journals"
+                  disabled={bulkPostSelectedJournalIds.length === 0}
+                  onClick={() => runAction("Posting multiple journals", async () => {
+                    const postedCount = bulkPostSelectedJournalIds.length;
+                    await request(`/api/companies/${selectedCompanyId}/journals/bulk-post`, "POST", {
+                      journal_ids: bulkPostSelectedJournalIds,
+                    });
+                    closeBulkPostPopup();
+                    await refreshAll();
+                    showMessage("success", `Posted ${postedCount} journal entries.`);
+                  })}
+                >
+                  Post {bulkPostSelectedJournalIds.length} {bulkPostSelectedJournalIds.length === 1 ? "entry" : "entries"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
       {isJournalEditorOpen ? (
         <div className="journal-popup-backdrop" role="presentation" onClick={closeJournalEditorPopup}>

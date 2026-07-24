@@ -6,8 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_company_permission
-from app.audit.service import log_audit_event, log_approval_action
+from app.audit.service import log_approval_action, log_audit_event
 from app.bas.service import (
+    _refresh_line_results,
     build_bas_csv,
     build_bas_pdf,
     check_self_approval_block,
@@ -15,12 +16,25 @@ from app.bas.service import (
     create_export_document,
     generate_bas_periods,
     maybe_lock_periods_for_policy,
-    _refresh_line_results,
     rebuild_bas_run,
 )
-from app.db.models.bas import BasAdjustment, BasExport, BasLineResult, BasPeriod, BasReviewNote, BasRun
+from app.db.models.audit import ApprovalAction
 from app.db.models.auth import User
-from app.db.models.enums import ApprovalActionType, BasExportFormat, BasPeriodStatus, BasRunStatus, EntityType
+from app.db.models.bas import (
+    BasAdjustment,
+    BasExport,
+    BasLineResult,
+    BasPeriod,
+    BasReviewNote,
+    BasRun,
+)
+from app.db.models.enums import (
+    ApprovalActionType,
+    BasExportFormat,
+    BasPeriodStatus,
+    BasRunStatus,
+    EntityType,
+)
 from app.schemas.common import (
     ApprovalActionRead,
     BasAdjustmentRead,
@@ -41,8 +55,6 @@ from app.schemas.requests import (
     BasRunUpdate,
     PeriodActionRequest,
 )
-from app.db.models.audit import ApprovalAction
-
 
 router = APIRouter(prefix="/companies/{company_id}/bas", tags=["bas"])
 
@@ -470,7 +482,12 @@ def approve_bas_run(
         approved_by_user_id=current_user.id,
         note=payload.note,
     )
-    maybe_lock_periods_for_policy(db, bas_run=bas_run, acting_user_id=current_user.id, on_export=False)
+    try:
+        maybe_lock_periods_for_policy(
+            db, bas_run=bas_run, acting_user_id=current_user.id, on_export=False
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.commit()
     db.refresh(bas_run)
     return bas_run
@@ -529,7 +546,12 @@ def export_bas_csv(
         export_format=BasExportFormat.CSV,
     )
     bas_run.status = BasRunStatus.EXPORTED
-    maybe_lock_periods_for_policy(db, bas_run=bas_run, acting_user_id=current_user.id, on_export=True)
+    try:
+        maybe_lock_periods_for_policy(
+            db, bas_run=bas_run, acting_user_id=current_user.id, on_export=True
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.commit()
     db.refresh(export)
     return export
@@ -558,7 +580,12 @@ def export_bas_pdf(
         export_format=BasExportFormat.PDF,
     )
     bas_run.status = BasRunStatus.EXPORTED
-    maybe_lock_periods_for_policy(db, bas_run=bas_run, acting_user_id=current_user.id, on_export=True)
+    try:
+        maybe_lock_periods_for_policy(
+            db, bas_run=bas_run, acting_user_id=current_user.id, on_export=True
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.commit()
     db.refresh(export)
     return export

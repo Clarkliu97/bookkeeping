@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 from datetime import date, datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from reportlab.lib.pagesizes import A4
@@ -10,7 +10,8 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
-from app.audit.service import log_audit_event, log_approval_action
+from app.accounting_periods.service import create_period_earnings_rollover
+from app.audit.service import log_approval_action, log_audit_event
 from app.bas.service import DISCLAIMER
 from app.db.models.accounting import AccountingPeriod, PeriodLock
 from app.db.models.audit import ApprovalAction
@@ -47,7 +48,6 @@ from app.schemas.common import (
     TaxWorkpaperPackRead,
 )
 
-
 ZERO = Decimal("0.00")
 
 
@@ -55,7 +55,9 @@ def _quantize(amount: Decimal) -> Decimal:
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _configuration_for_date(db: Session, company_id: UUID, target_date: date) -> CompanyConfigurationVersion | None:
+def _configuration_for_date(
+    db: Session, company_id: UUID, target_date: date
+) -> CompanyConfigurationVersion | None:
     return db.scalar(
         select(CompanyConfigurationVersion)
         .where(CompanyConfigurationVersion.company_id == company_id)
@@ -64,12 +66,17 @@ def _configuration_for_date(db: Session, company_id: UUID, target_date: date) ->
             (CompanyConfigurationVersion.effective_to.is_(None))
             | (CompanyConfigurationVersion.effective_to >= target_date)
         )
-        .order_by(CompanyConfigurationVersion.effective_from.desc(), CompanyConfigurationVersion.version_number.desc())
+        .order_by(
+            CompanyConfigurationVersion.effective_from.desc(),
+            CompanyConfigurationVersion.version_number.desc(),
+        )
         .limit(1)
     )
 
 
-def _load_period_or_raise(db: Session, company_id: UUID, accounting_period_id: UUID) -> AccountingPeriod:
+def _load_period_or_raise(
+    db: Session, company_id: UUID, accounting_period_id: UUID
+) -> AccountingPeriod:
     period = db.get(AccountingPeriod, accounting_period_id)
     if period is None or period.company_id != company_id:
         raise ValueError("Accounting period not found")
@@ -102,7 +109,9 @@ def _serialize_accounting_profit(company_id: UUID, db: Session, period: Accounti
     }
 
 
-def _serialize_gst_reconciliation(company_id: UUID, db: Session, period: AccountingPeriod) -> list[dict]:
+def _serialize_gst_reconciliation(
+    company_id: UUID, db: Session, period: AccountingPeriod
+) -> list[dict]:
     rows = db.execute(
         select(
             BasLineResult.label,
@@ -128,7 +137,9 @@ def _serialize_gst_reconciliation(company_id: UUID, db: Session, period: Account
     ]
 
 
-def _serialize_fixed_asset_snapshot(company_id: UUID, db: Session, period: AccountingPeriod) -> list[dict]:
+def _serialize_fixed_asset_snapshot(
+    company_id: UUID, db: Session, period: AccountingPeriod
+) -> list[dict]:
     register = build_fixed_asset_register(db, company_id=company_id, as_of_date=period.end_date)
     return [
         {
@@ -151,7 +162,9 @@ def build_schedule_snapshot(db: Session, *, company_id: UUID, period: Accounting
     }
 
 
-def create_tax_workpaper_pack(db: Session, *, company_id: UUID, payload, generated_by_user_id: UUID) -> TaxWorkpaperPack:
+def create_tax_workpaper_pack(
+    db: Session, *, company_id: UUID, payload, generated_by_user_id: UUID
+) -> TaxWorkpaperPack:
     period = _load_period_or_raise(db, company_id, payload.accounting_period_id)
     _ensure_year_period(period)
     existing = db.scalar(
@@ -193,7 +206,9 @@ def create_tax_workpaper_pack(db: Session, *, company_id: UUID, payload, generat
     return pack
 
 
-def refresh_tax_workpaper_pack(db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID) -> TaxWorkpaperPack:
+def refresh_tax_workpaper_pack(
+    db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID
+) -> TaxWorkpaperPack:
     _ensure_pack_editable(pack)
     period = _load_period_or_raise(db, pack.company_id, payload.accounting_period_id)
     _ensure_year_period(period)
@@ -226,16 +241,26 @@ def _pack_accounting_profit(schedule_snapshot: dict) -> TaxWorkpaperAccountingPr
 
 
 def _pack_gst_lines(schedule_snapshot: dict) -> list[TaxWorkpaperGstReconciliationLine]:
-    return [TaxWorkpaperGstReconciliationLine(**item) for item in schedule_snapshot.get("gst_reconciliation_lines", [])]
+    return [
+        TaxWorkpaperGstReconciliationLine(**item)
+        for item in schedule_snapshot.get("gst_reconciliation_lines", [])
+    ]
 
 
 def _pack_fixed_asset_lines(schedule_snapshot: dict) -> list[TaxWorkpaperFixedAssetLine]:
-    return [TaxWorkpaperFixedAssetLine(**item) for item in schedule_snapshot.get("fixed_asset_lines", [])]
+    return [
+        TaxWorkpaperFixedAssetLine(**item)
+        for item in schedule_snapshot.get("fixed_asset_lines", [])
+    ]
 
 
-def build_tax_workpaper_pack_detail(db: Session, pack: TaxWorkpaperPack) -> TaxWorkpaperPackDetailRead:
+def build_tax_workpaper_pack_detail(
+    db: Session, pack: TaxWorkpaperPack
+) -> TaxWorkpaperPackDetailRead:
     adjustments = list(
-        db.scalars(select(TaxAdjustment).where(TaxAdjustment.tax_workpaper_pack_id == pack.id)).all()
+        db.scalars(
+            select(TaxAdjustment).where(TaxAdjustment.tax_workpaper_pack_id == pack.id)
+        ).all()
     )
     notes = list(
         db.scalars(
@@ -276,7 +301,9 @@ def build_tax_workpaper_pack_detail(db: Session, pack: TaxWorkpaperPack) -> TaxW
     )
 
 
-def add_tax_adjustment(db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID) -> TaxWorkpaperPackDetailRead:
+def add_tax_adjustment(
+    db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID
+) -> TaxWorkpaperPackDetailRead:
     _ensure_pack_editable(pack)
     db.add(
         TaxAdjustment(
@@ -292,7 +319,9 @@ def add_tax_adjustment(db: Session, *, pack: TaxWorkpaperPack, payload, acting_u
     return build_tax_workpaper_pack_detail(db, pack)
 
 
-def add_tax_note(db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID) -> TaxWorkpaperNote:
+def add_tax_note(
+    db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID
+) -> TaxWorkpaperNote:
     _ensure_pack_editable(pack)
     note = TaxWorkpaperNote(
         company_id=pack.company_id,
@@ -305,7 +334,9 @@ def add_tax_note(db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id
     return note
 
 
-def add_exception_item(db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID) -> TaxWorkpaperExceptionItem:
+def add_exception_item(
+    db: Session, *, pack: TaxWorkpaperPack, payload, acting_user_id: UUID
+) -> TaxWorkpaperExceptionItem:
     _ensure_pack_editable(pack)
     exception_item = TaxWorkpaperExceptionItem(
         company_id=pack.company_id,
@@ -335,7 +366,9 @@ def resolve_exception_item(
     return exception_item
 
 
-def submit_tax_workpaper_pack(db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UUID, note: str | None) -> TaxWorkpaperPack:
+def submit_tax_workpaper_pack(
+    db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UUID, note: str | None
+) -> TaxWorkpaperPack:
     _ensure_pack_editable(pack)
     pack.status = TaxWorkpaperStatus.REVIEW
     log_approval_action(
@@ -350,7 +383,9 @@ def submit_tax_workpaper_pack(db: Session, *, pack: TaxWorkpaperPack, acting_use
     return pack
 
 
-def _check_self_approval_block(db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UUID) -> None:
+def _check_self_approval_block(
+    db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UUID
+) -> None:
     period = db.get(AccountingPeriod, pack.accounting_period_id)
     if period is None:
         return
@@ -382,6 +417,11 @@ def _lock_year_period(db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UU
         .limit(1)
     )
     if active_lock is None:
+        create_period_earnings_rollover(
+            db,
+            period=period,
+            actor_user_id=acting_user_id,
+        )
         db.add(
             PeriodLock(
                 company_id=pack.company_id,
@@ -394,7 +434,9 @@ def _lock_year_period(db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UU
     period.status = WorkflowStatus.LOCKED
 
 
-def approve_tax_workpaper_pack(db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UUID, note: str | None) -> TaxWorkpaperPack:
+def approve_tax_workpaper_pack(
+    db: Session, *, pack: TaxWorkpaperPack, acting_user_id: UUID, note: str | None
+) -> TaxWorkpaperPack:
     _check_self_approval_block(db, pack=pack, acting_user_id=acting_user_id)
     pack.status = TaxWorkpaperStatus.APPROVED
     pack.approved_by_user_id = acting_user_id
@@ -444,11 +486,17 @@ def build_tax_workpaper_pdf(pack: TaxWorkpaperPack, detail: TaxWorkpaperPackDeta
     pdf.drawString(50, cursor_y, "Accounting Profit Support")
     cursor_y -= 18
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(50, cursor_y, f"Total income: {detail.accounting_profit_schedule.total_income:.2f}")
+    pdf.drawString(
+        50, cursor_y, f"Total income: {detail.accounting_profit_schedule.total_income:.2f}"
+    )
     cursor_y -= 14
-    pdf.drawString(50, cursor_y, f"Total expenses: {detail.accounting_profit_schedule.total_expenses:.2f}")
+    pdf.drawString(
+        50, cursor_y, f"Total expenses: {detail.accounting_profit_schedule.total_expenses:.2f}"
+    )
     cursor_y -= 14
-    pdf.drawString(50, cursor_y, f"Accounting profit: {detail.accounting_profit_schedule.net_profit:.2f}")
+    pdf.drawString(
+        50, cursor_y, f"Accounting profit: {detail.accounting_profit_schedule.net_profit:.2f}"
+    )
     cursor_y -= 14
     pdf.drawString(50, cursor_y, f"Tax adjustments: {detail.total_adjustments:.2f}")
     cursor_y -= 14
@@ -465,7 +513,11 @@ def build_tax_workpaper_pdf(pack: TaxWorkpaperPack, detail: TaxWorkpaperPackDeta
     else:
         for line in detail.gst_reconciliation_lines:
             ensure_space()
-            pdf.drawString(50, cursor_y, f"{line.label}: {line.final_amount:.2f} across {line.run_count} BAS runs")
+            pdf.drawString(
+                50,
+                cursor_y,
+                f"{line.label}: {line.final_amount:.2f} across {line.run_count} BAS runs",
+            )
             cursor_y -= 14
     cursor_y -= 10
 
@@ -502,7 +554,9 @@ def build_tax_workpaper_pdf(pack: TaxWorkpaperPack, detail: TaxWorkpaperPackDeta
             cursor_y -= 14
         for item in detail.exception_items:
             ensure_space()
-            pdf.drawString(50, cursor_y, f"{item.status.upper()} {item.severity.upper()}: {item.message}")
+            pdf.drawString(
+                50, cursor_y, f"{item.status.upper()} {item.severity.upper()}: {item.message}"
+            )
             cursor_y -= 14
 
     pdf.save()

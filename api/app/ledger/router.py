@@ -8,14 +8,33 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db, require_company_permission
 from app.audit.service import log_audit_event
-from app.db.models.accounting import Account, AccountingPeriod, JournalEntry, JournalLine, PeriodLock
+from app.db.models.accounting import (
+    Account,
+    AccountingPeriod,
+    JournalEntry,
+    JournalLine,
+    PeriodLock,
+)
 from app.db.models.auth import User
 from app.db.models.documents import Document, DocumentLink
-from app.db.models.enums import DocumentLinkEntityType, EntityType, JournalSourceType, JournalStatus, WorkflowStatus
-from app.db.models.journal_recommendations import JournalRecommendationEntry, JournalRecommendationRun
+from app.db.models.enums import (
+    DocumentLinkEntityType,
+    EntityType,
+    JournalSourceType,
+    JournalStatus,
+    WorkflowStatus,
+)
+from app.db.models.journal_recommendations import (
+    JournalRecommendationEntry,
+    JournalRecommendationRun,
+)
 from app.schemas.common import JournalEntryRead, JournalEvidenceRead, TrialBalanceRow
-from app.schemas.requests import JournalEntryCreate, JournalEntryUpdate, JournalEvidenceLinkCreate
-
+from app.schemas.requests import (
+    JournalBulkPostRequest,
+    JournalEntryCreate,
+    JournalEntryUpdate,
+    JournalEvidenceLinkCreate,
+)
 
 router = APIRouter(prefix="/companies/{company_id}/journals", tags=["ledger"])
 
@@ -82,6 +101,38 @@ def _validate_journal_lines(db: Session, company_id: UUID, lines: list[JournalLi
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Journal references accounts that do not allow manual posting: {', '.join(sorted(disallowed_accounts))}",
         )
+
+
+def _validate_journal_for_post(db: Session, company_id: UUID, journal: JournalEntry) -> None:
+    if journal.status != JournalStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only draft journals can be posted",
+        )
+    _ensure_period_not_locked(db, company_id, journal.accounting_period_id)
+    _validate_journal_lines(db, company_id, journal.lines)
+
+
+def _mark_journal_posted(
+    db: Session,
+    *,
+    company_id: UUID,
+    journal: JournalEntry,
+    actor_user_id: UUID,
+    posted_at: datetime,
+) -> None:
+    journal.status = JournalStatus.POSTED
+    journal.posted_by_user_id = actor_user_id
+    journal.posted_at = posted_at
+    log_audit_event(
+        db,
+        action="journal.posted",
+        summary=f"Posted journal {journal.entry_number}",
+        entity_type=EntityType.JOURNAL_ENTRY.value,
+        entity_id=journal.id,
+        actor_user_id=actor_user_id,
+        company_id=company_id,
+    )
 
 
 def _next_entry_number(db: Session, company_id: UUID) -> str:
@@ -284,23 +335,84 @@ def post_journal(
 ) -> JournalEntry:
     require_company_permission(company_id, "can_prepare", db, current_user)
     journal = _load_journal_or_404(db, company_id, journal_id)
-    _ensure_period_not_locked(db, company_id, journal.accounting_period_id)
-    _validate_journal_lines(db, company_id, journal.lines)
-    journal.status = JournalStatus.POSTED
-    journal.posted_by_user_id = current_user.id
-    journal.posted_at = datetime.now(timezone.utc)
-    log_audit_event(
+    _validate_journal_for_post(db, company_id, journal)
+    _mark_journal_posted(
         db,
-        action="journal.posted",
-        summary=f"Posted journal {journal.entry_number}",
-        entity_type=EntityType.JOURNAL_ENTRY.value,
-        entity_id=journal.id,
-        actor_user_id=current_user.id,
         company_id=company_id,
+        journal=journal,
+        actor_user_id=current_user.id,
+        posted_at=datetime.now(timezone.utc),
     )
     db.commit()
     db.refresh(journal)
     return _load_journal_or_404(db, company_id, journal.id)
+
+
+@router.post("/bulk-post", response_model=list[JournalEntryRead])
+def bulk_post_journals(
+    company_id: UUID,
+    payload: JournalBulkPostRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[JournalEntry]:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    if len(set(payload.journal_ids)) != len(payload.journal_ids):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Each journal can only be selected once",
+        )
+
+    journals = list(
+        db.scalars(
+            select(JournalEntry)
+            .options(selectinload(JournalEntry.lines))
+            .where(
+                JournalEntry.company_id == company_id,
+                JournalEntry.id.in_(payload.journal_ids),
+            )
+        ).all()
+    )
+    journals_by_id = {journal.id: journal for journal in journals}
+    missing_ids = [journal_id for journal_id in payload.journal_ids if journal_id not in journals_by_id]
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="One or more selected journals were not found",
+        )
+
+    ordered_journals = [journals_by_id[journal_id] for journal_id in payload.journal_ids]
+    for journal in ordered_journals:
+        try:
+            _validate_journal_for_post(db, company_id, journal)
+        except HTTPException as exc:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail=f"{journal.entry_number}: {exc.detail}",
+            ) from exc
+
+    posted_at = datetime.now(timezone.utc)
+    for journal in ordered_journals:
+        _mark_journal_posted(
+            db,
+            company_id=company_id,
+            journal=journal,
+            actor_user_id=current_user.id,
+            posted_at=posted_at,
+        )
+    db.commit()
+
+    posted_journals = list(
+        db.scalars(
+            select(JournalEntry)
+            .options(selectinload(JournalEntry.lines))
+            .where(
+                JournalEntry.company_id == company_id,
+                JournalEntry.id.in_(payload.journal_ids),
+            )
+        ).all()
+    )
+    posted_by_id = {journal.id: journal for journal in posted_journals}
+    return [posted_by_id[journal_id] for journal_id in payload.journal_ids]
 
 
 @router.post("/{journal_id}/reverse", response_model=JournalEntryRead, status_code=201)

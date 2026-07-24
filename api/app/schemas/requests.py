@@ -306,6 +306,10 @@ class JournalEntryUpdate(JournalEntryCreate):
     pass
 
 
+class JournalBulkPostRequest(BaseModel):
+    journal_ids: list[UUID] = Field(min_length=1, max_length=500)
+
+
 class JournalRecommendationAcceptRequest(BaseModel):
     accepted_proposal_ids: list[UUID] = Field(default_factory=list)
 

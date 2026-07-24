@@ -5,20 +5,22 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.accounting_periods.service import (
+    create_period_earnings_rollover,
+    void_period_earnings_rollover,
+)
 from app.api.deps import get_current_user, get_db, require_company_permission
 from app.audit.service import log_approval_action, log_audit_event
-from app.db.models.accounting import AccountingPeriod, PeriodLock
+from app.db.models.accounting import AccountingPeriod, JournalEntry, PeriodLock
 from app.db.models.audit import ApprovalAction
 from app.db.models.auth import User
+from app.db.models.companies import CompanyConfigurationVersion
+from app.db.models.enums import AccountingPeriodType, ApprovalActionType, EntityType, WorkflowStatus
 from app.db.models.fixed_assets import DepreciationRun
 from app.db.models.reconciliation import ReconciliationSession
 from app.db.models.tax_workpapers import TaxWorkpaperPack
-from app.db.models.accounting import JournalEntry
-from app.db.models.companies import CompanyConfigurationVersion
-from app.db.models.enums import AccountingPeriodType, ApprovalActionType, EntityType, WorkflowStatus
 from app.schemas.common import AccountingPeriodRead
 from app.schemas.requests import AccountingPeriodCreate, AccountingPeriodUpdate, PeriodActionRequest
-
 
 router = APIRouter(prefix="/companies/{company_id}/periods", tags=["accounting-periods"])
 
@@ -31,7 +33,9 @@ def _latest_configuration(db: Session, company_id: UUID) -> CompanyConfiguration
         .limit(1)
     )
     if configuration is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Company configuration is required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Company configuration is required"
+        )
     return configuration
 
 
@@ -43,35 +47,50 @@ def _load_period_or_404(db: Session, company_id: UUID, period_id: UUID) -> Accou
         )
     )
     if period is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Accounting period not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Accounting period not found"
+        )
     return period
 
 
 def _ensure_period_editable(db: Session, period: AccountingPeriod) -> None:
     if period.status != WorkflowStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only draft periods can be changed")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only draft periods can be changed"
+        )
     active_lock = db.scalar(
         select(PeriodLock)
         .where(PeriodLock.accounting_period_id == period.id, PeriodLock.unlocked_at.is_(None))
         .limit(1)
     )
     if active_lock is not None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Accounting period is locked")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Accounting period is locked"
+        )
 
 
 def _ensure_period_has_no_dependents(db: Session, period: AccountingPeriod) -> None:
     dependent_queries = (
-        (select(JournalEntry.id).where(JournalEntry.accounting_period_id == period.id).limit(1), "Period has journal entries"),
         (
-            select(DepreciationRun.id).where(DepreciationRun.accounting_period_id == period.id).limit(1),
+            select(JournalEntry.id).where(JournalEntry.accounting_period_id == period.id).limit(1),
+            "Period has journal entries",
+        ),
+        (
+            select(DepreciationRun.id)
+            .where(DepreciationRun.accounting_period_id == period.id)
+            .limit(1),
             "Period has depreciation runs",
         ),
         (
-            select(TaxWorkpaperPack.id).where(TaxWorkpaperPack.accounting_period_id == period.id).limit(1),
+            select(TaxWorkpaperPack.id)
+            .where(TaxWorkpaperPack.accounting_period_id == period.id)
+            .limit(1),
             "Period has tax workpaper packs",
         ),
         (
-            select(ReconciliationSession.id).where(ReconciliationSession.accounting_period_id == period.id).limit(1),
+            select(ReconciliationSession.id)
+            .where(ReconciliationSession.accounting_period_id == period.id)
+            .limit(1),
             "Period is referenced by reconciliation sessions",
         ),
     )
@@ -122,7 +141,9 @@ def create_period(
 ) -> AccountingPeriod:
     require_company_permission(company_id, "can_administer", db, current_user)
     if payload.start_date > payload.end_date:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Period dates are invalid")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Period dates are invalid"
+        )
     period = AccountingPeriod(
         company_id=company_id,
         name=payload.name,
@@ -160,7 +181,9 @@ def update_period(
     _ensure_period_editable(db, period)
     _ensure_period_has_no_dependents(db, period)
     if payload.start_date > payload.end_date:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Period dates are invalid")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Period dates are invalid"
+        )
     before_state = AccountingPeriodRead.model_validate(period).model_dump(mode="json")
     period.name = payload.name
     period.period_type = AccountingPeriodType(payload.period_type)
@@ -283,7 +306,28 @@ def lock_period(
     db: Session = Depends(get_db),
 ) -> AccountingPeriod:
     require_company_permission(company_id, "can_administer", db, current_user)
-    period = _load_period_or_404(db, company_id, period_id)
+    period = db.scalar(
+        select(AccountingPeriod)
+        .where(AccountingPeriod.company_id == company_id, AccountingPeriod.id == period_id)
+        .with_for_update()
+    )
+    if period is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Accounting period not found"
+        )
+    period_was_locked = period.status == WorkflowStatus.LOCKED
+    try:
+        create_period_earnings_rollover(
+            db,
+            period=period,
+            actor_user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if period_was_locked:
+        db.commit()
+        db.refresh(period)
+        return period
     period.status = WorkflowStatus.LOCKED
     db.add(
         PeriodLock(
@@ -325,7 +369,14 @@ def unlock_period(
         .limit(1)
     )
     if lock_record is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Period is not currently locked")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Period is not currently locked"
+        )
+    void_period_earnings_rollover(
+        db,
+        period=period,
+        actor_user_id=current_user.id,
+    )
     lock_record.unlocked_by_user_id = current_user.id
     lock_record.unlocked_at = datetime.now(timezone.utc)
     lock_record.unlock_reason = payload.reason or payload.note
