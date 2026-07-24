@@ -16,7 +16,7 @@ The implemented system currently supports:
 - employment support records for workers, engagements, work rights, compensation, leave, reimbursements, and issued assets
 - bank CSV import staging, duplicate detection, confirmation, and reconciliation workflows
 - BAS period generation, BAS runs, adjustments, review notes, approvals, and exports
-- financial reporting including trial balance, profit and loss, balance sheet, and general ledger
+- financial reporting including trial balance, profit and loss, balance sheet, cash flow, statement of changes in equity, and general ledger, with browser, CSV, and archive-ready PDF outputs
 - fixed asset register maintenance, disposals, depreciation runs, and depreciation journal posting
 - annual company tax workpaper packs with adjustments, notes, exceptions, approvals, and exports
 - operational health, metrics, alerts, backup and restore guidance, and a browser diagnostics workbench
@@ -93,10 +93,13 @@ The project explicitly does not support:
 
 ### Financial Reporting
 
-- trial balance with date filtering and CSV export
-- profit and loss with date filtering and CSV export
-- balance sheet with current earnings and CSV export
-- general ledger with account filtering, running balances, and CSV export
+- trial balance with date filtering
+- profit and loss with date filtering
+- balance sheet with current earnings
+- direct-method cash flow statement with major classes of gross receipts and payments, operating/investing/financing subtotals, exchange-rate effects, cash-account composition, and opening-to-closing reconciliation
+- statement of changes in equity with profit or loss, owner contributions, distributions, other movements, and opening-to-closing equity reconciliation
+- general ledger with account filtering and running balances
+- browser review, CSV export, and professionally formatted PDF export for every report
 - per-report version selection so operators can run a final review version from posted journals only or a draft review version that includes draft journals
 
 ### Year-End Support
@@ -130,7 +133,7 @@ The Next.js frontend is the main operator interface. It is organized around work
 - Bookkeeping separates periods, journals, AI drafting, ledger exploration, and document management.
 - Banking separates bank accounts/imports, reconciliation, and BAS support.
 - Employment separates dashboard/report queues from detailed worker records.
-- Reports separates trial balance, profit and loss, balance sheet, and general ledger.
+- Reports separates trial balance, profit and loss, balance sheet, cash flow, changes in equity, and general ledger.
 - Year-end separates fixed assets/depreciation from tax workpapers.
 - Use the `Dark`/`Light` control in the global header to change appearance. The selected mode is stored in the browser and applies to the operator routes, Operations, and the API workbench.
 - The API workbench remains available from the global header and dashboard directory so advanced or diagnostic API actions stay reachable even when they are not part of a routine business workflow.
@@ -190,6 +193,12 @@ Locking an accounting period first requires every journal assigned to it to be p
 The rollover is idempotent while the period remains locked. Choosing `Lock` again safely checks an older locked period and backfills a missing rollover without duplicating one that is already posted. This is the upgrade path for periods locked before automatic rollover was introduced. Unlocking the period voids the active rollover and records the action in the audit trail; locking it again recalculates the balances and creates a new posted rollover. BAS approval policies and annual tax-workpaper approval use the same rollover behavior when they lock accounting periods automatically.
 
 Profit-and-loss reports exclude these closing journals so the period's operating result remains visible. The trial balance and general ledger include them because they reflect the posted ledger. Balance-sheet `Current Earnings` begins at the later of the configured financial-year start and the day after the latest active rollover, preventing profit from appearing both in retained earnings and current earnings.
+
+The statement of changes in equity also excludes system-generated rollover journals from its movement section because the same earnings are already presented as period profit or loss. It reconciles opening equity, the period result, contributions, distributions, and other direct equity movements to closing equity.
+
+The cash flow statement follows the direct-method presentation encouraged by [AASB 107 Statement of Cash Flows](https://www.aasb.gov.au/admin/file/content105/c9/AASB107_08-15_COMPdec22_01-23.pdf). It aggregates ledger cash movements into major gross classes rather than listing individual journals: customer receipts, supplier and employee payments, tax payments/refunds, non-current asset and investment purchases/disposals, loans advanced/repaid, share capital, borrowings, lease principal, interest, dividends, and other material receipt/payment classes. Each line reports its source-transaction count, and the statement presents operating, investing, and financing subtotals, exchange-rate effects, opening and closing cash, the ledger reconciliation difference, and cash-account composition.
+
+Accounts assigned to `BS_CA_CASH` are treated as cash and cash equivalents; asset accounts whose names include `cash` or `bank` are recognised as a compatibility fallback. Internal cash-to-cash transfers are omitted because their net movement is zero. For a consistent policy suitable for a non-financial entity, interest and dividends received are classified as investing cash flows, while interest paid, dividends/distributions paid, lease-liability principal payments, and borrowing movements are classified as financing cash flows. The dominant non-cash side of each journal determines its major gross class, so reporting-category and account-name quality still matters and professional review remains required.
 
 The AI path is assistive only. It does not silently post entries. The backend requires every selected or uploaded evidence document to be assigned to at least one recommendation, validates each recommendation as independently balanced double-entry, and links only the assigned evidence to each accepted draft. Reusing a document does not create a duplicate upload; the existing company document is linked to the recommendation run and any accepted drafts that use it. Each document receives an authoritative source number for the run, and that same number is preserved in the recommendation review and accepted-journal evidence note, even when one stored document supports several entries. Batch acceptance is atomic: if any recommended journal cannot pass the normal account, tax-code, date, period, or balance controls, no journals from that batch are created.
 
@@ -253,16 +262,20 @@ Typical tasks:
 
 ### Reports: `/reports`
 
-Use Reports for browser-ready financial outputs.
+Use Reports for browser review and archive-ready financial outputs.
 
 Available report panels:
 
 - Trial balance
 - Profit and loss
 - Balance sheet
+- Cash flow
+- Changes in equity
 - General ledger
 
-Each panel supports running the report in the browser and exporting CSV. The `Version` selector lets the user choose:
+Each panel supports running the report in the browser and exporting CSV or PDF. PDFs are designed for review packs and records retention: they include the legal company name, ABN/ACN when configured, reporting period, currency, version, generation timestamp, archive reference, repeating table headers, page numbers, and a final-review or draft-review notice. They are accounting support reports, not audited financial statements.
+
+The `Version` selector lets the user choose:
 
 - `Final review (posted only)` for conservative reporting based on posted journals only
 - `Draft review (include draft entries)` when the operator wants a work-in-progress view that includes draft journals
@@ -308,7 +321,7 @@ Bookkeeping is the main day-to-day ledger screen for accounting periods, journal
 
 ### Financial Reporting
 
-The Reports route provides browser-ready trial balance, profit and loss, balance sheet, and general ledger panels, including the final-versus-draft version selector.
+The Reports route provides trial balance, profit and loss, balance sheet, cash flow, statement of changes in equity, and general ledger panels. Every panel supports browser review, CSV and archive-ready PDF export, and final-versus-draft selection.
 
 ![Financial reporting workspace](assets/screenshots/reports.png)
 

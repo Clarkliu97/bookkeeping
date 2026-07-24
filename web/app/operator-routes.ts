@@ -6,6 +6,6 @@ export const sectionOptions: Array<{ key: SectionKey; label: string; detail: str
   { key: "bookkeeping", label: "Bookkeeping", detail: "Periods, journals, AI drafting, ledger review, and source documents.", href: "/bookkeeping" },
   { key: "banking", label: "Banking & BAS", detail: "Imports, reconciliation, BAS preparation, and export.", href: "/banking" },
   { key: "employment", label: "Employment", detail: "Worker records, work-rights reviews, leave support, and report packs.", href: "/employment" },
-  { key: "reports", label: "Reports", detail: "Trial balance, profit and loss, balance sheet, and general ledger.", href: "/reports" },
+  { key: "reports", label: "Reports", detail: "Six core statements with browser, CSV, and PDF outputs.", href: "/reports" },
   { key: "year_end", label: "Year-end", detail: "Fixed assets, depreciation runs, and tax workpapers.", href: "/year-end" },
 ];

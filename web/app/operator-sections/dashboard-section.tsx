@@ -54,7 +54,7 @@ export function DashboardSection({ operator }: { operator: OperatorState }) {
           </Link>
           <Link className="action-card" href="/reports">
             <strong>Financial reports</strong>
-            <span>Trial balance, profit and loss, balance sheet, and general ledger in final or draft review mode.</span>
+            <span>Six core statements, including cash flow and changes in equity, with final or draft review and PDF/CSV export.</span>
           </Link>
           <Link className="action-card" href="/year-end">
             <strong>Year-end</strong>

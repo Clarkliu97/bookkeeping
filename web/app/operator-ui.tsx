@@ -77,7 +77,7 @@ export function WorkspaceTabs<T extends string>({
   onChange: (tab: T) => void;
 }) {
   return (
-    <nav className="workspace-tabs" aria-label={label}>
+    <nav className={`workspace-tabs${options.length > 5 ? " has-overflow" : ""}`} aria-label={label}>
       {options.map((option) => (
         <button
           key={option.key}

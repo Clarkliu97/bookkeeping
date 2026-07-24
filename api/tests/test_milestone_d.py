@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from conftest import TestingSessionLocal, upsert_test_account
@@ -264,6 +264,265 @@ def test_trial_balance_and_profit_and_loss_reports_with_exports(client):
     assert b"Net Profit" in pnl_export.content
 
 
+def test_cash_flow_changes_in_equity_and_archive_pdf_exports(client):
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+    period_id = create_period(client, token, company_id)
+    account_ids = seed_reporting_ledger(client, token, company_id, period_id)
+    reporting_categories = client.get(
+        f"/api/companies/{company_id}/reporting-categories",
+        headers=auth_header(token),
+    ).json()
+    ppe_category_id = next(
+        category["id"]
+        for category in reporting_categories
+        if category["code"] == "BS_NCA_PPE"
+    )
+    equipment_response = client.post(
+        f"/api/companies/{company_id}/accounts",
+        headers=auth_header(token),
+        json={
+            "account_code": "E2E-PPE-1500",
+            "name": "E2E Plant and Equipment",
+            "account_type": "asset",
+            "reporting_category_id": ppe_category_id,
+            "default_tax_code_id": None,
+            "is_active": True,
+            "allow_manual_posting": True,
+        },
+    )
+    assert equipment_response.status_code == 201, equipment_response.text
+    equipment_account_id = equipment_response.json()["id"]
+    settlement_clearing_account_id = create_account(
+        client,
+        token,
+        company_id,
+        "E2E-CLR-2760",
+        "Property Settlement Clearing",
+        "asset",
+    )
+    borrowing_account_id = create_account(
+        client,
+        token,
+        company_id,
+        "E2E-LOAN-2500",
+        "Bank Loan Payable",
+        "liability",
+    )
+    interest_expense_account_id = create_account(
+        client,
+        token,
+        company_id,
+        "E2E-INT-7410",
+        "Interest Expense",
+        "expense",
+    )
+    create_posted_journal(
+        client,
+        token,
+        company_id,
+        period_id,
+        entry_date="2026-07-16",
+        description="Payment to supplier",
+        lines=[
+            {
+                "account_id": account_ids["ap"],
+                "debit_amount": "30.00",
+                "credit_amount": "0.00",
+            },
+            {
+                "account_id": account_ids["cash"],
+                "debit_amount": "0.00",
+                "credit_amount": "30.00",
+            },
+        ],
+    )
+    create_posted_journal(
+        client,
+        token,
+        company_id,
+        period_id,
+        entry_date="2026-07-22",
+        description="Loan proceeds received",
+        lines=[
+            {
+                "account_id": account_ids["cash"],
+                "debit_amount": "500.00",
+                "credit_amount": "0.00",
+            },
+            {
+                "account_id": borrowing_account_id,
+                "debit_amount": "0.00",
+                "credit_amount": "500.00",
+            },
+        ],
+    )
+    create_posted_journal(
+        client,
+        token,
+        company_id,
+        period_id,
+        entry_date="2026-07-23",
+        description="Loan principal and interest payment",
+        lines=[
+            {
+                "account_id": borrowing_account_id,
+                "debit_amount": "100.00",
+                "credit_amount": "0.00",
+            },
+            {
+                "account_id": interest_expense_account_id,
+                "debit_amount": "10.00",
+                "credit_amount": "0.00",
+            },
+            {
+                "account_id": account_ids["cash"],
+                "debit_amount": "0.00",
+                "credit_amount": "110.00",
+            },
+        ],
+    )
+    create_posted_journal(
+        client,
+        token,
+        company_id,
+        period_id,
+        entry_date="2026-07-21",
+        description="Property settlement funds paid to conveyancer",
+        lines=[
+            {
+                "account_id": settlement_clearing_account_id,
+                "debit_amount": "50.00",
+                "credit_amount": "0.00",
+            },
+            {
+                "account_id": account_ids["cash"],
+                "debit_amount": "0.00",
+                "credit_amount": "50.00",
+            },
+        ],
+    )
+    create_posted_journal(
+        client,
+        token,
+        company_id,
+        period_id,
+        entry_date="2026-07-20",
+        description="Equipment purchase",
+        lines=[
+            {
+                "account_id": equipment_account_id,
+                "debit_amount": "200.00",
+                "credit_amount": "0.00",
+            },
+            {
+                "account_id": account_ids["cash"],
+                "debit_amount": "0.00",
+                "credit_amount": "200.00",
+            },
+        ],
+    )
+
+    date_params = {"start_date": "2026-07-01", "end_date": "2026-07-31"}
+    cash_flow_response = client.get(
+        f"/api/companies/{company_id}/reports/cash-flow",
+        headers=auth_header(token),
+        params=date_params,
+    )
+    assert cash_flow_response.status_code == 200, cash_flow_response.text
+    cash_flow = cash_flow_response.json()
+    assert cash_flow["method"] == "direct"
+    assert (
+        "major classes of gross cash receipts and payments"
+        in cash_flow["classification_policy"].lower()
+    )
+    assert cash_flow["opening_cash"] == "0.00"
+    assert cash_flow["total_operating"] == "70.00"
+    assert cash_flow["total_investing"] == "-250.00"
+    assert cash_flow["total_financing"] == "1390.00"
+    assert cash_flow["net_cash_change"] == "1210.00"
+    assert cash_flow["effect_of_exchange_rate_changes"] == "0.00"
+    assert cash_flow["calculated_closing_cash"] == "1210.00"
+    assert cash_flow["closing_cash"] == "1210.00"
+    assert cash_flow["reconciliation_difference"] == "0.00"
+    assert [
+        (line["line_code"], line["amount"], line["transaction_count"])
+        for line in cash_flow["operating_lines"]
+    ] == [
+        ("receipts_from_customers", "100.00", 1),
+        ("payments_to_suppliers", "-30.00", 1),
+    ]
+    assert cash_flow["investing_lines"][0]["line_code"] == "purchases_of_non_current_assets"
+    assert cash_flow["investing_lines"][0]["amount"] == "-250.00"
+    assert cash_flow["investing_lines"][0]["transaction_count"] == 2
+    assert [
+        (line["line_code"], line["amount"], line["transaction_count"])
+        for line in cash_flow["financing_lines"]
+    ] == [
+        ("proceeds_from_share_capital", "1000.00", 1),
+        ("proceeds_from_borrowings", "500.00", 1),
+        ("repayment_of_borrowings", "-100.00", 1),
+        ("interest_paid", "-10.00", 1),
+    ]
+
+    changes_response = client.get(
+        f"/api/companies/{company_id}/reports/statement-of-changes-in-equity",
+        headers=auth_header(token),
+        params=date_params,
+    )
+    assert changes_response.status_code == 200, changes_response.text
+    changes = changes_response.json()
+    assert changes["opening_equity"] == "0.00"
+    assert changes["profit_or_loss"] == "60.00"
+    assert changes["total_contributions"] == "1000.00"
+    assert changes["total_distributions"] == "0.00"
+    assert changes["total_changes"] == "1060.00"
+    assert changes["calculated_closing_equity"] == "1060.00"
+    assert changes["closing_equity"] == "1060.00"
+    assert changes["reconciliation_difference"] == "0.00"
+    assert changes["movement_lines"][0]["movement_type"] == "contribution"
+
+    cash_flow_csv = client.get(
+        f"/api/companies/{company_id}/reports/cash-flow/export",
+        headers=auth_header(token),
+        params=date_params,
+    )
+    assert cash_flow_csv.status_code == 200, cash_flow_csv.text
+    assert b"Cash receipts from customers" in cash_flow_csv.content
+    assert b"Cash paid to suppliers" in cash_flow_csv.content
+    assert b"Net cash from operating activities" in cash_flow_csv.content
+    assert b"Cash and cash equivalents at end of period" in cash_flow_csv.content
+    equity_csv = client.get(
+        f"/api/companies/{company_id}/reports/statement-of-changes-in-equity/export",
+        headers=auth_header(token),
+        params=date_params,
+    )
+    assert equity_csv.status_code == 200, equity_csv.text
+    assert b"Profit or loss" in equity_csv.content
+    assert b"Closing Equity" in equity_csv.content
+
+    pdf_exports = [
+        ("trial-balance", date_params),
+        ("profit-and-loss", date_params),
+        ("balance-sheet", {"as_of_date": "2026-07-31"}),
+        ("cash-flow", date_params),
+        ("statement-of-changes-in-equity", date_params),
+        ("general-ledger", date_params),
+    ]
+    for report_path, params in pdf_exports:
+        pdf_response = client.get(
+            f"/api/companies/{company_id}/reports/{report_path}/export/pdf",
+            headers=auth_header(token),
+            params=params,
+        )
+        assert pdf_response.status_code == 200, pdf_response.text
+        assert pdf_response.headers["content-type"] == "application/pdf"
+        assert pdf_response.headers["cache-control"] == "private, no-store"
+        assert pdf_response.headers["content-disposition"].endswith(f'{report_path}.pdf"')
+        assert pdf_response.content.startswith(b"%PDF-")
+        assert len(pdf_response.content) > 2000
+
+
 def test_balance_sheet_report_balances_with_current_earnings_and_export(client):
     token = bootstrap_superuser(client)
     company_id = create_company(client, token)
@@ -524,6 +783,19 @@ def test_period_lock_rolls_profit_and_loss_into_retained_earnings_and_unlock_voi
     assert balance_sheet["total_assets"] == "1150.00"
     assert balance_sheet["total_liabilities_and_equity"] == "1150.00"
 
+    changes_response = client.get(
+        f"/api/companies/{company_id}/reports/statement-of-changes-in-equity",
+        headers=auth_header(token),
+        params={"start_date": "2026-07-01", "end_date": "2026-09-30"},
+    )
+    assert changes_response.status_code == 200, changes_response.text
+    changes = changes_response.json()
+    assert changes["opening_equity"] == "0.00"
+    assert changes["profit_or_loss"] == "120.00"
+    assert changes["total_contributions"] == "1000.00"
+    assert changes["closing_equity"] == "1120.00"
+    assert changes["reconciliation_difference"] == "0.00"
+
     duplicate_lock_response = client.post(
         f"/api/companies/{company_id}/periods/{period_id}/lock",
         headers=auth_header(token),
@@ -720,7 +992,7 @@ def test_lock_backfills_a_rollover_for_a_period_locked_before_the_feature(client
                 accounting_period_id=period_uuid,
                 lock_reason="Legacy lock before rollover support",
                 locked_by_user_id=actor_user_id,
-                locked_at=datetime.now(timezone.utc),
+                locked_at=datetime.now(UTC),
             )
         )
         db.commit()

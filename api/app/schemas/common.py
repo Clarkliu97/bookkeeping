@@ -469,6 +469,66 @@ class BalanceSheetReportRead(BaseModel):
     total_liabilities_and_equity: Decimal
 
 
+class CashFlowCashAccountLine(BaseModel):
+    account_id: UUID
+    account_code: str
+    account_name: str
+    opening_balance: Decimal
+    closing_balance: Decimal
+
+
+class CashFlowLine(BaseModel):
+    line_code: str
+    label: str
+    activity_type: str
+    amount: Decimal
+    transaction_count: int
+
+
+class CashFlowReportRead(BaseModel):
+    start_date: date
+    end_date: date
+    method: str
+    classification_policy: str
+    cash_accounts: list[CashFlowCashAccountLine]
+    operating_lines: list[CashFlowLine]
+    investing_lines: list[CashFlowLine]
+    financing_lines: list[CashFlowLine]
+    opening_cash: Decimal
+    total_operating: Decimal
+    total_investing: Decimal
+    total_financing: Decimal
+    net_cash_change: Decimal
+    effect_of_exchange_rate_changes: Decimal
+    calculated_closing_cash: Decimal
+    closing_cash: Decimal
+    reconciliation_difference: Decimal
+
+
+class EquityMovementLine(BaseModel):
+    account_id: UUID
+    account_code: str
+    account_name: str
+    movement_type: str
+    amount: Decimal
+
+
+class StatementOfChangesInEquityRead(BaseModel):
+    start_date: date
+    end_date: date
+    opening_equity_lines: list[FinancialReportLine]
+    movement_lines: list[EquityMovementLine]
+    opening_equity: Decimal
+    profit_or_loss: Decimal
+    total_contributions: Decimal
+    total_distributions: Decimal
+    total_other_movements: Decimal
+    total_changes: Decimal
+    calculated_closing_equity: Decimal
+    closing_equity: Decimal
+    reconciliation_difference: Decimal
+
+
 class GeneralLedgerEntryRead(BaseModel):
     journal_entry_id: UUID
     entry_number: str

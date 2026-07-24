@@ -493,6 +493,18 @@ textarea {
   font-family: var(--font-mono), "Consolas", monospace;
 }
 
+.workspace-tabs.has-overflow {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.workspace-tabs.has-overflow .workspace-tab {
+  flex: 0 0 calc((100% - 32px) / 5);
+}
+
 .panel-wide {
   margin-top: 4px;
 }
@@ -2708,6 +2720,11 @@ html[data-theme="dark"] .floating-flash {
 
   .workspace-tab {
     flex: 0 0 180px;
+    width: 180px;
+  }
+
+  .workspace-tabs.has-overflow .workspace-tab {
+    flex-basis: 180px;
     width: 180px;
   }
 }

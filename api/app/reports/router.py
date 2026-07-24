@@ -6,23 +6,37 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_company_permission
 from app.db.models.auth import User
+from app.db.models.companies import Company
+from app.reports.pdf import (
+    build_balance_sheet_pdf,
+    build_cash_flow_pdf,
+    build_general_ledger_pdf,
+    build_profit_and_loss_pdf,
+    build_statement_of_changes_in_equity_pdf,
+    build_trial_balance_pdf,
+)
 from app.reports.service import (
     build_balance_sheet_csv,
     build_balance_sheet_report,
+    build_cash_flow_csv,
+    build_cash_flow_report,
     build_general_ledger_csv,
     build_general_ledger_report,
     build_profit_and_loss_csv,
     build_profit_and_loss_report,
+    build_statement_of_changes_in_equity_csv,
+    build_statement_of_changes_in_equity_report,
     build_trial_balance_csv,
     build_trial_balance_report,
 )
 from app.schemas.common import (
     BalanceSheetReportRead,
+    CashFlowReportRead,
     GeneralLedgerReportRead,
     ProfitAndLossReportRead,
+    StatementOfChangesInEquityRead,
     TrialBalanceReportRead,
 )
-
 
 router = APIRouter(prefix="/companies/{company_id}/reports", tags=["reports"])
 
@@ -33,6 +47,24 @@ def _csv_response(content: bytes, filename: str) -> Response:
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+def _pdf_response(content: bytes, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+def _company_or_404(db: Session, company_id: UUID) -> Company:
+    company = db.get(Company, company_id)
+    if company is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+    return company
 
 
 def _validate_date_range(start_date: date, end_date: date) -> None:
@@ -83,6 +115,35 @@ def export_trial_balance_report(
     return _csv_response(build_trial_balance_csv(report), "trial-balance.csv")
 
 
+@router.get("/trial-balance/export/pdf")
+def export_trial_balance_pdf(
+    company_id: UUID,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    if start_date is not None and end_date is not None:
+        _validate_date_range(start_date, end_date)
+    report = build_trial_balance_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+    return _pdf_response(
+        build_trial_balance_pdf(
+            _company_or_404(db, company_id),
+            report,
+            include_draft=include_draft,
+        ),
+        "trial-balance.pdf",
+    )
+
+
 @router.get("/profit-and-loss", response_model=ProfitAndLossReportRead)
 def profit_and_loss_report(
     company_id: UUID,
@@ -124,6 +185,34 @@ def export_profit_and_loss_report(
     return _csv_response(build_profit_and_loss_csv(report), "profit-and-loss.csv")
 
 
+@router.get("/profit-and-loss/export/pdf")
+def export_profit_and_loss_pdf(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    report = build_profit_and_loss_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+    return _pdf_response(
+        build_profit_and_loss_pdf(
+            _company_or_404(db, company_id),
+            report,
+            include_draft=include_draft,
+        ),
+        "profit-and-loss.pdf",
+    )
+
+
 @router.get("/balance-sheet", response_model=BalanceSheetReportRead)
 def balance_sheet_report(
     company_id: UUID,
@@ -157,6 +246,175 @@ def export_balance_sheet_report(
         include_draft=include_draft,
     )
     return _csv_response(build_balance_sheet_csv(report), "balance-sheet.csv")
+
+
+@router.get("/balance-sheet/export/pdf")
+def export_balance_sheet_pdf(
+    company_id: UUID,
+    as_of_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    report = build_balance_sheet_report(
+        db,
+        company_id=company_id,
+        as_of_date=as_of_date,
+        include_draft=include_draft,
+    )
+    return _pdf_response(
+        build_balance_sheet_pdf(
+            _company_or_404(db, company_id),
+            report,
+            include_draft=include_draft,
+        ),
+        "balance-sheet.pdf",
+    )
+
+
+@router.get("/cash-flow", response_model=CashFlowReportRead)
+def cash_flow_report(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CashFlowReportRead:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    return build_cash_flow_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+
+
+@router.get("/cash-flow/export")
+def export_cash_flow_report(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    report = build_cash_flow_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+    return _csv_response(build_cash_flow_csv(report), "cash-flow.csv")
+
+
+@router.get("/cash-flow/export/pdf")
+def export_cash_flow_pdf(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    report = build_cash_flow_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+    return _pdf_response(
+        build_cash_flow_pdf(
+            _company_or_404(db, company_id),
+            report,
+            include_draft=include_draft,
+        ),
+        "cash-flow.pdf",
+    )
+
+
+@router.get(
+    "/statement-of-changes-in-equity",
+    response_model=StatementOfChangesInEquityRead,
+)
+def statement_of_changes_in_equity_report(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StatementOfChangesInEquityRead:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    return build_statement_of_changes_in_equity_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+
+
+@router.get("/statement-of-changes-in-equity/export")
+def export_statement_of_changes_in_equity(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    report = build_statement_of_changes_in_equity_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+    return _csv_response(
+        build_statement_of_changes_in_equity_csv(report),
+        "statement-of-changes-in-equity.csv",
+    )
+
+
+@router.get("/statement-of-changes-in-equity/export/pdf")
+def export_statement_of_changes_in_equity_pdf(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    report = build_statement_of_changes_in_equity_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_draft=include_draft,
+    )
+    return _pdf_response(
+        build_statement_of_changes_in_equity_pdf(
+            _company_or_404(db, company_id),
+            report,
+            include_draft=include_draft,
+        ),
+        "statement-of-changes-in-equity.pdf",
+    )
 
 
 @router.get("/general-ledger", response_model=GeneralLedgerReportRead)
@@ -202,3 +460,33 @@ def export_general_ledger_report(
         include_draft=include_draft,
     )
     return _csv_response(build_general_ledger_csv(report), "general-ledger.csv")
+
+
+@router.get("/general-ledger/export/pdf")
+def export_general_ledger_pdf(
+    company_id: UUID,
+    start_date: date,
+    end_date: date,
+    account_id: UUID | None = None,
+    include_draft: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    _validate_date_range(start_date, end_date)
+    report = build_general_ledger_report(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        account_id=account_id,
+        include_draft=include_draft,
+    )
+    return _pdf_response(
+        build_general_ledger_pdf(
+            _company_or_404(db, company_id),
+            report,
+            include_draft=include_draft,
+        ),
+        "general-ledger.pdf",
+    )

@@ -337,6 +337,66 @@ export type BalanceSheetReport = {
   total_equity: string;
 };
 
+export type CashFlowReportLine = {
+  line_code: string;
+  label: string;
+  activity_type: string;
+  amount: string;
+  transaction_count: number;
+};
+
+export type CashFlowReport = {
+  start_date: string;
+  end_date: string;
+  method: string;
+  classification_policy: string;
+  cash_accounts: Array<{
+    account_id: string;
+    account_code: string;
+    account_name: string;
+    opening_balance: string;
+    closing_balance: string;
+  }>;
+  operating_lines: CashFlowReportLine[];
+  investing_lines: CashFlowReportLine[];
+  financing_lines: CashFlowReportLine[];
+  opening_cash: string;
+  total_operating: string;
+  total_investing: string;
+  total_financing: string;
+  net_cash_change: string;
+  effect_of_exchange_rate_changes: string;
+  calculated_closing_cash: string;
+  closing_cash: string;
+  reconciliation_difference: string;
+};
+
+export type StatementOfChangesInEquityReport = {
+  start_date: string;
+  end_date: string;
+  opening_equity_lines: Array<{
+    account_code: string;
+    account_name: string;
+    amount: string;
+  }>;
+  movement_lines: Array<{
+    account_id: string;
+    account_code: string;
+    account_name: string;
+    movement_type: string;
+    amount: string;
+  }>;
+  opening_equity: string;
+  profit_or_loss: string;
+  total_contributions: string;
+  total_distributions: string;
+  total_other_movements: string;
+  total_changes: string;
+  calculated_closing_equity: string;
+  closing_equity: string;
+  reconciliation_difference: string;
+};
+
 export type GeneralLedgerReport = {
   start_date: string;
   end_date: string;
@@ -472,6 +532,8 @@ type ReportState = {
   trialBalance: TrialBalanceReport | null;
   profitAndLoss: ProfitAndLossReport | null;
   balanceSheet: BalanceSheetReport | null;
+  cashFlow: CashFlowReport | null;
+  changesInEquity: StatementOfChangesInEquityReport | null;
   generalLedger: GeneralLedgerReport | null;
 };
 
@@ -728,8 +790,17 @@ export function useOperatorState() {
   const [trialBalanceFilters, setTrialBalanceFilters] = useState({ start_date: "", end_date: "" });
   const [profitAndLossFilters, setProfitAndLossFilters] = useState({ start_date: todayIso(), end_date: todayIso() });
   const [balanceSheetFilters, setBalanceSheetFilters] = useState({ as_of_date: todayIso() });
+  const [cashFlowFilters, setCashFlowFilters] = useState({ start_date: todayIso(), end_date: todayIso() });
+  const [changesInEquityFilters, setChangesInEquityFilters] = useState({ start_date: todayIso(), end_date: todayIso() });
   const [generalLedgerFilters, setGeneralLedgerFilters] = useState({ start_date: todayIso(), end_date: todayIso(), account_id: "" });
-  const [reportState, setReportState] = useState<ReportState>({ trialBalance: null, profitAndLoss: null, balanceSheet: null, generalLedger: null });
+  const [reportState, setReportState] = useState<ReportState>({
+    trialBalance: null,
+    profitAndLoss: null,
+    balanceSheet: null,
+    cashFlow: null,
+    changesInEquity: null,
+    generalLedger: null,
+  });
   const [assetDraft, setAssetDraft] = useState({ asset_code: "", name: "", description: "", acquisition_date: todayIso(), in_service_date: todayIso(), cost_amount: "0.00", salvage_value: "0.00", useful_life_months: 12, depreciation_method: "straight_line", diminishing_value_rate: "", asset_account_id: "", accumulated_depreciation_account_id: "", depreciation_expense_account_id: "", acquisition_reference: "", note: "" });
   const [disposeDraft, setDisposeDraft] = useState({ disposal_date: todayIso(), disposal_reference: "", disposal_note: "", disposal_proceeds: "0.00" });
   const [depreciationDraft, setDepreciationDraft] = useState({ accounting_period_id: "", start_date: todayIso(), end_date: todayIso(), note: "Monthly depreciation" });
@@ -786,6 +857,14 @@ export function useOperatorState() {
     setTaxPacks([]);
     setTaxPackDetail(null);
     setTaxApprovalActions([]);
+    setReportState({
+      trialBalance: null,
+      profitAndLoss: null,
+      balanceSheet: null,
+      cashFlow: null,
+      changesInEquity: null,
+      generalLedger: null,
+    });
     setSelectedConfigurationId("");
     setSelectedCategoryId("");
     setSelectedTaxCodeId("");
@@ -1568,6 +1647,10 @@ export function useOperatorState() {
     setProfitAndLossFilters,
     balanceSheetFilters,
     setBalanceSheetFilters,
+    cashFlowFilters,
+    setCashFlowFilters,
+    changesInEquityFilters,
+    setChangesInEquityFilters,
     generalLedgerFilters,
     setGeneralLedgerFilters,
     reportState,

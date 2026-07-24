@@ -50,6 +50,25 @@ Unlocking a period voids its active rollover and records an audit event. Relocki
 
 Financial reports handle the close deliberately: profit-and-loss reports exclude rollover journals, while the trial balance and general ledger include them. Balance-sheet current earnings start at the later of the configured financial-year start and the day after the latest active rollover, avoiding duplicate equity.
 
+## Financial Reports
+
+The reports API provides JSON, CSV, and PDF forms of the six core reports:
+
+- `/reports/trial-balance`
+- `/reports/profit-loss`
+- `/reports/balance-sheet`
+- `/reports/cash-flow`
+- `/reports/statement-of-changes-in-equity`
+- `/reports/general-ledger`
+
+Append `/export` for CSV or `/export/pdf` for an archive-ready PDF. All variants accept the report's normal date and filtering parameters plus `include_draft`; the default final version includes posted journals only. PDFs contain company identity, period, currency, report version, UTC generation time, company UUID archive reference, repeating headings, and page numbers. Draft-inclusive PDFs carry a prominent work-in-progress notice.
+
+Cash flow uses the direct method and aggregates cash-account journals into major classes of gross receipts and payments instead of returning transaction-level statement rows. The response exposes ordered `operating_lines`, `investing_lines`, and `financing_lines`; each line contains a stable `line_code`, financial-statement `label`, amount, and `transaction_count`. It also returns the presentation method and classification policy, the effect of exchange-rate changes, opening/closing cash, reconciliation difference, and cash-account composition.
+
+`BS_CA_CASH` is authoritative for identifying cash and cash equivalents, with an asset account name containing `cash` or `bank` used as a compatibility fallback. Internal cash transfers with zero net movement are excluded. For non-financial entities, interest and dividends received are presented as investing, while interest paid, dividends/distributions paid, lease principal, and borrowing movements are financing. Remaining principal revenue-producing cash flows are operating. The dominant non-cash counterparty assigns each journal to one major gross class.
+
+The statement of changes in equity reconciles opening equity, profit or loss, owner contributions, distributions, other direct equity movements, and closing equity. System period-rollover journals are excluded from direct equity movements because the period result is already presented separately.
+
 ## Journal Posting
 
 `POST /companies/{company_id}/journals/{journal_id}/post` posts one draft journal. `POST /companies/{company_id}/journals/bulk-post` accepts `{ "journal_ids": [...] }` with between 1 and 500 unique company journal IDs and returns the posted journals in the submitted order.

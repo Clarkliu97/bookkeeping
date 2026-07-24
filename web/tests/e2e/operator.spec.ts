@@ -1141,4 +1141,79 @@ test.describe.serial("operator workspace journeys", () => {
     await expect(page.getByRole("status").getByText("Created tax pack PDF export.")).toBeVisible();
     await expect(page.getByTestId("selected-tax-pack-detail")).toContainText("Exports: 1");
   });
+
+  test("runs cash flow and changes in equity reports and downloads an archive PDF", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Financial Reports Company");
+    const period = await createPeriod(page.request, auth.access_token, company.id, uniqueSuffix("E2E Reports Quarter"));
+    const cashAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Cash at Bank",
+      account_type: "asset",
+    });
+    const equityAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Owner Capital",
+      account_type: "equity",
+    });
+    const revenueAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Consulting Revenue",
+      account_type: "income",
+    });
+    const contribution = await createDraftJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      period.id,
+      cashAccount.id,
+      equityAccount.id,
+      { description: "Owner contribution", reference: "E2E-CAPITAL-01", amount: "1000.00" },
+    );
+    const cashSale = await createDraftJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      period.id,
+      cashAccount.id,
+      revenueAccount.id,
+      { description: "Cash consulting sale", reference: "E2E-SALE-01", amount: "100.00" },
+    );
+    await apiJson<undefined>(page.request, "POST", `/api/companies/${company.id}/journals/${contribution.id}/post`, auth.access_token);
+    await apiJson<undefined>(page.request, "POST", `/api/companies/${company.id}/journals/${cashSale.id}/post`, auth.access_token);
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/reports");
+    await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cash flow", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Changes in equity", exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Cash flow", exact: true }).click();
+    const cashFlowPanel = page.getByRole("heading", { name: "Statement of cash flows" }).locator("..");
+    await cashFlowPanel.getByLabel("Start date").fill("2026-04-01");
+    await cashFlowPanel.getByLabel("End date").fill("2026-06-30");
+    await cashFlowPanel.getByTestId("run-cash-flow").click();
+    await expect(cashFlowPanel.getByText("Closing cash").locator("..")).toContainText("$1,100.00");
+    await expect(cashFlowPanel.getByText("direct method", { exact: true })).toBeVisible();
+    await expect(cashFlowPanel.getByText("Cash receipts from customers", { exact: true })).toBeVisible();
+    await expect(cashFlowPanel.getByText("Proceeds from issue of share capital and owner contributions", { exact: true })).toBeVisible();
+    await expect(cashFlowPanel.getByRole("heading", { name: "Operating activities", exact: true })).toBeVisible();
+    await expect(cashFlowPanel.getByRole("heading", { name: "Financing activities", exact: true })).toBeVisible();
+    await expect(cashFlowPanel.getByText("Ledger reconciliation difference:")).toContainText("$0.00");
+
+    const downloadPromise = page.waitForEvent("download");
+    await cashFlowPanel.getByTestId("export-cash-flow-pdf").click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("cash-flow.pdf");
+
+    await page.getByRole("button", { name: "Changes in equity", exact: true }).click();
+    const equityPanel = page.getByRole("heading", { name: "Statement of changes in equity" }).locator("..");
+    await equityPanel.getByLabel("Start date").fill("2026-04-01");
+    await equityPanel.getByLabel("End date").fill("2026-06-30");
+    await equityPanel.getByTestId("run-changes-in-equity").click();
+    await expect(equityPanel.locator(".stat-card").filter({ hasText: "Profit or loss" })).toContainText("$100.00");
+    await expect(equityPanel.locator(".stat-card").filter({ hasText: "Contributions" })).toContainText("$1,000.00");
+    await expect(equityPanel.locator(".stat-card").filter({ hasText: "Closing equity" })).toContainText("$1,100.00");
+    await expect(equityPanel.getByText("Equity reconciliation difference:")).toContainText("$0.00");
+  });
 });
