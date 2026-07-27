@@ -16,6 +16,7 @@ The implemented system currently supports:
 - employment support records for workers, engagements, work rights, compensation, leave, reimbursements, and issued assets
 - bank CSV import staging, duplicate detection, confirmation, and reconciliation workflows
 - BAS period generation, BAS runs, adjustments, review notes, approvals, and exports
+- monthly budget and forecast planning with posted-actual roll-forward, scenario comparison, controlled review states, and CSV/PDF outputs
 - financial reporting including trial balance, profit and loss, balance sheet, cash flow, statement of changes in equity, and general ledger, with browser, CSV, and archive-ready PDF outputs
 - fixed asset register maintenance, disposals, depreciation runs, and depreciation journal posting
 - annual company tax workpaper packs with adjustments, notes, exceptions, approvals, and exports
@@ -102,6 +103,18 @@ The project explicitly does not support:
 - browser review, CSV export, and professionally formatted PDF export for every report
 - per-report version selection so operators can run a final review version from posted journals only or a draft review version that includes draft journals
 
+### Budget And Forecast
+
+- create separate monthly budgets and forecasts for a twelve-month financial year
+- plan future income and expenditure against active profit-and-loss accounts without posting journals or changing financial reports
+- create and manage one-off, monthly, quarterly, half-yearly, or annual budget items with an account, amount per occurrence, starting month, optional ending month, and note
+- enter account-month values directly, clear an entire account line, spread an annual amount deterministically, copy prior-year posted actuals, apply a growth rate, or import a reviewed CSV
+- combine posted actuals through a selected month-end with explicit future forecast values, then fall back to the linked budget and finally a warned zero
+- calculate projected revenue, expenses, gross profit, operating profit, and year-end net profit or loss
+- compare two to four baseline, upside, downside, or custom scenarios
+- submit, review, approve, lock, archive, clone, and audit planning versions
+- retain calculation runs and export plan detail or forecast results as CSV and archive-ready PDF
+
 ### Year-End Support
 
 - fixed asset register maintenance
@@ -132,6 +145,7 @@ The Next.js frontend is the main operator interface. It is organized around work
 - Setup separates company details, users and access, configuration versions, and reference data. Selecting a user opens an explicit update workflow; clearing the selection switches to the separate create-user workflow.
 - Bookkeeping separates periods, journals, AI drafting, ledger exploration, and document management.
 - Banking separates bank accounts/imports, reconciliation, and BAS support.
+- Budget & Forecast separates plan overview and governance, monthly budget building, actual-plus-forecast calculation, and scenario comparison.
 - Employment separates dashboard/report queues from detailed worker records.
 - Reports separates trial balance, profit and loss, balance sheet, cash flow, changes in equity, and general ledger.
 - Year-end separates fixed assets/depreciation from tax workpapers.
@@ -247,18 +261,39 @@ Use Banking for imported transaction workflows and BAS support.
 
 Typical tasks:
 
-1. Create or edit bank accounts.
-2. Upload a bank CSV file.
-3. Review the staged import session.
-4. Confirm the import when the rows look correct.
-5. Create a reconciliation session.
-6. Match or ignore reconciliation items.
-7. If an open session needs to be restarted, select `Delete session`, confirm the warning, and verify its linked bank rows have returned to staged status.
-8. Complete the session when every item is resolved. Completed sessions are retained for audit history and cannot be edited or deleted.
-9. Generate BAS periods.
-10. Create a BAS run for a selected BAS period.
-11. Review BAS lines, warnings, adjustments, and notes.
-12. Submit, approve, and export BAS support outputs.
+1. Create bank accounts in the dedicated creation form.
+2. Select an active bank account to update it, or delete it after confirming the warning. Deletion removes the account from new import and reconciliation workflows while retaining its historical banking records.
+3. Upload a bank CSV file.
+4. Review the staged import session.
+5. Confirm the import when the rows look correct.
+6. Create a reconciliation session.
+7. Match or ignore reconciliation items.
+8. If an open session needs to be restarted, select `Delete session`, confirm the warning, and verify its linked bank rows have returned to staged status.
+9. Complete the session when every item is resolved. Completed sessions are retained for audit history and cannot be edited or deleted.
+10. Generate BAS periods.
+11. Create a BAS run for a selected BAS period.
+12. Review BAS lines, warnings, adjustments, and notes.
+13. Submit, approve, and export BAS support outputs.
+
+### Budget & Forecast: `/budget-forecast`
+
+Use Budget & Forecast to plan future P&L performance without changing the accounting ledger.
+
+Typical tasks:
+
+1. Create a budget or forecast with a twelve-month financial-year range and scenario label.
+2. For a draft plan, maintain its name, assumptions, preparer note, linked baseline budget, and actual-through cutoff in the separate management form.
+3. Open `Budget builder` and add recurring or one-off budget items when the budget is driven by known income or expenses. Each item records its P&L account, amount per occurrence, frequency, starting month, optional ending month, and note. Overlapping items for the same account and month are added together.
+4. Review the item-derived minimum shown under each protected grid value. The existing monthly grid remains editable above that minimum. Use the `Clear` button in an account row to blank all of its unprotected months in one action; months protected by budget items remain at their summed minimum. If an operator clears a protected value or enters less than the item total, the browser and API change it to the minimum and notify the operator. Select `Save planning values` to persist direct edits or a cleared line.
+5. Enter any remaining monthly amounts directly against active income and expense accounts. Values are net of GST. Ordinary income and expenses are positive; contra accounts, refunds, or reductions are negative. Blank means unplanned, while zero is an explicit expectation when no budget-item floor applies.
+6. Use the annual spread, prior-year actual copy, growth-rate, or CSV import tools when they are more efficient than direct entry. All of these paths enforce the same item-derived minimums. CSV imports require `account_code`, `period_start`, and `amount`; `note` is optional, and a successful preview is required before commit.
+7. Open `Forecast`, choose the last completed fiscal month-end, and calculate a saved year-end run. Posted actual journals are used through the cutoff; rollover and draft journals are excluded.
+8. Review income, expenses, gross profit, operating profit, net profit, budget variances, value sources, and warnings. A zero budget produces a blank percentage variance rather than a misleading percentage.
+9. Compare two to four plans under `Scenarios`, or clone an approved plan into a new editable version or reforecast. Budget-to-budget cloning copies the item schedules; forecast versions retain monthly values without making the source budget items editable.
+10. Submit the draft for review, record review, approve it, and optionally lock it. Approved and locked plans are immutable; use cloning to create the next revision.
+11. Export plan detail or a saved forecast run as CSV or PDF for review and archiving.
+
+Forecast values are resolved account by account and month by month in this order: posted actual for completed months, explicit forecast for future months, linked baseline budget, then zero with a warning. Planning records never create journal entries and do not affect trial balance, BAS, tax, reconciliation, or statutory financial reports.
 
 ### Reports: `/reports`
 

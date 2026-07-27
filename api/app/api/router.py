@@ -12,6 +12,7 @@ from app.employment.router import router as employment_router
 from app.fixed_assets.router import router as fixed_assets_router
 from app.journal_recommendations.router import router as journal_recommendations_router
 from app.ledger.router import router as ledger_router
+from app.planning.router import router as planning_router
 from app.reports.router import router as reports_router
 from app.reconciliation.router import router as reconciliation_router
 from app.tax_workpapers.router import router as tax_workpapers_router
@@ -28,6 +29,7 @@ api_router.include_router(journal_recommendations_router)
 api_router.include_router(employment_router)
 api_router.include_router(fixed_assets_router)
 api_router.include_router(reports_router)
+api_router.include_router(planning_router)
 api_router.include_router(tax_workpapers_router)
 api_router.include_router(bas_router)
 api_router.include_router(documents_router)

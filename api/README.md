@@ -98,6 +98,46 @@ The displayed estimates use 40,000 uncached input tokens and 3,500 total billed 
 
 Provider-facing monetary fields use JSON Schema `number` values and are parsed into Python `Decimal` values locally. This avoids Pydantic's default decimal-string regex, whose lookaround syntax is not accepted by OpenAI Structured Outputs, while preserving exact decimal accounting checks after parsing.
 
+## Budget And Forecast Planning
+
+Planning is isolated from the accounting ledger under `/api/companies/{company_id}/planning`. A plan always contains twelve continuous fiscal-month periods and accepts only active company-owned profit-and-loss accounts. Planning lines do not create journals and cannot affect trial balance, BAS, tax, reconciliation, or financial-report results.
+
+Core routes:
+
+- `GET|POST /planning/plans` lists or creates plans.
+- `GET|PUT|DELETE /planning/plans/{plan_id}` reads, updates, or deletes a draft plan.
+- `GET|POST /planning/plans/{plan_id}/budget-items` lists or creates account-based recurring items.
+- `PUT|DELETE /planning/plans/{plan_id}/budget-items/{item_id}` updates or deletes an item using the plan revision.
+- `PUT /planning/plans/{plan_id}/lines/bulk` atomically replaces the submitted account-month values.
+- `POST /planning/plans/{plan_id}/spread` spreads an annual amount across selected months and places any cent residual deterministically.
+- `POST /planning/plans/{plan_id}/copy-prior-actuals` seeds values from prior-year posted P&L journals.
+- `POST /planning/plans/{plan_id}/apply-growth` adjusts existing selected values.
+- `POST /planning/plans/{plan_id}/imports/preview` and `/imports/commit` validate and import CSV values.
+- `POST /planning/plans/{plan_id}/clone` creates an editable version or reforecast in one transaction.
+- `POST /planning/plans/{plan_id}/{submit|review|reject|approve|lock|archive}` advances the controlled lifecycle.
+- `POST /planning/plans/{plan_id}/calculate` calculates and persists an actual-plus-forecast run.
+- `GET /planning/forecast-runs` and `GET /planning/forecast-runs/{run_id}` list or read saved calculation runs.
+- `POST /planning/comparisons` compares two to four plans from the same financial year.
+- Plan and saved-run `/export/csv` and `/export/pdf` routes provide detailed review and archive outputs.
+
+Every draft mutation carries the current `revision`. A stale revision returns a conflict instead of silently overwriting another operator's work. Submitted plans cannot be edited; approved and locked plans are immutable and should be cloned to create a new version. Approval enforces the current maker/checker self-approval setting and records audit events for material mutations and workflow changes.
+
+Forecast calculation uses posted, non-rollover P&L journals through the selected fiscal month-end. Future account-month values resolve in this order: explicit forecast line, linked baseline-budget line, then zero with a review warning. It reports actual YTD, remaining forecast, projected full-year income and expenses, gross and operating profit, net profit or loss, raw and percentage variance, and income/expense-aware favourable direction. Percentage variance is `null` when the budget comparator is zero.
+
+Planning CSV files use the header `account_code,period_start,amount,note`. The period must be one of the generated fiscal months, the account must be an eligible company P&L account, amounts use decimal notation, and a preview with no errors is required before commit. Import, bulk edit, spread, copy, growth, and clone operations commit atomically.
+
+Planning amounts follow the report presentation sign: ordinary income and expense targets are positive, while contra accounts, refunds, and other reductions are negative. Amounts are net of GST. Blank account-month values are unplanned and may trigger a forecast warning; zero is an explicit expectation.
+
+Budget items are available only on budget plans. Each item has a P&L account, amount per occurrence, one-off/monthly/quarterly/half-yearly/annual frequency, starting fiscal month, optional ending fiscal month, and note. The service expands the schedules into account-month floors and adds overlapping items together. Creating or increasing an item raises missing or lower monthly lines automatically. Decreasing or deleting an item does not silently reduce existing monthly values; the operator may reduce them afterward to the new floor.
+
+Bulk line edits, annual spread, prior-actual copy, growth adjustment, and CSV commit all apply the same floor. A submitted blank or lower amount is not rejected: it is stored at the item total, and `floor_adjustments` in the plan-detail response identifies the account, month, requested amount, and applied minimum so the frontend can notify the operator. Budget-to-budget clones copy both schedules and resulting values. Forecasts copy or reference monthly values but do not expose editable budget items.
+
+## Bank Account Lifecycle
+
+Bank-account management exposes separate create, update, and delete operations. `POST /api/companies/{company_id}/bank-accounts` creates an active account, `PUT /api/companies/{company_id}/bank-accounts/{bank_account_id}` updates its metadata, and `DELETE /api/companies/{company_id}/bank-accounts/{bank_account_id}` soft-deletes it by marking it inactive.
+
+Soft deletion preserves historical import and reconciliation records. Inactive accounts cannot be used for new bank imports or reconciliation sessions, and the operator interface excludes them from active account selectors.
+
 ## Backup and Restore
 
 Operational backup and restore scripts for PostgreSQL data and document storage live under [infra/scripts/backup_postgres.ps1](../infra/scripts/backup_postgres.ps1), [infra/scripts/backup_postgres.sh](../infra/scripts/backup_postgres.sh), [infra/scripts/restore_postgres.ps1](../infra/scripts/restore_postgres.ps1), and [infra/scripts/restore_postgres.sh](../infra/scripts/restore_postgres.sh).

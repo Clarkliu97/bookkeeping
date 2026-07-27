@@ -24,6 +24,14 @@ from app.db.models.journal_recommendations import (
 )
 from app.db.models.fixed_assets import DepreciationRun, DepreciationRunLine, FixedAsset, FixedAssetStatusHistory
 from app.db.models.reconciliation import ReconciliationItem, ReconciliationSession
+from app.db.models.planning import (
+    PlanningBudgetItem,
+    PlanningForecastRun,
+    PlanningForecastRunLine,
+    PlanningLine,
+    PlanningPeriod,
+    PlanningPlan,
+)
 from app.db.models.reference import ReportingCategory, TaxCode
 from app.db.models.tax_workpapers import (
     TaxAdjustment,
@@ -71,6 +79,12 @@ __all__ = [
     "JournalRecommendationRunDocument",
     "JournalLine",
     "PeriodLock",
+    "PlanningBudgetItem",
+    "PlanningForecastRun",
+    "PlanningForecastRunLine",
+    "PlanningLine",
+    "PlanningPeriod",
+    "PlanningPlan",
     "ReconciliationItem",
     "ReconciliationSession",
     "ReportingCategory",

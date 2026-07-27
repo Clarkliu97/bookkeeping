@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { BankingSection } from "./operator-sections/banking-section";
 import { BookkeepingSection } from "./operator-sections/bookkeeping-section";
+import { BudgetForecastSection } from "./operator-sections/budget-forecast-section";
 import { DashboardSection } from "./operator-sections/dashboard-section";
 import { ReportsSection } from "./operator-sections/reports-section";
 import { SetupSection } from "./operator-sections/setup-section";
@@ -142,6 +143,8 @@ export function OperatorClient({ activeSection }: { activeSection: SectionKey })
     sectionContent = <BookkeepingSection operator={operator} />;
   } else if (activeSection === "banking") {
     sectionContent = <BankingSection operator={operator} />;
+  } else if (activeSection === "budget_forecast") {
+    sectionContent = <BudgetForecastSection operator={operator} />;
   } else if (activeSection === "reports") {
     sectionContent = <ReportsSection operator={operator} />;
   } else if (activeSection === "year_end") {

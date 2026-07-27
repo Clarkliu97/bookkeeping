@@ -23,10 +23,18 @@ from app.schemas.requests import BankAccountCreate, BankAccountUpdate, BankImpor
 router = APIRouter(prefix="/companies/{company_id}", tags=["bank-imports"])
 
 
-def _load_bank_account_or_404(db: Session, company_id: UUID, bank_account_id: UUID) -> BankAccount:
+def _load_bank_account_or_404(
+    db: Session,
+    company_id: UUID,
+    bank_account_id: UUID,
+    *,
+    require_active: bool = False,
+) -> BankAccount:
     bank_account = db.get(BankAccount, bank_account_id)
     if bank_account is None or bank_account.company_id != company_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bank account not found")
+    if require_active and not bank_account.is_active:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Bank account is inactive")
     return bank_account
 
 
@@ -155,7 +163,7 @@ async def upload_bank_csv(
     db: Session = Depends(get_db),
 ) -> BankImportSession:
     require_company_permission(company_id, "can_prepare", db, current_user)
-    _load_bank_account_or_404(db, company_id, bank_account_id)
+    _load_bank_account_or_404(db, company_id, bank_account_id, require_active=True)
     content = await file.read()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded CSV is empty")

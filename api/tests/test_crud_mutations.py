@@ -724,6 +724,39 @@ def test_document_bank_and_reconciliation_update_delete_endpoints(client):
     )
     assert delete_bank_account.status_code == 204, delete_bank_account.text
 
+    bank_accounts_after_delete = client.get(
+        f"/api/companies/{company_id}/bank-accounts",
+        headers=auth_header(token),
+    )
+    assert bank_accounts_after_delete.status_code == 200, bank_accounts_after_delete.text
+    deleted_bank_account = next(
+        account for account in bank_accounts_after_delete.json() if account["id"] == bank_account_id
+    )
+    assert deleted_bank_account["is_active"] is False
+
+    inactive_account_upload = client.post(
+        f"/api/companies/{company_id}/bank-imports/upload",
+        headers=auth_header(token),
+        files={
+            "file": (
+                "inactive-account.csv",
+                b"date,description,debit,credit,reference\n2026-07-01,Deposit,0.00,100.00,DEP-002\n",
+                "text/csv",
+            )
+        },
+        data={"bank_account_id": bank_account_id, "note": "Must be rejected"},
+    )
+    assert inactive_account_upload.status_code == 409, inactive_account_upload.text
+    assert inactive_account_upload.json()["detail"] == "Bank account is inactive"
+
+    inactive_account_reconciliation = client.post(
+        f"/api/companies/{company_id}/reconciliation-sessions",
+        headers=auth_header(token),
+        json={"bank_account_id": bank_account_id, "accounting_period_id": period_id, "note": "Must be rejected"},
+    )
+    assert inactive_account_reconciliation.status_code == 409, inactive_account_reconciliation.text
+    assert inactive_account_reconciliation.json()["detail"] == "Bank account is inactive"
+
 
 def test_journal_evidence_routes_expose_n_to_n_document_links(client):
     token = bootstrap_superuser(client)

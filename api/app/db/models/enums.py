@@ -105,6 +105,44 @@ class JournalSourceType(StrEnum):
     SYSTEM = "system"
 
 
+class PlanningPlanType(StrEnum):
+    BUDGET = "budget"
+    FORECAST = "forecast"
+
+
+class PlanningScenarioType(StrEnum):
+    BASELINE = "baseline"
+    UPSIDE = "upside"
+    DOWNSIDE = "downside"
+    CUSTOM = "custom"
+
+
+class PlanningStatus(StrEnum):
+    DRAFT = "draft"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    LOCKED = "locked"
+    ARCHIVED = "archived"
+
+
+class PlanningEntryMethod(StrEnum):
+    MANUAL = "manual"
+    ANNUAL_SPREAD = "annual_spread"
+    PRIOR_ACTUAL = "prior_actual"
+    PRIOR_BUDGET = "prior_budget"
+    GROWTH_RATE = "growth_rate"
+    FORECAST_OVERRIDE = "forecast_override"
+    CSV_IMPORT = "csv_import"
+
+
+class PlanningBudgetItemFrequency(StrEnum):
+    ONE_OFF = "one_off"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    HALF_YEARLY = "half_yearly"
+    ANNUALLY = "annually"
+
+
 class ApprovalActionType(StrEnum):
     PREPARED = "prepared"
     SUBMITTED_FOR_REVIEW = "submitted_for_review"

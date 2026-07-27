@@ -76,6 +76,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     bankAccounts,
     selectedBankAccountId,
     setSelectedBankAccountId,
+    selectedBankAccount,
     bankAccountDraft,
     setBankAccountDraft,
     selectedCompanyId,
@@ -135,10 +136,32 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
   const [reconciliationItemNote, setReconciliationItemNote] = useState("");
   const [isReconciliationWorkspaceOpen, setIsReconciliationWorkspaceOpen] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<"accounts" | "reconciliation" | "bas">("accounts");
+  const [newBankAccountDraft, setNewBankAccountDraft] = useState({
+    name: "",
+    bank_name: "",
+    bsb: "",
+    account_number_masked: "",
+    is_active: true,
+  });
+
+  const activeBankAccounts = useMemo(
+    () => bankAccounts.filter((item) => item.is_active),
+    [bankAccounts],
+  );
 
   useEffect(() => {
     setImportNoteDraft(selectedImportSession?.note ?? "");
   }, [selectedImportSession?.id, selectedImportSession?.note]);
+
+  useEffect(() => {
+    setNewBankAccountDraft({
+      name: "",
+      bank_name: "",
+      bsb: "",
+      account_number_masked: "",
+      is_active: true,
+    });
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     setReconciliationItemNote(selectedReconciliationItem?.note ?? "");
@@ -268,6 +291,79 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     showMessage("success", `Deleted reconciliation session "${sessionLabel}".`);
   }
 
+  async function createBankAccount() {
+    const name = newBankAccountDraft.name.trim();
+    if (!name) {
+      throw new Error("Enter an account name before creating the bank account.");
+    }
+    const created = await request<{ id: string }>(
+      `/api/companies/${selectedCompanyId}/bank-accounts`,
+      "POST",
+      { ...newBankAccountDraft, name },
+    );
+    setNewBankAccountDraft({
+      name: "",
+      bank_name: "",
+      bsb: "",
+      account_number_masked: "",
+      is_active: true,
+    });
+    await refreshAll();
+    setSelectedBankAccountId(created.id);
+    setReconciliationDraft((current) => ({ ...current, bank_account_id: created.id }));
+    showMessage("success", `Created bank account "${name}".`);
+  }
+
+  async function updateSelectedBankAccount() {
+    if (!selectedBankAccount) {
+      throw new Error("Select a bank account before updating it.");
+    }
+    const name = bankAccountDraft.name.trim();
+    if (!name) {
+      throw new Error("Enter an account name before updating the bank account.");
+    }
+    await request(
+      `/api/companies/${selectedCompanyId}/bank-accounts/${selectedBankAccount.id}`,
+      "PUT",
+      { ...bankAccountDraft, name },
+    );
+    await refreshAll();
+    showMessage("success", `Updated bank account "${name}".`);
+  }
+
+  async function deleteSelectedBankAccount() {
+    if (!selectedBankAccount) {
+      throw new Error("Select a bank account before deleting it.");
+    }
+    const accountName = selectedBankAccount.name;
+    if (!confirmDanger(
+      `Delete bank account "${accountName}"? It will no longer be available for new imports or reconciliations. Historical banking records will be retained.`,
+    )) {
+      return;
+    }
+    await request(
+      `/api/companies/${selectedCompanyId}/bank-accounts/${selectedBankAccount.id}`,
+      "DELETE",
+      undefined,
+      "void",
+    );
+    setSelectedBankAccountId("");
+    setBankAccountDraft({
+      name: "",
+      bank_name: "",
+      bsb: "",
+      account_number_masked: "",
+      is_active: true,
+    });
+    setReconciliationDraft((current) => (
+      current.bank_account_id === selectedBankAccount.id
+        ? { ...current, bank_account_id: "" }
+        : current
+    ));
+    await refreshAll();
+    showMessage("success", `Deleted bank account "${accountName}". Historical banking records were retained.`);
+  }
+
   return (
     <section className="sections-stack">
       <WorkspaceTabs
@@ -282,31 +378,53 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
       />
       {activeWorkspace === "accounts" ? (
       <article className="panel panel-wide">
-        <div className="panel-heading"><h2>Bank accounts and imports</h2><span className="pill">{bankAccounts.length} accounts</span></div>
+        <div className="panel-heading"><h2>Bank accounts and imports</h2><span className="pill">{activeBankAccounts.length} active accounts</span></div>
         <div className="workspace-split">
           <div className="stacked-cards">
-            <div className="mini-card">
-              <h3>Bank account</h3>
-              <div className="compact-list">
-                {bankAccounts.map((item) => <button key={item.id} className={`list-row-button${selectedBankAccountId === item.id ? " is-active" : ""}`} type="button" onClick={() => setSelectedBankAccountId(item.id)}>{item.name}</button>)}
+            <div className="mini-card" data-testid="create-bank-account-card">
+              <div className="mini-card-heading">
+                <div>
+                  <h3>Create bank account</h3>
+                  <p className="reference-management-copy">Add an account before importing its bank transactions.</p>
+                </div>
               </div>
               <div className="form-grid two-up">
-                <Field label="Name"><input value={bankAccountDraft.name} onChange={(event) => setBankAccountDraft((current) => ({ ...current, name: event.target.value }))} /></Field>
-                <Field label="Bank name"><input value={bankAccountDraft.bank_name} onChange={(event) => setBankAccountDraft((current) => ({ ...current, bank_name: event.target.value }))} /></Field>
-                <Field label="BSB"><input value={bankAccountDraft.bsb} onChange={(event) => setBankAccountDraft((current) => ({ ...current, bsb: event.target.value }))} /></Field>
-                <Field label="Masked account"><input value={bankAccountDraft.account_number_masked} onChange={(event) => setBankAccountDraft((current) => ({ ...current, account_number_masked: event.target.value }))} /></Field>
+                <Field label="Name"><input value={newBankAccountDraft.name} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, name: event.target.value }))} /></Field>
+                <Field label="Bank name"><input value={newBankAccountDraft.bank_name} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, bank_name: event.target.value }))} /></Field>
+                <Field label="BSB"><input value={newBankAccountDraft.bsb} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, bsb: event.target.value }))} /></Field>
+                <Field label="Masked account"><input value={newBankAccountDraft.account_number_masked} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, account_number_masked: event.target.value }))} /></Field>
               </div>
               <div className="request-actions">
-                <button className="button-link button-link-small" type="button" onClick={() => runAction("Saving bank account", async () => {
-                  if (selectedBankAccountId) {
-                    await request(`/api/companies/${selectedCompanyId}/bank-accounts/${selectedBankAccountId}`, "PUT", bankAccountDraft);
-                  } else {
-                    await request(`/api/companies/${selectedCompanyId}/bank-accounts`, "POST", bankAccountDraft);
-                  }
-                  showMessage("success", "Saved bank account.");
-                  await refreshAll();
-                })}>Save bank account</button>
+                <button className="button-link button-link-small" data-testid="create-bank-account" type="button" onClick={() => runAction("Creating bank account", createBankAccount)}>Create bank account</button>
               </div>
+            </div>
+
+            <div className="mini-card" data-testid="manage-bank-accounts-card">
+              <div className="mini-card-heading">
+                <div>
+                  <h3>Manage bank accounts</h3>
+                  <p className="reference-management-copy">Select an active account to update or delete it.</p>
+                </div>
+              </div>
+              <div className="compact-list">
+                {activeBankAccounts.map((item) => <button key={item.id} className={`list-row-button${selectedBankAccountId === item.id ? " is-active" : ""}`} type="button" onClick={() => setSelectedBankAccountId(item.id)}>{item.name}</button>)}
+              </div>
+              {selectedBankAccount ? (
+                <>
+                  <div className="form-grid two-up">
+                    <Field label="Name"><input value={bankAccountDraft.name} onChange={(event) => setBankAccountDraft((current) => ({ ...current, name: event.target.value }))} /></Field>
+                    <Field label="Bank name"><input value={bankAccountDraft.bank_name} onChange={(event) => setBankAccountDraft((current) => ({ ...current, bank_name: event.target.value }))} /></Field>
+                    <Field label="BSB"><input value={bankAccountDraft.bsb} onChange={(event) => setBankAccountDraft((current) => ({ ...current, bsb: event.target.value }))} /></Field>
+                    <Field label="Masked account"><input value={bankAccountDraft.account_number_masked} onChange={(event) => setBankAccountDraft((current) => ({ ...current, account_number_masked: event.target.value }))} /></Field>
+                  </div>
+                  <div className="request-actions">
+                    <button className="button-link button-link-small" data-testid="update-bank-account" type="button" onClick={() => runAction("Updating bank account", updateSelectedBankAccount)}>Update bank account</button>
+                    <button className="button-link button-link-small button-link-danger" data-testid="delete-bank-account" type="button" onClick={() => runAction("Deleting bank account", deleteSelectedBankAccount)}>Delete bank account</button>
+                  </div>
+                </>
+              ) : (
+                <EmptyState title="No bank account selected" detail={activeBankAccounts.length > 0 ? "Select an account above to manage it." : "Create the first bank account above."} />
+              )}
             </div>
 
             <div className="mini-card">

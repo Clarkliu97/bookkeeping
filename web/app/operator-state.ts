@@ -1488,7 +1488,9 @@ export function useOperatorState() {
   const activeAccountOptionList = accounts.filter((item) => item.is_active).map((item) => ({ value: item.id, label: `${item.account_code} · ${item.name}` }));
   const periodOptionList = periods.map((item) => ({ value: item.id, label: `${item.name} · ${item.status}` }));
   const journalOptionList = journals.map((item) => ({ value: item.id, label: `${item.entry_number} · ${item.description}` }));
-  const bankAccountOptionList = bankAccounts.map((item) => ({ value: item.id, label: item.name }));
+  const bankAccountOptionList = bankAccounts
+    .filter((item) => item.is_active)
+    .map((item) => ({ value: item.id, label: item.name }));
   const basPeriodOptionList = basPeriods.map((item) => ({ value: item.id, label: `${item.start_date} to ${item.end_date}` }));
 
   async function handleLogin(mode: "login" | "bootstrap") {

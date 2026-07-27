@@ -52,6 +52,10 @@ export function DashboardSection({ operator }: { operator: OperatorState }) {
             <strong>Employment support</strong>
             <span>Workers, engagements, work rights, compensation, leave, reimbursements, issued assets, evidence, and reports.</span>
           </Link>
+          <Link className="action-card" href="/budget-forecast">
+            <strong>Budget &amp; forecast</strong>
+            <span>Build monthly P&amp;L budgets, reforecast future income and expenses, compare scenarios, and project year-end profit.</span>
+          </Link>
           <Link className="action-card" href="/reports">
             <strong>Financial reports</strong>
             <span>Six core statements, including cash flow and changes in equity, with final or draft review and PDF/CSV export.</span>

@@ -129,6 +129,8 @@ def create_reconciliation_session(
     bank_account = db.get(BankAccount, payload.bank_account_id)
     if bank_account is None or bank_account.company_id != company_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bank account not found")
+    if not bank_account.is_active:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Bank account is inactive")
     if payload.accounting_period_id is not None:
         period = db.get(AccountingPeriod, payload.accounting_period_id)
         if period is None or period.company_id != company_id:

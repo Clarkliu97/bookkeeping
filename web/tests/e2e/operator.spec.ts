@@ -43,6 +43,8 @@ type AccountRecord = {
 
 type BankAccountRecord = {
   id: string;
+  name: string;
+  is_active: boolean;
 };
 
 type BankImportSessionRecord = {
@@ -138,22 +140,29 @@ async function ensureOperatorSession(request: APIRequestContext) {
 
 
 async function seedSessionStorage(page: Page, companyId = "") {
-  await ensureOperatorSession(page.request);
+  const auth = await ensureOperatorSession(page.request);
   await page.goto("/");
-  await page.getByLabel("API base URL").fill(apiBaseUrl);
-  await page.getByLabel("Email").first().fill(operatorEmail);
-  await page.getByLabel("Password").first().fill(operatorPassword);
-  await page.getByTestId("login-submit").click();
+  await page.evaluate(
+    ({ storageKey, baseUrl, token, selectedCompanyId }) => {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          baseUrl,
+          token,
+          selectedCompanyId,
+          selectedBasRunId: "",
+        }),
+      );
+    },
+    {
+      storageKey: sessionStorageKey,
+      baseUrl: apiBaseUrl,
+      token: auth.access_token,
+      selectedCompanyId: companyId,
+    },
+  );
+  await page.reload();
   await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
-  if (companyId) {
-    await page.evaluate(
-      ({ storageKey, selectedCompanyId }) => {
-        const current = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}");
-        window.localStorage.setItem(storageKey, JSON.stringify({ ...current, selectedCompanyId }));
-      },
-      { storageKey: sessionStorageKey, selectedCompanyId: companyId },
-    );
-  }
 }
 
 
@@ -349,6 +358,10 @@ test.describe.serial("operator workspace journeys", () => {
     await expect(page).toHaveURL(/\/employment$/);
     await expect(page.getByTestId("section-link-employment")).toHaveClass(/is-active/);
 
+    await page.getByTestId("section-link-budget_forecast").click();
+    await expect(page).toHaveURL(/\/budget-forecast$/);
+    await expect(page.getByTestId("section-link-budget_forecast")).toHaveClass(/is-active/);
+
     await page.getByTestId("section-link-reports").click();
     await expect(page).toHaveURL(/\/reports$/);
     await expect(page.getByTestId("section-link-reports")).toHaveClass(/is-active/);
@@ -361,7 +374,7 @@ test.describe.serial("operator workspace journeys", () => {
   test("keeps workspace tabs the same size within and across routes", async ({ page }) => {
     const auth = await ensureOperatorSession(page.request);
     const company = await createCompany(page.request, auth.access_token, "E2E Tab Layout Company");
-    const workspacePaths = ["/setup", "/bookkeeping", "/banking", "/employment", "/reports", "/year-end"];
+    const workspacePaths = ["/setup", "/bookkeeping", "/banking", "/employment", "/budget-forecast", "/reports", "/year-end"];
 
     await seedSessionStorage(page, company.id);
 
@@ -431,6 +444,81 @@ test.describe.serial("operator workspace journeys", () => {
       expect(Math.abs(tabStripSize.height - 96)).toBeLessThanOrEqual(0.5);
       expect(Math.abs(followingPanelTop - tabStripSize.bottom - 14)).toBeLessThanOrEqual(0.5);
     }
+  });
+
+  test("builds a monthly budget and calculates projected year-end profit", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Planning Company");
+    const revenueName = uniqueSuffix("Planning Revenue");
+    const expenseName = uniqueSuffix("Planning Expense");
+    const revenueAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: revenueName,
+      account_type: "income",
+    });
+    const expenseAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: expenseName,
+      account_type: "expense",
+    });
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/budget-forecast");
+    await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
+
+    const createForm = page.getByTestId("create-planning-plan-form");
+    await createForm.getByLabel("Plan name").fill(uniqueSuffix("FY2027 E2E Budget"));
+    await createForm.getByLabel("Financial-year start").fill("2026-07-01");
+    await createForm.getByLabel("Financial-year end").fill("2027-06-30");
+    await createForm.getByLabel("Assumption summary").fill("Revenue and expense targets for browser validation");
+    await page.getByTestId("create-planning-plan").click();
+    await expect(page.getByRole("status").getByText(/Created budget/)).toBeVisible();
+    await expect(page.getByTestId("planning-grid")).toBeVisible();
+
+    const budgetItemsCard = page.getByTestId("budget-items-card");
+    await budgetItemsCard.getByLabel("Item name").fill("Committed July revenue");
+    await budgetItemsCard.getByLabel("Item account").selectOption(revenueAccount.id);
+    await budgetItemsCard.getByLabel("Amount per occurrence").fill("100.00");
+    await budgetItemsCard.getByLabel("Occurrence frequency").selectOption("one_off");
+    await budgetItemsCard.getByLabel("Starting month").selectOption({ label: "Jul 2026" });
+    await budgetItemsCard.getByLabel("Item note").fill("Minimum committed revenue");
+    await page.getByTestId("save-budget-item").click();
+    await expect(page.getByRole("status").getByText(/Created budget item "Committed July revenue"/)).toBeVisible();
+    await expect(page.getByLabel(`${revenueName} Jul 2026`)).toHaveValue("100.00");
+
+    await page.getByLabel(`${revenueName} Jul 2026`).fill("50.00");
+    await page.getByLabel(`${revenueName} Jul 2026`).press("Tab");
+    await expect(page.getByLabel(`${revenueName} Jul 2026`)).toHaveValue("100.00");
+    await expect(page.getByRole("status").getByText(/cannot be lower than the \$100.00 budget-item total/)).toBeVisible();
+
+    await page.getByLabel(`${revenueName} Aug 2026`).fill("250.00");
+    await page.getByRole("button", { name: `Clear ${revenueName} line` }).click();
+    await expect(page.getByLabel(`${revenueName} Jul 2026`)).toHaveValue("100.00");
+    await expect(page.getByLabel(`${revenueName} Aug 2026`)).toHaveValue("");
+    await expect(page.getByRole("status").getByText(/Cleared the .* line\. 1 protected month remains at the budget-item minimum/)).toBeVisible();
+    await page.getByTestId("save-planning-values").click();
+    await expect(page.getByRole("status").getByText("Saved 12 planning values.")).toBeVisible();
+
+    const spreadCard = page.locator(".planning-spread-card").filter({ hasText: "Spread annual amount" });
+    await spreadCard.getByLabel("P&L account").selectOption(revenueAccount.id);
+    await spreadCard.getByLabel("Annual amount").fill("12000.00");
+    await spreadCard.getByLabel("Assumption note").fill("Annual revenue target");
+    await spreadCard.getByRole("button", { name: "Spread over 12 months" }).click();
+    await expect(page.getByRole("status").getByText("Spread the annual amount across all fiscal months.")).toBeVisible();
+
+    await spreadCard.getByLabel("P&L account").selectOption(expenseAccount.id);
+    await spreadCard.getByLabel("Annual amount").fill("6000.00");
+    await spreadCard.getByLabel("Assumption note").fill("Annual expense target");
+    await spreadCard.getByRole("button", { name: "Spread over 12 months" }).click();
+    await expect(page.getByRole("status").getByText("Spread the annual amount across all fiscal months.")).toBeVisible();
+    await expect(page.getByLabel(`${revenueName} Jul 2026`)).toHaveValue("1000.00");
+    await expect(page.getByLabel(`${expenseName} Jul 2026`)).toHaveValue("500.00");
+
+    await page.getByRole("button", { name: "Forecast", exact: true }).click();
+    await page.getByTestId("calculate-forecast").click();
+    await expect(page.getByRole("status").getByText(/Calculated projected year-end profit/)).toBeVisible();
+    await expect(page.getByTestId("projected-net-profit")).toHaveText("$6,000.00");
+    await expect(page.getByText(/do not modify the accounting ledger/)).toBeVisible();
   });
 
   test("keeps user creation and selected-user updates as distinct setup modes", async ({ page }) => {
@@ -959,6 +1047,51 @@ test.describe.serial("operator workspace journeys", () => {
     releasePeriodPost();
     await expect(page.getByRole("status", { name: "Saving period" })).toBeHidden();
     await expect(page.getByRole("row", { name: new RegExp(periodName) })).toBeVisible();
+  });
+
+  test("creates and deletes bank accounts through separate banking controls", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Bank Account Management Company");
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/banking");
+    await expect(page.getByTestId("operator-shell-authenticated")).toBeVisible();
+
+    const accountName = uniqueSuffix("E2E Savings Account");
+    const createCard = page.getByTestId("create-bank-account-card");
+    await createCard.getByLabel("Name", { exact: true }).fill(accountName);
+    await createCard.getByLabel("Bank name").fill("Example Bank");
+    await createCard.getByLabel("BSB").fill("123-456");
+    await createCard.getByLabel("Masked account").fill("xxxx4567");
+    await page.getByTestId("create-bank-account").click();
+
+    await expect(page.getByRole("status").getByText(`Created bank account "${accountName}".`)).toBeVisible();
+    const manageCard = page.getByTestId("manage-bank-accounts-card");
+    await expect(manageCard.getByRole("button", { name: accountName })).toBeVisible();
+    await expect(page.getByTestId("update-bank-account")).toBeVisible();
+    await expect(page.getByTestId("delete-bank-account")).toBeVisible();
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.type()).toBe("confirm");
+      expect(dialog.message()).toContain("Historical banking records will be retained");
+      await dialog.accept();
+    });
+    await page.getByTestId("delete-bank-account").click();
+
+    await expect(
+      page.getByRole("status").getByText(`Deleted bank account "${accountName}". Historical banking records were retained.`),
+    ).toBeVisible();
+    await expect(manageCard.getByRole("button", { name: accountName })).toHaveCount(0);
+    await expect(page.getByTestId("delete-bank-account")).toHaveCount(0);
+
+    const bankAccounts = await apiJson<BankAccountRecord[]>(
+      page.request,
+      "GET",
+      `/api/companies/${company.id}/bank-accounts`,
+      auth.access_token,
+    );
+    const deletedAccount = bankAccounts.find((account) => account.name === accountName);
+    expect(deletedAccount?.is_active).toBe(false);
   });
 
   test("deletes an open reconciliation session from the banking route", async ({ page }) => {
