@@ -53,6 +53,61 @@ function journalTotals(journal: { lines: Array<{ debit_amount: string; credit_am
 }
 
 
+function journalCashImpact(
+  journal: { lines: Array<{ account_id: string; debit_amount: string; credit_amount: string }> },
+  ledgerAccountId: string | null | undefined,
+) {
+  if (!ledgerAccountId) {
+    return 0;
+  }
+  return journal.lines.reduce(
+    (total, line) => line.account_id === ledgerAccountId
+      ? total + toDecimalNumber(line.debit_amount) - toDecimalNumber(line.credit_amount)
+      : total,
+    0,
+  );
+}
+
+
+type ReconciliationMatchGroup = {
+  id: string;
+  bank_total: string;
+  journal_total: string;
+  difference_amount: string;
+  tolerance_amount: string;
+  note: string | null;
+  resolved_at: string;
+  bank_allocations: Array<{
+    id: string;
+    reconciliation_item_id: string;
+    source_amount: string;
+    allocated_amount: string;
+    bank_row: { description: string; line_number: number };
+  }>;
+  journal_allocations: Array<{
+    id: string;
+    journal_entry_id: string;
+    ledger_account_id: string;
+    source_amount: string;
+    allocated_amount: string;
+    journal_entry: { entry_number: string; description: string };
+  }>;
+};
+
+
+type AutoReconciliationResult = {
+  considered_statement_items: number;
+  matched_statement_items: number;
+  created_group_count: number;
+  unmatched_statement_item_ids: string[];
+  ambiguous_statement_item_ids: string[];
+  amount_tolerance: string;
+  date_window_days: number;
+  max_group_size: number;
+  groups: ReconciliationMatchGroup[];
+};
+
+
 function daysBetween(left: string, right: string) {
   const leftTime = Date.parse(left);
   const rightTime = Date.parse(right);
@@ -74,6 +129,7 @@ function tokenizeMatchText(value: string) {
 export function BankingSection({ operator }: { operator: OperatorState }) {
   const {
     bankAccounts,
+    accounts,
     selectedBankAccountId,
     setSelectedBankAccountId,
     selectedBankAccount,
@@ -102,6 +158,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     selectedReconciliationSession,
     reconciliationUpdateDraft,
     setReconciliationUpdateDraft,
+    periods,
     periodOptionList,
     reconciliationSummary,
     reconciliationItems,
@@ -111,7 +168,6 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     reconciliationMatchJournalId,
     setReconciliationMatchJournalId,
     journals,
-    journalOptionList,
     basRunDetail,
     basGenerationDraft,
     setBasGenerationDraft,
@@ -141,12 +197,33 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     bank_name: "",
     bsb: "",
     account_number_masked: "",
+    ledger_account_id: "",
     is_active: true,
   });
+  const [reconciliationMatchGroups, setReconciliationMatchGroups] = useState<ReconciliationMatchGroup[]>([]);
+  const [selectedGroupBankItemIds, setSelectedGroupBankItemIds] = useState<string[]>([]);
+  const [selectedGroupJournalIds, setSelectedGroupJournalIds] = useState<string[]>([]);
+  const [bankAllocationDrafts, setBankAllocationDrafts] = useState<Record<string, string>>({});
+  const [journalAllocationDrafts, setJournalAllocationDrafts] = useState<Record<string, string>>({});
+  const [groupTolerance, setGroupTolerance] = useState("0.00");
+  const [groupNote, setGroupNote] = useState("");
+  const [autoReconciliationDraft, setAutoReconciliationDraft] = useState({
+    amount_tolerance: "0.01",
+    date_window_days: "3",
+    max_group_size: "3",
+  });
+  const [autoReconciliationResult, setAutoReconciliationResult] = useState<AutoReconciliationResult | null>(null);
 
   const activeBankAccounts = useMemo(
     () => bankAccounts.filter((item) => item.is_active),
     [bankAccounts],
+  );
+
+  const ledgerAccountOptions = useMemo(
+    () => accounts
+      .filter((account) => account.is_active && ["asset", "liability"].includes(account.account_type))
+      .sort((left, right) => left.account_code.localeCompare(right.account_code)),
+    [accounts],
   );
 
   useEffect(() => {
@@ -159,9 +236,32 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
       bank_name: "",
       bsb: "",
       account_number_masked: "",
+      ledger_account_id: "",
       is_active: true,
     });
   }, [selectedCompanyId]);
+
+  useEffect(() => {
+    setSelectedGroupBankItemIds([]);
+    setSelectedGroupJournalIds([]);
+    setBankAllocationDrafts({});
+    setJournalAllocationDrafts({});
+    setGroupTolerance("0.00");
+    setGroupNote("");
+    setAutoReconciliationResult(null);
+    if (!selectedCompanyId || !selectedReconciliationSessionId) {
+      setReconciliationMatchGroups([]);
+      return;
+    }
+    void request<ReconciliationMatchGroup[]>(
+      `/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/match-groups`,
+    ).then(setReconciliationMatchGroups).catch(() => {
+      setReconciliationMatchGroups([]);
+      showMessage("error", "Could not load grouped reconciliation history.");
+    });
+    // The request helper is intentionally excluded: session identity is the reload boundary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCompanyId, selectedReconciliationSessionId]);
 
   useEffect(() => {
     setReconciliationItemNote(selectedReconciliationItem?.note ?? "");
@@ -195,6 +295,36 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     [periodOptionList, selectedReconciliationSession?.accounting_period_id],
   );
 
+  const reconciliationSessionBankAccount = useMemo(
+    () => bankAccounts.find((item) => item.id === selectedReconciliationSession?.bank_account_id) ?? null,
+    [bankAccounts, selectedReconciliationSession?.bank_account_id],
+  );
+
+  const reconciliationLedgerAccount = useMemo(
+    () => accounts.find((item) => item.id === reconciliationSessionBankAccount?.ledger_account_id) ?? null,
+    [accounts, reconciliationSessionBankAccount?.ledger_account_id],
+  );
+
+  const selectedReconciliationPeriod = useMemo(
+    () => periods.find((period) => period.id === selectedReconciliationSession?.accounting_period_id) ?? null,
+    [periods, selectedReconciliationSession?.accounting_period_id],
+  );
+
+  const eligibleReconciliationJournals = useMemo(
+    () => journals.filter((journal) => (
+      journal.status === "posted"
+      && (
+        !selectedReconciliationPeriod
+        || (
+          journal.accounting_period_id === selectedReconciliationPeriod.id
+          && journal.entry_date >= selectedReconciliationPeriod.start_date
+          && journal.entry_date <= selectedReconciliationPeriod.end_date
+        )
+      )
+    )),
+    [journals, selectedReconciliationPeriod],
+  );
+
   const orderedReconciliationItems = useMemo(() => {
     const statusWeight: Record<string, number> = { matched: 0, unmatched: 1, ignored: 2 };
     return [...reconciliationItems].sort((left, right) => {
@@ -206,9 +336,46 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     });
   }, [reconciliationItems]);
 
+  const allocatedBankAmounts = useMemo(() => {
+    const totals: Record<string, number> = {};
+    reconciliationMatchGroups.forEach((group) => group.bank_allocations.forEach((allocation) => {
+      totals[allocation.reconciliation_item_id] = (totals[allocation.reconciliation_item_id] ?? 0)
+        + toDecimalNumber(allocation.allocated_amount);
+    }));
+    return totals;
+  }, [reconciliationMatchGroups]);
+
+  const allocatedJournalAmounts = useMemo(() => {
+    const totals: Record<string, number> = {};
+    reconciliationMatchGroups.forEach((group) => group.journal_allocations.forEach((allocation) => {
+      if (allocation.ledger_account_id === reconciliationSessionBankAccount?.ledger_account_id) {
+        totals[allocation.journal_entry_id] = (totals[allocation.journal_entry_id] ?? 0)
+          + toDecimalNumber(allocation.allocated_amount);
+      }
+    }));
+    return totals;
+  }, [reconciliationMatchGroups, reconciliationSessionBankAccount?.ledger_account_id]);
+
+  const selectedItemMatchGroups = useMemo(
+    () => selectedReconciliationItem
+      ? reconciliationMatchGroups.filter((group) => group.bank_allocations.some(
+        (allocation) => allocation.reconciliation_item_id === selectedReconciliationItem.id,
+      ))
+      : [],
+    [reconciliationMatchGroups, selectedReconciliationItem],
+  );
+
+  const selectedItemAllocatedAmount = selectedReconciliationItem
+    ? (allocatedBankAmounts[selectedReconciliationItem.id] ?? 0)
+    : 0;
+  const selectedItemSourceAmount = selectedReconciliationItem?.bank_row
+    ? bankRowSignedAmount(selectedReconciliationItem.bank_row)
+    : 0;
+  const selectedItemRemainingAmount = selectedItemSourceAmount - selectedItemAllocatedAmount;
+
   const selectedCandidateJournal = useMemo(
-    () => journals.find((item) => item.id === reconciliationMatchJournalId) ?? null,
-    [journals, reconciliationMatchJournalId],
+    () => eligibleReconciliationJournals.find((item) => item.id === reconciliationMatchJournalId) ?? null,
+    [eligibleReconciliationJournals, reconciliationMatchJournalId],
   );
 
   const candidateJournals = useMemo(() => {
@@ -217,15 +384,15 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     }
     const targetAmount = Math.abs(bankRowSignedAmount(selectedReconciliationItem.bank_row));
     const searchTokens = tokenizeMatchText(`${selectedReconciliationItem.bank_row.description} ${selectedReconciliationItem.bank_row.reference ?? ""}`);
-    return journals
-      .filter((journal) => journal.status === "posted")
+    return eligibleReconciliationJournals
       .map((journal) => {
         const totals = journalTotals(journal);
+        const cashImpact = journalCashImpact(journal, reconciliationSessionBankAccount?.ledger_account_id);
         const journalLabelText = `${journal.entry_number} ${journal.description} ${journal.reference ?? ""}`.toLowerCase();
         const tokenHits = searchTokens.reduce((sum, token) => sum + (journalLabelText.includes(token) ? 1 : 0), 0);
-        const amountGap = Math.abs(totals.debit - targetAmount);
+        const amountGap = Math.abs(Math.abs(cashImpact) - targetAmount);
         const dateGap = daysBetween(journal.entry_date, selectedReconciliationItem.bank_row?.transaction_date ?? "");
-        return { journal, totals, tokenHits, amountGap, dateGap };
+        return { journal, totals, cashImpact, tokenHits, amountGap, dateGap };
       })
       .sort((left, right) => {
         const leftIsActive = left.journal.id === reconciliationMatchJournalId || left.journal.id === selectedReconciliationItem.matched_journal_entry_id;
@@ -236,10 +403,163 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
         return left.amountGap - right.amountGap || right.tokenHits - left.tokenHits || left.dateGap - right.dateGap;
       })
       .slice(0, 24);
-  }, [journals, reconciliationMatchJournalId, selectedReconciliationItem]);
+  }, [eligibleReconciliationJournals, reconciliationMatchJournalId, reconciliationSessionBankAccount?.ledger_account_id, selectedReconciliationItem]);
+
+  const selectedGroupBankTotal = selectedGroupBankItemIds.reduce(
+    (total, itemId) => total + toDecimalNumber(bankAllocationDrafts[itemId]),
+    0,
+  );
+  const selectedGroupJournalTotal = selectedGroupJournalIds.reduce(
+    (total, journalId) => total + toDecimalNumber(journalAllocationDrafts[journalId]),
+    0,
+  );
+  const selectedGroupDifference = selectedGroupBankTotal - selectedGroupJournalTotal;
 
   const activeComparisonJournal = selectedCandidateJournal ?? null;
   const selectedMatchedJournalSummary = selectedReconciliationItem?.matched_journal_entry ?? null;
+
+  async function loadReconciliationMatchGroups() {
+    if (!selectedCompanyId || !selectedReconciliationSessionId) {
+      setReconciliationMatchGroups([]);
+      return;
+    }
+    setReconciliationMatchGroups(await request<ReconciliationMatchGroup[]>(
+      `/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/match-groups`,
+    ));
+  }
+
+  function toggleGroupBankItem(itemId: string) {
+    const item = reconciliationItems.find((candidate) => candidate.id === itemId);
+    if (!item?.bank_row) {
+      return;
+    }
+    const isSelected = selectedGroupBankItemIds.includes(itemId);
+    setSelectedGroupBankItemIds((current) => isSelected
+      ? current.filter((id) => id !== itemId)
+      : [...current, itemId]);
+    setBankAllocationDrafts((current) => {
+      if (isSelected) {
+        const next = { ...current };
+        delete next[itemId];
+        return next;
+      }
+      const remaining = bankRowSignedAmount(item.bank_row) - (allocatedBankAmounts[itemId] ?? 0);
+      return { ...current, [itemId]: remaining.toFixed(2) };
+    });
+  }
+
+  function toggleGroupJournal(journalId: string) {
+    const journal = eligibleReconciliationJournals.find((candidate) => candidate.id === journalId);
+    if (!journal) {
+      return;
+    }
+    const isSelected = selectedGroupJournalIds.includes(journalId);
+    setSelectedGroupJournalIds((current) => isSelected
+      ? current.filter((id) => id !== journalId)
+      : [...current, journalId]);
+    setJournalAllocationDrafts((current) => {
+      if (isSelected) {
+        const next = { ...current };
+        delete next[journalId];
+        return next;
+      }
+      const remaining = journalCashImpact(
+        journal,
+        reconciliationSessionBankAccount?.ledger_account_id,
+      ) - (allocatedJournalAmounts[journalId] ?? 0);
+      return { ...current, [journalId]: remaining.toFixed(2) };
+    });
+  }
+
+  function clearGroupDraft() {
+    setSelectedGroupBankItemIds([]);
+    setSelectedGroupJournalIds([]);
+    setBankAllocationDrafts({});
+    setJournalAllocationDrafts({});
+    setGroupTolerance("0.00");
+    setGroupNote("");
+  }
+
+  async function createGroupedMatch() {
+    if (!reconciliationSessionBankAccount?.ledger_account_id) {
+      throw new Error("Link this bank account to its ledger cash account before grouping matches.");
+    }
+    if (selectedGroupBankItemIds.length === 0 || selectedGroupJournalIds.length === 0) {
+      throw new Error("Select at least one statement item and one journal.");
+    }
+    await request(
+      `/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/match-groups`,
+      "POST",
+      {
+        bank_allocations: selectedGroupBankItemIds.map((itemId) => ({
+          reconciliation_item_id: itemId,
+          allocated_amount: bankAllocationDrafts[itemId],
+        })),
+        journal_allocations: selectedGroupJournalIds.map((journalId) => ({
+          journal_entry_id: journalId,
+          allocated_amount: journalAllocationDrafts[journalId],
+        })),
+        tolerance_amount: groupTolerance || "0.00",
+        note: groupNote.trim() || null,
+      },
+    );
+    clearGroupDraft();
+    await refreshAll();
+    await loadReconciliationMatchGroups();
+    showMessage("success", "Created grouped reconciliation match.");
+  }
+
+  async function autoReconcile() {
+    if (!reconciliationSessionBankAccount?.ledger_account_id) {
+      throw new Error("Link this bank account to its ledger cash account before auto-reconciling.");
+    }
+    const dateWindowDays = Number(autoReconciliationDraft.date_window_days);
+    const maxGroupSize = Number(autoReconciliationDraft.max_group_size);
+    const amountTolerance = Number(autoReconciliationDraft.amount_tolerance);
+    if (!Number.isFinite(amountTolerance) || amountTolerance < 0 || amountTolerance > 10) {
+      throw new Error("Amount tolerance must be between 0.00 and 10.00.");
+    }
+    if (!Number.isInteger(dateWindowDays) || dateWindowDays < 0 || dateWindowDays > 31) {
+      throw new Error("Date window must be between 0 and 31 days.");
+    }
+    if (!Number.isInteger(maxGroupSize) || maxGroupSize < 1 || maxGroupSize > 4) {
+      throw new Error("Maximum sources per side must be between 1 and 4.");
+    }
+    const result = await request<AutoReconciliationResult>(
+      `/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/auto-reconcile`,
+      "POST",
+      {
+        amount_tolerance: autoReconciliationDraft.amount_tolerance,
+        date_window_days: dateWindowDays,
+        max_group_size: maxGroupSize,
+      },
+    );
+    setAutoReconciliationResult(result);
+    clearGroupDraft();
+    await refreshAll();
+    await loadReconciliationMatchGroups();
+    showMessage(
+      "success",
+      `Auto-reconciled ${result.matched_statement_items} of ${result.considered_statement_items} open statement items; ${result.unmatched_statement_item_ids.length} remain unmatched.`,
+    );
+  }
+
+  async function deleteGroupedMatch(group: ReconciliationMatchGroup) {
+    if (!confirmDanger(
+      `Unmatch this group of ${group.bank_allocations.length} statement item(s) and ${group.journal_allocations.length} journal(s)?`,
+    )) {
+      return;
+    }
+    await request(
+      `/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/match-groups/${group.id}`,
+      "DELETE",
+      undefined,
+      "void",
+    );
+    await refreshAll();
+    await loadReconciliationMatchGroups();
+    showMessage("success", "Removed grouped reconciliation match.");
+  }
 
   function openReconciliationWorkspace() {
     if (!selectedReconciliationItemId && orderedReconciliationItems[0]) {
@@ -255,6 +575,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     await request(`/api/companies/${selectedCompanyId}/reconciliation-sessions/${selectedReconciliationSessionId}/items/${selectedReconciliationItem.id}/match`, "POST", { matched_journal_entry_id: reconciliationMatchJournalId, note: reconciliationItemNote || null });
     showMessage("success", "Matched reconciliation item.");
     await refreshAll();
+    await loadReconciliationMatchGroups();
   }
 
   async function ignoreSelectedReconciliationItem() {
@@ -299,13 +620,14 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     const created = await request<{ id: string }>(
       `/api/companies/${selectedCompanyId}/bank-accounts`,
       "POST",
-      { ...newBankAccountDraft, name },
+      { ...newBankAccountDraft, name, ledger_account_id: newBankAccountDraft.ledger_account_id || null },
     );
     setNewBankAccountDraft({
       name: "",
       bank_name: "",
       bsb: "",
       account_number_masked: "",
+      ledger_account_id: "",
       is_active: true,
     });
     await refreshAll();
@@ -325,7 +647,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
     await request(
       `/api/companies/${selectedCompanyId}/bank-accounts/${selectedBankAccount.id}`,
       "PUT",
-      { ...bankAccountDraft, name },
+      { ...bankAccountDraft, name, ledger_account_id: bankAccountDraft.ledger_account_id || null },
     );
     await refreshAll();
     showMessage("success", `Updated bank account "${name}".`);
@@ -353,6 +675,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
       bank_name: "",
       bsb: "",
       account_number_masked: "",
+      ledger_account_id: "",
       is_active: true,
     });
     setReconciliationDraft((current) => (
@@ -393,6 +716,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                 <Field label="Bank name"><input value={newBankAccountDraft.bank_name} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, bank_name: event.target.value }))} /></Field>
                 <Field label="BSB"><input value={newBankAccountDraft.bsb} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, bsb: event.target.value }))} /></Field>
                 <Field label="Masked account"><input value={newBankAccountDraft.account_number_masked} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, account_number_masked: event.target.value }))} /></Field>
+                <Field label="Ledger cash account" wide><select data-testid="new-bank-ledger-account" value={newBankAccountDraft.ledger_account_id} onChange={(event) => setNewBankAccountDraft((current) => ({ ...current, ledger_account_id: event.target.value }))}><option value="">Not linked yet</option>{ledgerAccountOptions.map((account) => <option key={account.id} value={account.id}>{account.account_code} - {account.name}</option>)}</select></Field>
               </div>
               <div className="request-actions">
                 <button className="button-link button-link-small" data-testid="create-bank-account" type="button" onClick={() => runAction("Creating bank account", createBankAccount)}>Create bank account</button>
@@ -416,6 +740,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                     <Field label="Bank name"><input value={bankAccountDraft.bank_name} onChange={(event) => setBankAccountDraft((current) => ({ ...current, bank_name: event.target.value }))} /></Field>
                     <Field label="BSB"><input value={bankAccountDraft.bsb} onChange={(event) => setBankAccountDraft((current) => ({ ...current, bsb: event.target.value }))} /></Field>
                     <Field label="Masked account"><input value={bankAccountDraft.account_number_masked} onChange={(event) => setBankAccountDraft((current) => ({ ...current, account_number_masked: event.target.value }))} /></Field>
+                    <Field label="Ledger cash account" wide><select data-testid="bank-ledger-account" value={bankAccountDraft.ledger_account_id} onChange={(event) => setBankAccountDraft((current) => ({ ...current, ledger_account_id: event.target.value }))}><option value="">Not linked yet</option>{ledgerAccountOptions.map((account) => <option key={account.id} value={account.id}>{account.account_code} - {account.name}</option>)}</select></Field>
                   </div>
                   <div className="request-actions">
                     <button className="button-link button-link-small" data-testid="update-bank-account" type="button" onClick={() => runAction("Updating bank account", updateSelectedBankAccount)}>Update bank account</button>
@@ -609,11 +934,87 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                       <div className="journal-popup-card reconciliation-popup-card" role="dialog" aria-modal="true" aria-label="Left-to-right reconciliation matching" onClick={(event) => event.stopPropagation()}>
                         <div className="journal-popup-header">
                           <div>
-                            <h3>Left-to-right matching</h3>
-                            <p className="summary-line">Compare one statement item against posted journals, then match or ignore it from the same window.</p>
+                            <h3>Reconciliation matching</h3>
+                            <p className="summary-line">Match one or many statement items to one or many posted journals{selectedReconciliationPeriod ? ` within ${reconciliationSessionPeriodLabel}` : ""}. Allocations may be partial and remain open until the full statement amount is allocated.</p>
                           </div>
                           <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => setIsReconciliationWorkspaceOpen(false)}>Close</button>
                         </div>
+                        <details className="reconciliation-group-composer" open>
+                          <summary>
+                            <strong>Grouped match</strong>
+                            <span>{selectedGroupBankItemIds.length} statement / {selectedGroupJournalIds.length} journal selected</span>
+                          </summary>
+                          <div className="reconciliation-group-composer-body">
+                            <div className="reconciliation-group-summary">
+                              <span>Ledger link <strong>{reconciliationLedgerAccount ? `${reconciliationLedgerAccount.account_code} - ${reconciliationLedgerAccount.name}` : "Required"}</strong></span>
+                              <span>Statement <strong>{formatMoney(selectedGroupBankTotal)}</strong></span>
+                              <span>Ledger movement <strong>{formatMoney(selectedGroupJournalTotal)}</strong></span>
+                              <span>Difference <strong>{formatMoney(selectedGroupDifference)}</strong></span>
+                            </div>
+                            {!reconciliationLedgerAccount ? <p className="validation-hint">Link the selected bank account to its asset or liability ledger account in Accounts &amp; imports before creating grouped matches.</p> : null}
+                            <section className="reconciliation-auto-panel">
+                              <div className="mini-card-heading">
+                                <div>
+                                  <h4>Auto reconcile open items</h4>
+                                  <p className="summary-line">Searches signed statement amounts against posted movement on the linked ledger account. It tries 1-to-1 and grouped combinations, uses journal line amounts as a tie-breaker, and leaves missing or equally ranked matches open.</p>
+                                </div>
+                                <span className="pill">Conservative</span>
+                              </div>
+                              <div className="reconciliation-auto-controls">
+                                <Field label="Amount tolerance"><input type="number" min="0" max="10" step="0.01" value={autoReconciliationDraft.amount_tolerance} onChange={(event) => setAutoReconciliationDraft((current) => ({ ...current, amount_tolerance: event.target.value }))} /></Field>
+                                <Field label="Date window (days)"><input type="number" min="0" max="31" step="1" value={autoReconciliationDraft.date_window_days} onChange={(event) => setAutoReconciliationDraft((current) => ({ ...current, date_window_days: event.target.value }))} /></Field>
+                                <Field label="Maximum sources per side"><select value={autoReconciliationDraft.max_group_size} onChange={(event) => setAutoReconciliationDraft((current) => ({ ...current, max_group_size: event.target.value }))}><option value="1">1 (one-to-one only)</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></Field>
+                                <button className="button-link button-link-small" data-testid="auto-reconcile" type="button" disabled={!reconciliationLedgerAccount || selectedReconciliationSession?.status === "completed" || (reconciliationSummary?.unmatched_items ?? 0) === 0} onClick={() => runAction("Auto-reconciling statement items", autoReconcile)}>Run auto reconcile</button>
+                              </div>
+                              {autoReconciliationResult ? (
+                                <div className="reconciliation-auto-result" data-testid="auto-reconcile-result">
+                                  <span>Considered <strong>{autoReconciliationResult.considered_statement_items}</strong></span>
+                                  <span>Matched <strong>{autoReconciliationResult.matched_statement_items}</strong></span>
+                                  <span>Groups <strong>{autoReconciliationResult.created_group_count}</strong></span>
+                                  <span>Left open <strong>{autoReconciliationResult.unmatched_statement_item_ids.length}</strong></span>
+                                  {autoReconciliationResult.ambiguous_statement_item_ids.length > 0 ? <p>{autoReconciliationResult.ambiguous_statement_item_ids.length} item(s) had equally ranked candidates and were deliberately left unmatched.</p> : null}
+                                </div>
+                              ) : null}
+                            </section>
+                            {(selectedGroupBankItemIds.length > 0 || selectedGroupJournalIds.length > 0) ? (
+                              <div className="reconciliation-allocation-editor">
+                                <div>
+                                  <h4>Statement allocations</h4>
+                                  {selectedGroupBankItemIds.map((itemId) => {
+                                    const item = reconciliationItems.find((candidate) => candidate.id === itemId);
+                                    return <Field key={itemId} label={item?.bank_row?.description ?? itemId}><input aria-label={`Statement allocation ${item?.bank_row?.description ?? itemId}`} type="number" step="0.01" value={bankAllocationDrafts[itemId] ?? ""} onChange={(event) => setBankAllocationDrafts((current) => ({ ...current, [itemId]: event.target.value }))} /></Field>;
+                                  })}
+                                </div>
+                                <div>
+                                  <h4>Journal allocations</h4>
+                                  {selectedGroupJournalIds.map((journalId) => {
+                                    const journal = eligibleReconciliationJournals.find((candidate) => candidate.id === journalId);
+                                    return <Field key={journalId} label={journal ? `${journal.entry_number} - ${journal.description}` : journalId}><input aria-label={`Journal allocation ${journal?.entry_number ?? journalId}`} type="number" step="0.01" value={journalAllocationDrafts[journalId] ?? ""} onChange={(event) => setJournalAllocationDrafts((current) => ({ ...current, [journalId]: event.target.value }))} /></Field>;
+                                  })}
+                                </div>
+                              </div>
+                            ) : <p className="summary-line">Use the checkboxes in the left and right lanes to build an n-to-1, 1-to-n, or n-to-n match.</p>}
+                            <div className="reconciliation-group-actions">
+                              <Field label="Tolerance"><input type="number" min="0" step="0.01" value={groupTolerance} onChange={(event) => setGroupTolerance(event.target.value)} /></Field>
+                              <Field label="Note"><input value={groupNote} placeholder="Required for a non-zero difference" onChange={(event) => setGroupNote(event.target.value)} /></Field>
+                              <button className="button-link button-link-small" data-testid="create-grouped-match" type="button" disabled={!reconciliationLedgerAccount || selectedGroupBankItemIds.length === 0 || selectedGroupJournalIds.length === 0 || selectedReconciliationSession?.status === "completed"} onClick={() => runAction("Creating grouped reconciliation", createGroupedMatch)}>Create grouped match</button>
+                              <button className="button-link button-link-small button-link-secondary" type="button" disabled={selectedGroupBankItemIds.length === 0 && selectedGroupJournalIds.length === 0} onClick={clearGroupDraft}>Clear selection</button>
+                            </div>
+                            {reconciliationMatchGroups.length > 0 ? (
+                              <details className="reconciliation-group-history" open>
+                                <summary>{reconciliationMatchGroups.length} saved match group(s)</summary>
+                                <div className="compact-list">
+                                  {reconciliationMatchGroups.map((group) => (
+                                    <div className="reconciliation-group-record" key={group.id}>
+                                      <div><strong>{group.bank_allocations.length} statement ↔ {group.journal_allocations.length} journal</strong><span>{formatMoney(group.bank_total)} / {formatMoney(group.journal_total)} · difference {formatMoney(group.difference_amount)}</span><span>{group.note || "No note"} · {formatDateTime(group.resolved_at)}</span></div>
+                                      {selectedReconciliationSession?.status !== "completed" ? <button className="button-link button-link-small button-link-danger" type="button" onClick={() => runAction("Removing grouped reconciliation", async () => deleteGroupedMatch(group))}>Unmatch</button> : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            ) : null}
+                          </div>
+                        </details>
                   <div className="reconciliation-popup-grid">
                     <div className="mini-card reconciliation-lane-card reconciliation-statement-panel">
                       <div className="mini-card-heading">
@@ -622,16 +1023,21 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                       </div>
                       <div className="compact-list tall-list reconciliation-item-list">
                         {orderedReconciliationItems.map((item) => (
-                          <button key={item.id} className={`reconciliation-item-button${selectedReconciliationItemId === item.id ? " is-active" : ""}`} type="button" onClick={() => setSelectedReconciliationItemId(item.id)}>
-                            <div className="reconciliation-item-button-top">
-                              <strong>{item.bank_row?.description ?? `Bank row ${item.bank_import_row_id.slice(0, 8)}`}</strong>
-                              <StatusPill value={item.status} />
-                            </div>
-                            <div className="reconciliation-item-button-meta">
-                              <span>{item.bank_row?.transaction_date ?? "No date"}</span>
-                              <span className="reconciliation-amount">{bankRowAmountLabel(item.bank_row)}</span>
-                            </div>
-                          </button>
+                          <div className="reconciliation-selectable-row" key={item.id}>
+                            <label className="reconciliation-group-checkbox" title="Include this statement item in the grouped match">
+                              <input type="checkbox" aria-label={`Group statement item ${item.bank_row?.description ?? item.id}`} checked={selectedGroupBankItemIds.includes(item.id)} disabled={item.status !== "unmatched" || Math.abs(bankRowSignedAmount(item.bank_row) - (allocatedBankAmounts[item.id] ?? 0)) < 0.005} onChange={() => toggleGroupBankItem(item.id)} />
+                            </label>
+                            <button className={`reconciliation-item-button${selectedReconciliationItemId === item.id ? " is-active" : ""}`} type="button" onClick={() => setSelectedReconciliationItemId(item.id)}>
+                              <div className="reconciliation-item-button-top">
+                                <strong>{item.bank_row?.description ?? `Bank row ${item.bank_import_row_id.slice(0, 8)}`}</strong>
+                                <StatusPill value={item.status} />
+                              </div>
+                              <div className="reconciliation-item-button-meta">
+                                <span>{item.bank_row?.transaction_date ?? "No date"}</span>
+                                <span className="reconciliation-amount">{bankRowAmountLabel(item.bank_row)}</span>
+                              </div>
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -652,6 +1058,9 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                                 <div><span>Reference</span><strong>{selectedReconciliationItem.bank_row?.reference || "-"}</strong></div>
                                 <div><span>Line</span><strong>{selectedReconciliationItem.bank_row?.line_number ?? "-"}</strong></div>
                                 <div><span>Amount</span><strong>{bankRowAmountLabel(selectedReconciliationItem.bank_row)}</strong></div>
+                                <div><span>Allocated in groups</span><strong>{formatMoney(selectedItemAllocatedAmount)}</strong></div>
+                                <div><span>Remaining</span><strong>{formatMoney(selectedItemRemainingAmount)}</strong></div>
+                                <div><span>Match groups</span><strong>{selectedItemMatchGroups.length}</strong></div>
                                 <div><span>Bank row status</span><strong>{selectedReconciliationItem.bank_row?.status ?? "-"}</strong></div>
                               </div>
                             </section>
@@ -676,11 +1085,78 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                                   <div><span>Debit total</span><strong>{formatMoney(selectedMatchedJournalSummary.debit_total)}</strong></div>
                                   <div><span>Credit total</span><strong>{formatMoney(selectedMatchedJournalSummary.credit_total)}</strong></div>
                                 </div>
+                              ) : selectedItemMatchGroups.length > 0 ? (
+                                <div className="reconciliation-detail-list">
+                                  <div><span>Current resolution</span><strong>Grouped allocation</strong></div>
+                                  <div><span>Groups</span><strong>{selectedItemMatchGroups.length}</strong></div>
+                                  <div><span>Related journals</span><strong>{new Set(selectedItemMatchGroups.flatMap((group) => group.journal_allocations.map((allocation) => allocation.journal_entry_id))).size}</strong></div>
+                                  <div><span>Allocated</span><strong>{formatMoney(selectedItemAllocatedAmount)}</strong></div>
+                                  <div><span>Remaining</span><strong>{formatMoney(selectedItemRemainingAmount)}</strong></div>
+                                </div>
                               ) : (
                                 <EmptyState title="No journal selected" detail="Pick a posted journal below to compare it against the selected statement row." />
                               )}
                             </section>
                           </div>
+
+                          {selectedItemMatchGroups.length > 0 ? (
+                            <section className="reconciliation-selected-groups" data-testid="selected-item-grouped-allocations">
+                              <div className="mini-card-heading">
+                                <div>
+                                  <h4>Grouped allocations</h4>
+                                  <p>Saved matches involving this statement row, including partial and many-sided allocations.</p>
+                                </div>
+                                <span className="pill">{selectedItemMatchGroups.length} {selectedItemMatchGroups.length === 1 ? "group" : "groups"}</span>
+                              </div>
+                              <div className="reconciliation-selected-group-list">
+                                {selectedItemMatchGroups.map((group) => {
+                                  const selectedAllocation = group.bank_allocations.find(
+                                    (allocation) => allocation.reconciliation_item_id === selectedReconciliationItem.id,
+                                  );
+                                  return (
+                                    <article className="reconciliation-selected-group-card" key={group.id}>
+                                      <div className="reconciliation-selected-group-header">
+                                        <div>
+                                          <strong>{group.bank_allocations.length} statement {group.bank_allocations.length === 1 ? "item" : "items"} ↔ {group.journal_allocations.length} {group.journal_allocations.length === 1 ? "journal" : "journals"}</strong>
+                                          <span>Group {group.id.slice(0, 8)} · saved {formatDateTime(group.resolved_at)}</span>
+                                        </div>
+                                        {selectedReconciliationSession?.status !== "completed" ? (
+                                          <button className="button-link button-link-small button-link-danger" type="button" onClick={() => runAction("Removing grouped reconciliation match", () => deleteGroupedMatch(group))}>Unmatch group</button>
+                                        ) : null}
+                                      </div>
+                                      <div className="reconciliation-selected-group-metrics">
+                                        <span>This statement<strong>{formatMoney(selectedAllocation?.allocated_amount ?? "0")}</strong></span>
+                                        <span>Statement total<strong>{formatMoney(group.bank_total)}</strong></span>
+                                        <span>Ledger total<strong>{formatMoney(group.journal_total)}</strong></span>
+                                        <span>Difference<strong>{formatMoney(group.difference_amount)}</strong></span>
+                                      </div>
+                                      <div className="reconciliation-selected-group-sources">
+                                        <div className="reconciliation-selected-group-source">
+                                          <h5>Statement allocations</h5>
+                                          {group.bank_allocations.map((allocation) => (
+                                            <div className="reconciliation-selected-group-row" key={allocation.id}>
+                                              <span>{allocation.bank_row.description}<small>Line {allocation.bank_row.line_number}</small></span>
+                                              <strong>{formatMoney(allocation.allocated_amount)}</strong>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        <div className="reconciliation-selected-group-source">
+                                          <h5>Journal allocations</h5>
+                                          {group.journal_allocations.map((allocation) => (
+                                            <div className="reconciliation-selected-group-row" key={allocation.id}>
+                                              <span>{allocation.journal_entry.entry_number} · {allocation.journal_entry.description}</span>
+                                              <strong>{formatMoney(allocation.allocated_amount)}</strong>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      {group.note ? <p className="reconciliation-selected-group-note">Note: {group.note}</p> : null}
+                                    </article>
+                                  );
+                                })}
+                              </div>
+                            </section>
+                          ) : null}
 
                           <section className="reconciliation-match-panel">
                             <div className="mini-card-heading">
@@ -688,11 +1164,11 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                               <span className="pill">{candidateJournals.length} shown</span>
                             </div>
                             <div className="compact-list reconciliation-candidate-list">
-                              {candidateJournals.map(({ journal, totals, amountGap, tokenHits }) => (
+                              {candidateJournals.map(({ journal, cashImpact, amountGap, tokenHits }) => (
                                 <button key={journal.id} className={`reconciliation-item-button${reconciliationMatchJournalId === journal.id ? " is-active" : ""}`} type="button" onClick={() => setReconciliationMatchJournalId(journal.id)}>
                                   <div className="reconciliation-item-button-top">
                                     <strong>{journal.entry_number} · {journal.description}</strong>
-                                    <span className="reconciliation-amount">{formatMoney(totals.debit)}</span>
+                                    <span className="reconciliation-amount">{reconciliationLedgerAccount ? formatMoney(cashImpact) : "Link account"}</span>
                                   </div>
                                   <div className="reconciliation-item-button-meta">
                                     <span>{journal.entry_date}</span>
@@ -706,12 +1182,12 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                               ))}
                             </div>
                             <div className="form-grid two-up">
-                              <Field label="Posted journal"><select value={reconciliationMatchJournalId} onChange={(event) => setReconciliationMatchJournalId(event.target.value)}><option value="">Select posted journal</option>{journalOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+                              <Field label="Posted journal"><select value={reconciliationMatchJournalId} onChange={(event) => setReconciliationMatchJournalId(event.target.value)}><option value="">Select posted journal</option>{eligibleReconciliationJournals.map((journal) => <option key={journal.id} value={journal.id}>{journal.entry_number} · {journal.description}</option>)}</select></Field>
                               <Field label="Resolution note"><input value={reconciliationItemNote} onChange={(event) => setReconciliationItemNote(event.target.value)} /></Field>
                             </div>
                             <div className="request-actions">
                               <button className="button-link button-link-small" type="button" disabled={!reconciliationMatchJournalId} onClick={() => runAction("Matching reconciliation item", matchSelectedReconciliationItem)}>Match selected journal</button>
-                              <button className="button-link button-link-small button-link-secondary" type="button" onClick={() => runAction("Ignoring reconciliation item", ignoreSelectedReconciliationItem)}>Ignore item</button>
+                              <button className="button-link button-link-small button-link-secondary" type="button" disabled={(allocatedBankAmounts[selectedReconciliationItem.id] ?? 0) !== 0} title={(allocatedBankAmounts[selectedReconciliationItem.id] ?? 0) !== 0 ? "Unmatch the item's saved groups before ignoring it" : undefined} onClick={() => runAction("Ignoring reconciliation item", ignoreSelectedReconciliationItem)}>Ignore item</button>
                             </div>
                           </section>
                         </div>
@@ -726,17 +1202,27 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                         <span className="pill">{candidateJournals.length} shown</span>
                       </div>
                       <div className="compact-list reconciliation-candidate-list">
-                        {candidateJournals.length > 0 ? candidateJournals.map(({ journal, totals }) => (
-                          <button key={journal.id} className={`reconciliation-item-button${reconciliationMatchJournalId === journal.id ? " is-active" : ""}`} type="button" onClick={() => setReconciliationMatchJournalId(journal.id)}>
-                            <div className="reconciliation-item-button-top">
-                              <strong>{journal.entry_number} - {journal.description}</strong>
-                              <span className="reconciliation-amount">{formatMoney(totals.debit)}</span>
+                        {eligibleReconciliationJournals.length > 0 ? eligibleReconciliationJournals.map((journal) => {
+                          const cashImpact = journalCashImpact(journal, reconciliationSessionBankAccount?.ledger_account_id);
+                          const remaining = cashImpact - (allocatedJournalAmounts[journal.id] ?? 0);
+                          return (
+                            <div className="reconciliation-selectable-row" key={journal.id}>
+                              <label className="reconciliation-group-checkbox" title="Include this journal in the grouped match">
+                                <input type="checkbox" aria-label={`Group journal ${journal.entry_number}`} checked={selectedGroupJournalIds.includes(journal.id)} disabled={!reconciliationLedgerAccount || Math.abs(remaining) < 0.005 || cashImpact === 0} onChange={() => toggleGroupJournal(journal.id)} />
+                              </label>
+                              <button className={`reconciliation-item-button${reconciliationMatchJournalId === journal.id ? " is-active" : ""}`} type="button" onClick={() => setReconciliationMatchJournalId(journal.id)}>
+                                <div className="reconciliation-item-button-top">
+                                  <strong>{journal.entry_number} - {journal.description}</strong>
+                                  <span className="reconciliation-amount">{reconciliationLedgerAccount ? formatMoney(cashImpact) : "Link account"}</span>
+                                </div>
+                                <div className="reconciliation-item-button-meta">
+                                  <span>{journal.entry_date}</span>
+                                  <span>{Math.abs(remaining) < Math.abs(cashImpact) ? `${formatMoney(remaining)} remaining` : "Available"}</span>
+                                </div>
+                              </button>
                             </div>
-                            <div className="reconciliation-item-button-meta">
-                              <span>{journal.entry_date}</span>
-                            </div>
-                          </button>
-                        )) : (
+                          );
+                        }) : (
                           <EmptyState title="No posted journals found" detail="No posted journal candidates are available for this statement item." />
                         )}
                       </div>

@@ -757,7 +757,6 @@ class TaxWorkpaperPackDetailRead(TaxWorkpaperPackRead):
     exports: list[TaxWorkpaperExportRead]
 
 
-
 class DocumentRead(ORMModel):
     id: UUID
     company_id: UUID
@@ -923,6 +922,7 @@ class JournalRecommendationAcceptRead(BaseModel):
 class BankAccountRead(ORMModel):
     id: UUID
     company_id: UUID
+    ledger_account_id: UUID | None
     name: str
     bank_name: str | None
     bsb: str | None
@@ -1024,6 +1024,53 @@ class ReconciliationSummary(BaseModel):
     unmatched_items: int
     matched_items: int
     ignored_items: int
+
+
+class ReconciliationBankAllocationRead(BaseModel):
+    id: UUID
+    reconciliation_item_id: UUID
+    source_amount: Decimal
+    allocated_amount: Decimal
+    bank_row: ReconciliationBankRowRead
+
+
+class ReconciliationJournalAllocationRead(BaseModel):
+    id: UUID
+    journal_entry_id: UUID
+    ledger_account_id: UUID
+    source_amount: Decimal
+    allocated_amount: Decimal
+    journal_entry: ReconciliationJournalSummaryRead
+
+
+class ReconciliationMatchGroupRead(BaseModel):
+    id: UUID
+    company_id: UUID
+    reconciliation_session_id: UUID
+    status: str
+    bank_total: Decimal
+    journal_total: Decimal
+    difference_amount: Decimal
+    tolerance_amount: Decimal
+    note: str | None
+    created_by_user_id: UUID
+    resolved_at: datetime
+    created_at: datetime
+    updated_at: datetime
+    bank_allocations: list[ReconciliationBankAllocationRead]
+    journal_allocations: list[ReconciliationJournalAllocationRead]
+
+
+class AutoReconciliationResult(BaseModel):
+    considered_statement_items: int
+    matched_statement_items: int
+    created_group_count: int
+    unmatched_statement_item_ids: list[UUID]
+    ambiguous_statement_item_ids: list[UUID]
+    amount_tolerance: Decimal
+    date_window_days: int
+    max_group_size: int
+    groups: list[ReconciliationMatchGroupRead]
 
 
 class BasPeriodRead(ORMModel):

@@ -78,11 +78,11 @@ The project explicitly does not support:
 
 ### Banking And Reconciliation
 
-- maintain bank accounts
+- maintain bank accounts and link each one to its asset or liability ledger account
 - upload bank CSV files into staged import sessions
 - review staged rows and duplicate protection
 - confirm imports before reconciliation
-- create reconciliation sessions, compare deterministically ordered statement rows with ranked posted-journal candidates, match or ignore items, delete open sessions when a restart is needed, and complete sessions
+- create reconciliation sessions, scope statement rows and posted-journal candidates to the selected accounting period, compare deterministic ranked matches, allocate partial or complete n-to-1, 1-to-n, and n-to-n match groups, unmatch groups, ignore items, delete open sessions when a restart is needed, and complete sessions
 
 ### BAS Support
 
@@ -261,19 +261,22 @@ Use Banking for imported transaction workflows and BAS support.
 
 Typical tasks:
 
-1. Create bank accounts in the dedicated creation form.
+1. Create bank accounts in the dedicated creation form and link each account to the asset or liability ledger account that records its cash or credit-card movement. The link is required for grouped reconciliation because the matcher compares the journal movement on that account rather than the journal's overall debit total.
 2. Select an active bank account to update it, or delete it after confirming the warning. Deletion removes the account from new import and reconciliation workflows while retaining its historical banking records.
 3. Upload a bank CSV file.
 4. Review the staged import session.
 5. Confirm the import when the rows look correct.
-6. Create a reconciliation session.
-7. Match or ignore reconciliation items.
-8. If an open session needs to be restarted, select `Delete session`, confirm the warning, and verify its linked bank rows have returned to staged status.
-9. Complete the session when every item is resolved. Completed sessions are retained for audit history and cannot be edited or deleted.
-10. Generate BAS periods.
-11. Create a BAS run for a selected BAS period.
-12. Review BAS lines, warnings, adjustments, and notes.
-13. Submit, approve, and export BAS support outputs.
+6. Create a reconciliation session. When an accounting period is selected, only statement rows dated within that period and posted journals assigned to that period are available in the matching window. A session without a period intentionally remains unrestricted.
+7. To process the open statement queue conservatively, open the matching window, configure the amount tolerance, date window, and maximum sources per side, then select `Run auto reconcile`. It searches 1-to-1, 1-to-n, n-to-1, and n-to-n combinations using signed linked-ledger movement and transaction dates. Detailed journal-line amounts help choose between otherwise similar grouped candidates. Missing and equally ranked candidates remain unmatched rather than being guessed.
+8. For a simple manual settlement, select one statement item and one posted journal. For batches, split settlements, or net settlements, use the checkboxes in the matching window to select one or many sources on each side, review the signed allocation totals, edit partial allocation amounts when needed, and create a grouped match.
+9. A partial statement allocation remains open until its full signed amount is allocated. A group may contain both receipts and payments when reconciling a genuine net settlement, such as receipts less refunds or fees; the signed statement and ledger totals must still reconcile. The API prevents allocation against a source's direction, over-allocation, cross-currency groups, out-of-period sources, and reuse of one statement row in overlapping open sessions. A non-zero difference is accepted only within the entered tolerance and requires an explanatory note.
+10. Review saved groups in the matching window and use `Unmatch` to reverse an incorrect group while the session is open. Manual and automatic group creation and unmatching are audited.
+11. If an open session needs to be restarted, select `Delete session`, confirm the warning, and verify its linked bank rows have returned to staged status.
+12. Complete the session when every statement item is fully allocated, matched, or intentionally ignored. Completed sessions are retained for audit history and cannot be edited or deleted.
+13. Generate BAS periods.
+14. Create a BAS run for a selected BAS period.
+15. Review BAS lines, warnings, adjustments, and notes.
+16. Submit, approve, and export BAS support outputs.
 
 ### Budget & Forecast: `/budget-forecast`
 

@@ -10,14 +10,25 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db, require_company_permission
 from app.audit.service import log_audit_event
 from app.bank_imports.service import normalize_amount, parse_bank_csv_rows, parse_csv_date
+from app.db.models.accounting import Account
 from app.db.models.auth import User
 from app.db.models.banking import BankAccount, BankImportRow, BankImportSession
 from app.db.models.documents import Document
-from app.db.models.enums import BankImportRowStatus, BankImportSessionStatus, EntityType
+from app.db.models.enums import (
+    AccountType,
+    BankImportRowStatus,
+    BankImportSessionStatus,
+    EntityType,
+)
 from app.db.models.reconciliation import ReconciliationItem
 from app.documents.service import store_document_bytes
 from app.schemas.common import BankAccountRead, BankImportRowRead, BankImportSessionRead
-from app.schemas.requests import BankAccountCreate, BankAccountUpdate, BankImportSessionUpdate, PeriodActionRequest
+from app.schemas.requests import (
+    BankAccountCreate,
+    BankAccountUpdate,
+    BankImportSessionUpdate,
+    PeriodActionRequest,
+)
 
 
 router = APIRouter(prefix="/companies/{company_id}", tags=["bank-imports"])
@@ -38,10 +49,14 @@ def _load_bank_account_or_404(
     return bank_account
 
 
-def _load_bank_import_session_or_404(db: Session, company_id: UUID, session_id: UUID) -> BankImportSession:
+def _load_bank_import_session_or_404(
+    db: Session, company_id: UUID, session_id: UUID
+) -> BankImportSession:
     session = db.get(BankImportSession, session_id)
     if session is None or session.company_id != company_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bank import session not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bank import session not found"
+        )
     return session
 
 
@@ -69,6 +84,24 @@ def _build_fingerprint(
     return sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _validate_ledger_account(db: Session, company_id: UUID, ledger_account_id: UUID | None) -> None:
+    if ledger_account_id is None:
+        return
+    account = db.get(Account, ledger_account_id)
+    if account is None or account.company_id != company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Ledger cash account not found"
+        )
+    if not account.is_active or account.account_type not in {
+        AccountType.ASSET,
+        AccountType.LIABILITY,
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ledger cash account must be an active asset or liability account",
+        )
+
+
 @router.get("/bank-accounts", response_model=list[BankAccountRead])
 def list_bank_accounts(
     company_id: UUID,
@@ -78,7 +111,9 @@ def list_bank_accounts(
     require_company_permission(company_id, "can_prepare", db, current_user)
     return list(
         db.scalars(
-            select(BankAccount).where(BankAccount.company_id == company_id).order_by(BankAccount.name.asc())
+            select(BankAccount)
+            .where(BankAccount.company_id == company_id)
+            .order_by(BankAccount.name.asc())
         ).all()
     )
 
@@ -91,6 +126,7 @@ def create_bank_account(
     db: Session = Depends(get_db),
 ) -> BankAccount:
     require_company_permission(company_id, "can_administer", db, current_user)
+    _validate_ledger_account(db, company_id, payload.ledger_account_id)
     bank_account = BankAccount(company_id=company_id, **payload.model_dump())
     db.add(bank_account)
     db.commit()
@@ -108,6 +144,8 @@ def update_bank_account(
 ) -> BankAccount:
     require_company_permission(company_id, "can_administer", db, current_user)
     bank_account = _load_bank_account_or_404(db, company_id, bank_account_id)
+    _validate_ledger_account(db, company_id, payload.ledger_account_id)
+    bank_account.ledger_account_id = payload.ledger_account_id
     bank_account.name = payload.name
     bank_account.bank_name = payload.bank_name
     bank_account.bsb = payload.bsb
@@ -171,7 +209,9 @@ async def upload_bank_csv(
     try:
         decoded = content.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CSV must be UTF-8 encoded") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="CSV must be UTF-8 encoded"
+        ) from exc
 
     try:
         csv_rows = parse_bank_csv_rows(
@@ -194,10 +234,15 @@ async def upload_bank_csv(
             debit_amount = normalize_amount(row.get(debit_column, ""))
             credit_amount = normalize_amount(row.get(credit_column, ""))
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Row {line_number}: {exc}") from exc
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Row {line_number}: {exc}"
+            ) from exc
         description = (row.get(description_column) or "").strip()
         if not description:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Row {line_number}: description is required")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Row {line_number}: description is required",
+            )
         reference = (row.get(reference_column) or "").strip() if reference_column else None
         parsed_rows.append(
             {
@@ -211,7 +256,9 @@ async def upload_bank_csv(
             }
         )
     if not parsed_rows:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CSV contains no data rows")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="CSV contains no data rows"
+        )
 
     stored_filename, storage_path, checksum, byte_size = store_document_bytes(
         company_id=company_id,
@@ -279,7 +326,9 @@ async def upload_bank_csv(
                 credit_amount=row["credit_amount"],
                 raw_data=row["raw_data"],
                 fingerprint=fingerprint,
-                status=BankImportRowStatus.DUPLICATE if duplicate_exists else BankImportRowStatus.STAGED,
+                status=BankImportRowStatus.DUPLICATE
+                if duplicate_exists
+                else BankImportRowStatus.STAGED,
             )
         )
 
@@ -307,7 +356,9 @@ def list_bank_import_rows(
     require_company_permission(company_id, "can_prepare", db, current_user)
     session = db.get(BankImportSession, session_id)
     if session is None or session.company_id != company_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bank import session not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bank import session not found"
+        )
     return list(
         db.scalars(
             select(BankImportRow)
@@ -346,7 +397,10 @@ def update_bank_import_session(
     require_company_permission(company_id, "can_prepare", db, current_user)
     session = _load_bank_import_session_or_404(db, company_id, session_id)
     if session.status != BankImportSessionStatus.STAGED:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only staged bank imports can be updated")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only staged bank imports can be updated",
+        )
     session.note = payload.note
     db.commit()
     db.refresh(session)
@@ -363,14 +417,23 @@ def delete_bank_import_session(
     require_company_permission(company_id, "can_prepare", db, current_user)
     session = _load_bank_import_session_or_404(db, company_id, session_id)
     if session.status != BankImportSessionStatus.STAGED:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only staged bank imports can be deleted")
-    if db.scalar(
-        select(ReconciliationItem.id)
-        .join(BankImportRow, BankImportRow.id == ReconciliationItem.bank_import_row_id)
-        .where(BankImportRow.bank_import_session_id == session.id)
-        .limit(1)
-    ) is not None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bank import session is already used in reconciliation")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only staged bank imports can be deleted",
+        )
+    if (
+        db.scalar(
+            select(ReconciliationItem.id)
+            .join(BankImportRow, BankImportRow.id == ReconciliationItem.bank_import_row_id)
+            .where(BankImportRow.bank_import_session_id == session.id)
+            .limit(1)
+        )
+        is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bank import session is already used in reconciliation",
+        )
     db.delete(session)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

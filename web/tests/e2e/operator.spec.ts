@@ -44,6 +44,7 @@ type AccountRecord = {
 type BankAccountRecord = {
   id: string;
   name: string;
+  ledger_account_id: string | null;
   is_active: boolean;
 };
 
@@ -242,13 +243,18 @@ async function createPostedJournal(
   debitAccountId: string,
   creditAccountId: string,
   taxCodeId: string,
+  options: {
+    entryDate?: string;
+    description?: string;
+    reference?: string;
+  } = {},
 ) {
   const journal = await apiJson<JournalRecord>(request, "POST", `/api/companies/${companyId}/journals`, token, {
-    entry_date: "2026-05-12",
+    entry_date: options.entryDate ?? "2026-05-12",
     accounting_period_id: periodId,
     source_type: "manual",
-    description: "E2E BAS Revenue Journal",
-    reference: "E2E-BAS-01",
+    description: options.description ?? "E2E BAS Revenue Journal",
+    reference: options.reference ?? "E2E-BAS-01",
     lines: [
       {
         account_id: debitAccountId,
@@ -1187,6 +1193,151 @@ test.describe.serial("operator workspace journeys", () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("staged");
+  });
+
+  test("limits reconciliation statement rows and journal candidates to the selected period", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Reconciliation Period Company");
+    const selectedPeriod = await createPeriod(
+      page.request,
+      auth.access_token,
+      company.id,
+      uniqueSuffix("E2E Selected Reconciliation Quarter"),
+    );
+    const otherPeriod = await apiJson<PeriodRecord>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/periods`,
+      auth.access_token,
+      {
+        name: uniqueSuffix("E2E Other Reconciliation Quarter"),
+        period_type: "quarter",
+        start_date: "2026-01-01",
+        end_date: "2026-03-31",
+      },
+    );
+    const taxCode = await createTaxCode(page.request, auth.access_token, company.id);
+    const cashAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Reconciliation Period Cash",
+      account_type: "asset",
+    });
+    const revenueAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Reconciliation Period Revenue",
+      account_type: "income",
+    });
+    const inPeriodDescription = uniqueSuffix("In-period posted journal");
+    const outOfPeriodDescription = uniqueSuffix("Out-of-period posted journal");
+    await createPostedJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      selectedPeriod.id,
+      cashAccount.id,
+      revenueAccount.id,
+      taxCode.id,
+      { description: inPeriodDescription, reference: "E2E-RECON-IN" },
+    );
+    await createPostedJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      otherPeriod.id,
+      cashAccount.id,
+      revenueAccount.id,
+      taxCode.id,
+      {
+        entryDate: "2026-02-12",
+        description: outOfPeriodDescription,
+        reference: "E2E-RECON-OUT",
+      },
+    );
+    const bankAccount = await apiJson<BankAccountRecord>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/bank-accounts`,
+      auth.access_token,
+      {
+        name: uniqueSuffix("E2E Period Bank Account"),
+        bank_name: "Example Bank",
+        bsb: "123-456",
+        account_number_masked: "xxxx2468",
+        ledger_account_id: cashAccount.id,
+        is_active: true,
+      },
+    );
+    const uploadResponse = await page.request.post(
+      `${apiBaseUrl}/api/companies/${company.id}/bank-imports/upload`,
+      {
+        headers: { Authorization: `Bearer ${auth.access_token}` },
+        multipart: {
+          bank_account_id: bankAccount.id,
+          note: "Two-period reconciliation import",
+          file: {
+            name: "reconciliation-periods.csv",
+            mimeType: "text/csv",
+            buffer: Buffer.from(
+              "date,description,debit,credit,reference\n" +
+              "2026-05-12,In-period statement item,0.00,110.00,E2E-IN\n" +
+              "2026-02-12,Out-of-period statement item,0.00,110.00,E2E-OUT\n",
+            ),
+          },
+        },
+      },
+    );
+    const bankImport = await parseResponse<BankImportSessionRecord>(uploadResponse);
+    await apiJson(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/bank-imports/${bankImport.id}/confirm`,
+      auth.access_token,
+      { note: "Confirmed for period filtering" },
+    );
+    const sessionNote = uniqueSuffix("E2E Period-scoped Session");
+    await apiJson<ReconciliationSessionRecord>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/reconciliation-sessions`,
+      auth.access_token,
+      {
+        bank_account_id: bankAccount.id,
+        accounting_period_id: selectedPeriod.id,
+        note: sessionNote,
+      },
+    );
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/banking");
+    await page.getByRole("button", { name: "Reconciliation", exact: true }).click();
+    await page.getByRole("button").filter({ hasText: sessionNote }).click();
+    await expect(page.getByText("In-period statement item").first()).toBeVisible();
+    await expect(page.getByText("Out-of-period statement item")).toHaveCount(0);
+    await page.getByRole("button", { name: "Open matching window" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Left-to-right reconciliation matching" });
+    await expect(dialog).toBeVisible();
+    const postedJournalLane = dialog.locator(".reconciliation-journal-panel");
+    await expect(postedJournalLane.getByText(inPeriodDescription)).toBeVisible();
+    await expect(dialog.getByText(outOfPeriodDescription)).toHaveCount(0);
+    const journalSelect = dialog.getByLabel("Posted journal");
+    await expect(journalSelect.locator("option", { hasText: inPeriodDescription })).toHaveCount(1);
+    await expect(journalSelect.locator("option", { hasText: outOfPeriodDescription })).toHaveCount(0);
+    await dialog.getByTestId("auto-reconcile").click();
+    await expect(page.getByRole("status").getByText("Auto-reconciled 1 of 1 open statement items; 0 remain unmatched.")).toBeVisible();
+    const autoResult = dialog.getByTestId("auto-reconcile-result");
+    await expect(autoResult).toContainText("Considered 1");
+    await expect(autoResult).toContainText("Matched 1");
+    await expect(autoResult).toContainText("Left open 0");
+    await expect(dialog.getByText("1 statement ↔ 1 journal")).toBeVisible();
+    const groupedAllocations = dialog.getByTestId("selected-item-grouped-allocations");
+    await expect(groupedAllocations).toBeVisible();
+    await expect(groupedAllocations).toContainText("Grouped allocations");
+    await expect(groupedAllocations).toContainText(inPeriodDescription);
+    await expect(groupedAllocations).toContainText("This statement");
+    await expect(groupedAllocations).toContainText("Statement total");
+    await expect(groupedAllocations).toContainText("Ledger total");
+    await expect(dialog.locator(".reconciliation-comparison-panel")).toContainText("Remaining");
   });
 
   test("generates and exports a BAS run from the banking route", async ({ page }) => {

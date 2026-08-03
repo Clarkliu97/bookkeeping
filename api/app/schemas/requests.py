@@ -346,6 +346,7 @@ class DocumentLinkUpdate(DocumentLinkCreate):
 
 
 class BankAccountCreate(BaseModel):
+    ledger_account_id: UUID | None = None
     name: str = Field(min_length=1, max_length=120)
     bank_name: str | None = Field(default=None, max_length=120)
     bsb: str | None = Field(default=None, max_length=16)
@@ -375,6 +376,34 @@ class ReconciliationSessionUpdate(BaseModel):
 class ReconciliationMatchRequest(BaseModel):
     matched_journal_entry_id: UUID
     note: str | None = None
+
+
+class ReconciliationBankAllocationCreate(BaseModel):
+    reconciliation_item_id: UUID
+    allocated_amount: Decimal | None = None
+
+
+class ReconciliationJournalAllocationCreate(BaseModel):
+    journal_entry_id: UUID
+    allocated_amount: Decimal | None = None
+
+
+class ReconciliationMatchGroupCreate(BaseModel):
+    bank_allocations: list[ReconciliationBankAllocationCreate] = Field(min_length=1)
+    journal_allocations: list[ReconciliationJournalAllocationCreate] = Field(min_length=1)
+    tolerance_amount: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
+    note: str | None = None
+
+
+class AutoReconciliationRequest(BaseModel):
+    amount_tolerance: Decimal = Field(
+        default=Decimal("0.01"),
+        ge=Decimal("0.00"),
+        le=Decimal("10.00"),
+        multiple_of=Decimal("0.01"),
+    )
+    date_window_days: int = Field(default=3, ge=0, le=31)
+    max_group_size: int = Field(default=3, ge=1, le=4)
 
 
 class BasPeriodGenerateRequest(BaseModel):
@@ -424,7 +453,9 @@ class FixedAssetCreate(BaseModel):
     salvage_value: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"))
     useful_life_months: int = Field(ge=1, le=600)
     depreciation_method: str
-    diminishing_value_rate: Decimal | None = Field(default=None, gt=Decimal("0.00"), le=Decimal("1.00"))
+    diminishing_value_rate: Decimal | None = Field(
+        default=None, gt=Decimal("0.00"), le=Decimal("1.00")
+    )
     asset_account_id: UUID
     accumulated_depreciation_account_id: UUID
     depreciation_expense_account_id: UUID
@@ -493,4 +524,3 @@ class TaxWorkpaperExceptionUpdate(TaxWorkpaperExceptionCreate):
 
 class TaxWorkpaperExceptionResolveRequest(BaseModel):
     note: str = Field(min_length=1)
-

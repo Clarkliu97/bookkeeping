@@ -1,6 +1,19 @@
-from app.db.models.accounting import Account, AccountingPeriod, JournalEntry, JournalLine, PeriodLock
+from app.db.models.accounting import (
+    Account,
+    AccountingPeriod,
+    JournalEntry,
+    JournalLine,
+    PeriodLock,
+)
 from app.db.models.audit import ApprovalAction, AuditEvent
-from app.db.models.bas import BasAdjustment, BasExport, BasLineResult, BasPeriod, BasReviewNote, BasRun
+from app.db.models.bas import (
+    BasAdjustment,
+    BasExport,
+    BasLineResult,
+    BasPeriod,
+    BasReviewNote,
+    BasRun,
+)
 from app.db.models.auth import Role, User, UserCompanyAccess, UserRole
 from app.db.models.banking import BankAccount, BankImportRow, BankImportSession
 from app.db.models.companies import Company, CompanyConfigurationVersion
@@ -22,8 +35,19 @@ from app.db.models.journal_recommendations import (
     JournalRecommendationRun,
     JournalRecommendationRunDocument,
 )
-from app.db.models.fixed_assets import DepreciationRun, DepreciationRunLine, FixedAsset, FixedAssetStatusHistory
-from app.db.models.reconciliation import ReconciliationItem, ReconciliationSession
+from app.db.models.fixed_assets import (
+    DepreciationRun,
+    DepreciationRunLine,
+    FixedAsset,
+    FixedAssetStatusHistory,
+)
+from app.db.models.reconciliation import (
+    ReconciliationBankAllocation,
+    ReconciliationItem,
+    ReconciliationJournalAllocation,
+    ReconciliationMatchGroup,
+    ReconciliationSession,
+)
 from app.db.models.planning import (
     PlanningBudgetItem,
     PlanningForecastRun,
@@ -86,6 +110,9 @@ __all__ = [
     "PlanningPeriod",
     "PlanningPlan",
     "ReconciliationItem",
+    "ReconciliationBankAllocation",
+    "ReconciliationJournalAllocation",
+    "ReconciliationMatchGroup",
     "ReconciliationSession",
     "ReportingCategory",
     "Role",

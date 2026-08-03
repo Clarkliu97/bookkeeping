@@ -173,6 +173,7 @@ type BankAccount = {
   bank_name: string | null;
   bsb: string | null;
   account_number_masked: string | null;
+  ledger_account_id: string | null;
   is_active: boolean;
 };
 
@@ -776,7 +777,7 @@ export function useOperatorState() {
   const [documentNote, setDocumentNote] = useState("Supporting evidence");
   const [documentDraft, setDocumentDraft] = useState({ original_filename: "", media_type: "" });
   const [documentLinkDraft, setDocumentLinkDraft] = useState({ entity_type: "journal_entry", entity_id: "", note: "Supports the selected journal" });
-  const [bankAccountDraft, setBankAccountDraft] = useState({ name: "", bank_name: "", bsb: "", account_number_masked: "", is_active: true });
+  const [bankAccountDraft, setBankAccountDraft] = useState({ name: "", bank_name: "", bsb: "", account_number_masked: "", ledger_account_id: "", is_active: true });
   const [bankImportDraft, setBankImportDraft] = useState({ note: "Uploaded from operator app", date_column: "date", description_column: "description", debit_column: "debit", credit_column: "credit", reference_column: "reference" });
   const [bankImportFile, setBankImportFile] = useState<File | null>(null);
   const [reconciliationDraft, setReconciliationDraft] = useState({ bank_account_id: "", accounting_period_id: "", note: "Monthly reconciliation" });
@@ -1413,6 +1414,7 @@ export function useOperatorState() {
         bank_name: selectedBankAccount.bank_name ?? "",
         bsb: selectedBankAccount.bsb ?? "",
         account_number_masked: selectedBankAccount.account_number_masked ?? "",
+        ledger_account_id: selectedBankAccount.ledger_account_id ?? "",
         is_active: selectedBankAccount.is_active,
       });
     }
