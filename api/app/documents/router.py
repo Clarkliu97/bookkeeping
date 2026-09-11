@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_company_permission
@@ -18,8 +18,8 @@ from app.documents.service import resolve_document_path, store_document_bytes
 from app.db.models.banking import BankImportRow, BankImportSession
 from app.db.models.tax_workpapers import TaxWorkpaperExport
 from app.db.models.journal_recommendations import JournalRecommendationRun
-from app.schemas.common import DocumentLinkRead, DocumentRead
-from app.schemas.requests import DocumentLinkCreate, DocumentLinkUpdate, DocumentUpdate
+from app.schemas.common import DocumentBulkDeleteRead, DocumentLinkRead, DocumentRead
+from app.schemas.requests import DocumentBulkDeleteRequest, DocumentLinkCreate, DocumentLinkUpdate, DocumentUpdate
 
 
 router = APIRouter(prefix="/companies/{company_id}/documents", tags=["documents"])
@@ -168,6 +168,84 @@ def update_document(
     db.commit()
     db.refresh(document)
     return document
+
+
+def _bulk_delete_blockers(db: Session, document_ids: list[UUID]) -> tuple[set[UUID], dict[UUID, list[str]]]:
+    linked_ids = set(db.scalars(select(DocumentLink.document_id).where(
+        DocumentLink.document_id.in_(document_ids)
+    )).all())
+    blockers: dict[UUID, list[str]] = {document_id: [] for document_id in document_ids}
+    protected_sources = (
+        (BankImportSession, BankImportSession.uploaded_document_id, "bank import session"),
+        (BasExport, BasExport.document_id, "BAS export"),
+        (TaxWorkpaperExport, TaxWorkpaperExport.document_id, "tax workpaper export"),
+    )
+    for model, column, label in protected_sources:
+        for document_id in db.scalars(select(column).select_from(model).where(column.in_(document_ids))).all():
+            blockers[document_id].append(label)
+    return linked_ids, {document_id: reasons for document_id, reasons in blockers.items() if reasons}
+
+
+@router.post("/bulk-delete", response_model=DocumentBulkDeleteRead)
+def bulk_delete_documents(
+    company_id: UUID,
+    payload: DocumentBulkDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    if len(set(payload.document_ids)) != len(payload.document_ids):
+        raise HTTPException(status_code=400, detail="Document selection contains duplicate IDs")
+
+    found = list(db.scalars(select(Document).where(
+        Document.company_id == company_id,
+        Document.id.in_(payload.document_ids),
+    )).all())
+    documents_by_id = {document.id: document for document in found}
+    if len(documents_by_id) != len(payload.document_ids):
+        raise HTTPException(status_code=404, detail="One or more selected documents were not found in this company")
+    documents = [documents_by_id[document_id] for document_id in payload.document_ids]
+    linked_ids, protected = _bulk_delete_blockers(db, payload.document_ids)
+    if protected:
+        labels = "; ".join(
+            f"{documents_by_id[document_id].original_filename} ({', '.join(reasons)})"
+            for document_id, reasons in protected.items()
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=f"No documents were deleted. These files are protected by generated or imported records: {labels}",
+        )
+    if linked_ids and not payload.remove_links:
+        labels = ", ".join(
+            document.original_filename for document in documents if document.id in linked_ids
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=f"No documents were deleted. Some selected documents are linked to other records: {labels}",
+        )
+
+    if linked_ids:
+        db.execute(delete(DocumentLink).where(DocumentLink.document_id.in_(linked_ids)))
+    paths = []
+    for document in documents:
+        log_audit_event(
+            db,
+            action="document.deleted",
+            summary=f"Deleted document {document.original_filename} in bulk",
+            entity_type=EntityType.COMPANY.value,
+            entity_id=document.id,
+            actor_user_id=current_user.id,
+            company_id=company_id,
+            before_state=DocumentRead.model_validate(document).model_dump(mode="json"),
+            metadata={"bulk_delete_count": len(documents), "removed_links": document.id in linked_ids},
+        )
+        paths.append(resolve_document_path(document.storage_path))
+        db.delete(document)
+    db.commit()
+    for path in paths:
+        if path.exists():
+            path.unlink()
+    return {"deleted_count": len(documents), "deleted_document_ids": payload.document_ids}
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

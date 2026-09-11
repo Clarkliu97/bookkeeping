@@ -75,6 +75,12 @@ The statement of changes in equity reconciles opening equity, profit or loss, ow
 
 Both routes require prepare permission and apply the same controls: every journal must still be a draft, belong to an unlocked accounting period, contain at least two valid one-sided lines, balance exactly, and reference valid accounts that allow manual posting. Bulk posting validates the complete selection before changing any journal, uses one posting timestamp, records an audit event for every entry, and commits once. If any selected journal is missing or invalid, no journal in that batch is posted.
 
+## Document Deletion
+
+`POST /companies/{company_id}/documents/bulk-delete` deletes between 1 and 500 unique, company-owned documents. Its JSON body is `{ "document_ids": [...], "remove_links": false }`; the response returns `deleted_count` and the deleted IDs in submitted order. The service validates the complete selection before mutation, so a missing, foreign-company, linked, or protected document prevents every deletion in the batch.
+
+Ordinary document links can be removed with the documents by resubmitting with `remove_links: true`. Files used as bank-import sources or generated BAS or tax-workpaper exports remain protected because deleting them would damage retained operational or archive records. Successful deletion records an audit event per document, removes eligible links, deletes the database records, and removes the stored files from the server. The Bookkeeping Documents tab exposes checkboxes, select-all and clear controls, and a two-step confirmation when linked evidence is selected.
+
 ## AI Journal Drafting
 
 ### Progress, timeouts and troubleshooting
@@ -87,7 +93,7 @@ If a request times out or the connection is interrupted, the browser retrieves t
 
 With `API_LOG_JSON=true`, filter API logs by `run_id`. `journal_analysis.progress` records stage, company, model, document count, total bytes, configured timeout and elapsed duration. `journal_analysis.provider_attempt`, `provider_response`, `retry_schema` and `retry_validation` identify the explicit model calls and repair retries. `journal_analysis.failed` includes error type/code, provider HTTP status/request ID when available, provider error code/parameter and traceback frames. HTTP request IDs correlate these events with normal request logs. Prompts, document contents, API keys and raw provider error bodies are deliberately omitted from these diagnostic events. Existing provider-result storage is unchanged.
 
-`API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS` defaults to 90 seconds per provider request; SDK transport retries and up to three explicit structured-output/validation attempts can extend the overall duration. Compare provider duration and request references with reverse-proxy timeouts before increasing limits; reducing the document batch may also help. This remains a synchronous workflow, not a durable job queue: a terminated API process can leave a run marked `analyzing`. An unchanged saved stage is not proof that a worker is alive. Investigate that run in server logs before any administrative recovery; the UI does not automatically restart or double-submit it.
+`API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS` defaults to 300 seconds per provider request; SDK transport retries and up to three explicit structured-output/validation attempts can extend the overall duration. Compare provider duration and request references with reverse-proxy timeouts before increasing limits; reducing the document batch may also help. This remains a synchronous workflow, not a durable job queue: a terminated API process can leave a run marked `analyzing`. An unchanged saved stage is not proof that a worker is alive. Investigate that run in server logs before any administrative recovery; the UI does not automatically restart or double-submit it.
 
 The journal-recommendation API accepts PDF and supported image evidence in two explicit modes:
 

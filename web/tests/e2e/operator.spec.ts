@@ -807,6 +807,55 @@ test.describe.serial("operator workspace journeys", () => {
     expect(journalById.get(secondJournal.id)?.status).toBe("posted");
   });
 
+  test("selects and deletes multiple stored documents", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Bulk Document Delete Company");
+    const filenames = ["bulk-delete-one.pdf", "bulk-delete-two.pdf", "bulk-delete-keep.pdf"];
+    const uploadedDocuments: Array<{ id: string; original_filename: string }> = [];
+    for (const filename of filenames) {
+      const response = await page.request.post(
+        `${apiBaseUrl}/api/companies/${company.id}/documents`,
+        {
+          headers: { Authorization: `Bearer ${auth.access_token}` },
+          multipart: {
+            file: {
+              name: filename,
+              mimeType: "application/pdf",
+              buffer: Buffer.from(`%PDF-1.4 ${filename}`),
+            },
+          },
+        },
+      );
+      uploadedDocuments.push(await parseResponse<{ id: string; original_filename: string }>(response));
+    }
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/bookkeeping");
+    await page.getByRole("button", { name: "Documents", exact: true }).click();
+    await page.getByLabel("Select document bulk-delete-one.pdf").check();
+    await page.getByLabel("Select document bulk-delete-two.pdf").check();
+    await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toContain("Delete 2 selected documents from the server");
+      await dialog.accept();
+    });
+    await page.getByTestId("bulk-delete-documents").click();
+
+    await expect(page.getByRole("status").getByText("Deleted 2 documents from the server.")).toBeVisible();
+    await expect(page.getByText("bulk-delete-one.pdf", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("bulk-delete-two.pdf", { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("Select document bulk-delete-keep.pdf")).toBeVisible();
+
+    const remaining = await apiJson<Array<{ id: string }>>(
+      page.request,
+      "GET",
+      `/api/companies/${company.id}/documents`,
+      auth.access_token,
+    );
+    expect(remaining.map((document) => document.id)).toEqual([uploadedDocuments[2].id]);
+  });
+
   test("multi-selects existing evidence, preserves source order, and accepts a selected proposal", async ({ page }) => {
     const auth = await ensureOperatorSession(page.request);
     const company = await createCompany(page.request, auth.access_token, "E2E AI Recommendation Company");

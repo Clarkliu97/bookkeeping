@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     journal_ai_max_file_count: int = Field(default=50, ge=1, le=50, alias="API_JOURNAL_AI_MAX_FILE_COUNT")
     journal_ai_max_file_size_bytes: int = Field(default=10 * 1024 * 1024, alias="API_JOURNAL_AI_MAX_FILE_SIZE_BYTES")
     journal_ai_max_total_size_bytes: int = Field(default=100 * 1024 * 1024, alias="API_JOURNAL_AI_MAX_TOTAL_SIZE_BYTES")
-    journal_ai_request_timeout_seconds: float = Field(default=90.0, alias="API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS")
+    journal_ai_request_timeout_seconds: float = Field(default=300.0, alias="API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS")
     log_level: str = Field(default="INFO", alias="API_LOG_LEVEL")
     log_json: bool = Field(default=True, alias="API_LOG_JSON")
     healthcheck_timeout_seconds: float = Field(default=2.0, alias="API_HEALTHCHECK_TIMEOUT_SECONDS")

@@ -771,6 +771,11 @@ class DocumentRead(ORMModel):
     updated_at: datetime
 
 
+class DocumentBulkDeleteRead(BaseModel):
+    deleted_count: int
+    deleted_document_ids: list[UUID]
+
+
 class DocumentLinkRead(ORMModel):
     id: UUID
     company_id: UUID

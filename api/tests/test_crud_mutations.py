@@ -758,6 +758,76 @@ def test_document_bank_and_reconciliation_update_delete_endpoints(client):
     assert inactive_account_reconciliation.json()["detail"] == "Bank account is inactive"
 
 
+def test_bulk_document_delete_is_atomic_and_can_remove_record_links(client):
+    token = bootstrap_superuser(client)
+    company_id, _ = create_company(client, token)
+    period_id = create_period(
+        client,
+        token,
+        company_id,
+        name="Bulk delete quarter",
+        period_type="quarter",
+        start_date="2026-07-01",
+        end_date="2026-09-30",
+    )
+    cash_account_id = create_account(
+        client, token, company_id, code="1015", name="Bulk delete cash", account_type="asset"
+    )
+    revenue_account_id = create_account(
+        client, token, company_id, code="4015", name="Bulk delete revenue", account_type="income"
+    )
+    journal_id = create_draft_journal(
+        client, token, company_id, period_id, cash_account_id, revenue_account_id
+    )
+
+    document_ids = []
+    for filename in ["free-one.txt", "linked-two.txt", "keep-three.txt"]:
+        upload = client.post(
+            f"/api/companies/{company_id}/documents",
+            headers=auth_header(token),
+            files={"file": (filename, filename.encode(), "text/plain")},
+        )
+        assert upload.status_code == 201, upload.text
+        document_ids.append(upload.json()["id"])
+    link = client.post(
+        f"/api/companies/{company_id}/documents/{document_ids[1]}/links",
+        headers=auth_header(token),
+        json={"entity_type": "journal_entry", "entity_id": journal_id, "note": "Bulk guard"},
+    )
+    assert link.status_code == 201, link.text
+
+    blocked = client.post(
+        f"/api/companies/{company_id}/documents/bulk-delete",
+        headers=auth_header(token),
+        json={"document_ids": document_ids[:2], "remove_links": False},
+    )
+    assert blocked.status_code == 409, blocked.text
+    assert "No documents were deleted" in blocked.json()["detail"]
+    remaining = client.get(
+        f"/api/companies/{company_id}/documents", headers=auth_header(token)
+    ).json()
+    assert {item["id"] for item in remaining} == set(document_ids)
+
+    deleted = client.post(
+        f"/api/companies/{company_id}/documents/bulk-delete",
+        headers=auth_header(token),
+        json={"document_ids": document_ids[:2], "remove_links": True},
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json() == {"deleted_count": 2, "deleted_document_ids": document_ids[:2]}
+    remaining = client.get(
+        f"/api/companies/{company_id}/documents", headers=auth_header(token)
+    ).json()
+    assert [item["id"] for item in remaining] == [document_ids[2]]
+
+    duplicate = client.post(
+        f"/api/companies/{company_id}/documents/bulk-delete",
+        headers=auth_header(token),
+        json={"document_ids": [document_ids[2], document_ids[2]]},
+    )
+    assert duplicate.status_code == 400, duplicate.text
+
+
 def test_journal_evidence_routes_expose_n_to_n_document_links(client):
     token = bootstrap_superuser(client)
     company_id, _ = create_company(client, token)

@@ -341,6 +341,11 @@ class DocumentUpdate(BaseModel):
     media_type: str | None = Field(default=None, max_length=255)
 
 
+class DocumentBulkDeleteRequest(BaseModel):
+    document_ids: list[UUID] = Field(min_length=1, max_length=500)
+    remove_links: bool = False
+
+
 class DocumentLinkUpdate(DocumentLinkCreate):
     pass
 

@@ -65,9 +65,12 @@ The project explicitly does not support:
 ### Documents And Evidence
 
 - upload supporting documents
+- select and delete up to 500 stored documents in one all-or-nothing operation
 - link documents to journals
 - preview linked journal evidence inside Bookkeeping
 - open full evidence views for images and PDFs without leaving the review workflow
+
+Bulk deletion validates the complete selection before changing anything. Linked evidence requires a second confirmation before its ordinary record links are removed; source files retained by bank imports and generated BAS or tax-workpaper exports are protected and block the complete batch. Every deleted document is audited and its stored server file is removed.
 
 ### Employment Support
 
@@ -419,7 +422,7 @@ Important variables:
 - `API_JOURNAL_AI_MAX_FILE_COUNT`: maximum files in one recommendation run; defaults to `50` and cannot exceed `50`
 - `API_JOURNAL_AI_MAX_FILE_SIZE_BYTES`: maximum size of each source file; defaults to `10485760` (10 MiB)
 - `API_JOURNAL_AI_MAX_TOTAL_SIZE_BYTES`: maximum combined batch size; defaults to `104857600` (100 MiB)
-- `API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS`: provider request timeout (default 90 seconds); SDK retries and structured-output repair attempts can make the complete batch take longer
+- `API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS`: provider request timeout (default 300 seconds); SDK retries and structured-output repair attempts can make the complete batch take longer
 - `API_ALLOWED_ORIGINS` and `API_ALLOWED_ORIGIN_REGEX`: CORS configuration
 - `API_LOG_LEVEL` and `API_LOG_JSON`: backend logging behavior
 - `API_METRICS_ENABLED`: enable the metrics endpoint

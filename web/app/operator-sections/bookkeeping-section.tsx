@@ -242,6 +242,12 @@ type RemovableDocumentLink = {
 };
 
 
+type BulkDocumentDeleteResult = {
+  deleted_count: number;
+  deleted_document_ids: string[];
+};
+
+
 type JournalEvidenceItem = OperatorState["journalEvidence"][number];
 
 
@@ -358,6 +364,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const [recommendationResult, setRecommendationResult] = useState<JournalRecommendationDetail | null>(null);
   const [acceptedProposalIds, setAcceptedProposalIds] = useState<string[]>([]);
   const [recommendationUploadKey, setRecommendationUploadKey] = useState(0);
+  const [bulkDocumentIds, setBulkDocumentIds] = useState<string[]>([]);
   const [recommendationPhase, setRecommendationPhase] = useState<"uploading" | "analyzing" | null>(null);
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
   const [recommendationElapsed, setRecommendationElapsed] = useState(0);
@@ -862,7 +869,52 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     }
     setSelectedDocumentId("");
     setSelectedDocumentLinkId("");
+    setBulkDocumentIds((current) => current.filter((id) => id !== documentId));
+    setRecommendationExistingDocumentIds((current) => current.filter((id) => id !== documentId));
     showMessage("success", "Deleted document.");
+    await refreshAll();
+  }
+
+  async function deleteSelectedDocuments() {
+    const selectedDocuments = documents.filter((document) => bulkDocumentIds.includes(document.id));
+    if (selectedDocuments.length === 0) {
+      throw new Error("Select at least one document to delete.");
+    }
+    if (!confirmDanger(`Delete ${selectedDocuments.length} selected document${selectedDocuments.length === 1 ? "" : "s"} from the server? The whole selection will be validated before anything is deleted.`)) {
+      return;
+    }
+
+    const payload = { document_ids: selectedDocuments.map((document) => document.id), remove_links: false };
+    let result: BulkDocumentDeleteResult;
+    try {
+      result = await request<BulkDocumentDeleteResult>(
+        `/api/companies/${selectedCompanyId}/documents/bulk-delete`,
+        "POST",
+        payload,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (!message.includes("linked to other records")) {
+        throw error;
+      }
+      if (!confirmDanger("Some selected documents are linked to other records. Remove those links and delete the entire selection? Generated exports and bank-import source files will remain protected.")) {
+        return;
+      }
+      result = await request<BulkDocumentDeleteResult>(
+        `/api/companies/${selectedCompanyId}/documents/bulk-delete`,
+        "POST",
+        { ...payload, remove_links: true },
+      );
+    }
+
+    const deletedIds = new Set(result.deleted_document_ids);
+    setBulkDocumentIds([]);
+    setRecommendationExistingDocumentIds((current) => current.filter((id) => !deletedIds.has(id)));
+    if (selectedDocumentId && deletedIds.has(selectedDocumentId)) {
+      setSelectedDocumentId("");
+      setSelectedDocumentLinkId("");
+    }
+    showMessage("success", `Deleted ${result.deleted_count} document${result.deleted_count === 1 ? "" : "s"} from the server.`);
     await refreshAll();
   }
 
@@ -1228,6 +1280,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     setActiveEvidenceViewer(null);
     setRecommendationFiles([]);
     setRecommendationExistingDocumentIds([]);
+    setBulkDocumentIds([]);
     setRecommendationDocumentSearch("");
     setRecommendationResult(null);
     setAcceptedProposalIds([]);
@@ -2110,12 +2163,25 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       <article className="panel panel-wide">
         <div className="panel-heading"><h2>Documents</h2><span className="pill">{documents.length} files</span></div>
         <div className="workspace-split">
-          <div className="table-shell document-table-shell">
+          <div className="stacked-cards">
+            <div className="mini-card">
+              <div className="mini-card-heading">
+                <div><h3>Stored documents</h3><p className="summary-line">Select up to 500 files for one validated deletion.</p></div>
+                <span className="pill">{bulkDocumentIds.length} selected</span>
+              </div>
+              <div className="request-actions">
+                <button className="button-link button-link-small button-link-secondary" type="button" disabled={documents.length === 0} onClick={() => setBulkDocumentIds(documents.slice(0, 500).map((document) => document.id))}>Select all</button>
+                <button className="button-link button-link-small button-link-secondary" type="button" disabled={bulkDocumentIds.length === 0} onClick={() => setBulkDocumentIds([])}>Clear selection</button>
+                <button className="button-link button-link-small button-link-danger" data-testid="bulk-delete-documents" type="button" disabled={bulkDocumentIds.length === 0} onClick={() => runAction("Deleting selected documents", deleteSelectedDocuments)}>Delete selected</button>
+              </div>
+            </div>
+            <div className="table-shell document-table-shell">
             <table className="data-table">
-              <thead><tr><th>File</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Select</th><th>File</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr></thead>
               <tbody>
                 {documents.map((item) => (
                   <tr key={item.id} className={selectedDocumentId === item.id ? "is-selected" : ""} onClick={() => setSelectedDocumentId(item.id)}>
+                    <td><input type="checkbox" aria-label={`Select document ${item.original_filename}`} checked={bulkDocumentIds.includes(item.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setBulkDocumentIds((current) => event.target.checked ? [...current, item.id].slice(0, 500) : current.filter((id) => id !== item.id))} /></td>
                     <td>{item.original_filename}<div className="table-meta">{item.media_type ?? "Unknown type"}</div></td>
                     <td>{Math.round(item.byte_size / 1024)} KB</td>
                     <td>{formatDateTime(item.created_at)}</td>
@@ -2131,6 +2197,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
           <div className="stacked-cards">
             <div className="mini-card">
