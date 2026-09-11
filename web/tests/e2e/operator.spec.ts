@@ -452,6 +452,77 @@ test.describe.serial("operator workspace journeys", () => {
     }
   });
 
+  test("keeps the banking workspace anchored while switching tools", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Banking Layout Stability Company");
+    const bankAccount = await apiJson<BankAccountRecord>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/bank-accounts`,
+      auth.access_token,
+      {
+        name: uniqueSuffix("E2E Stable Bank Account"),
+        bank_name: "Example Bank",
+        bsb: "123-456",
+        account_number_masked: "xxxx1357",
+        ledger_account_id: null,
+        is_active: true,
+      },
+    );
+    const importFilename = `stable-layout-${Date.now()}.csv`;
+    const uploadResponse = await page.request.post(
+      `${apiBaseUrl}/api/companies/${company.id}/bank-imports/upload`,
+      {
+        headers: { Authorization: `Bearer ${auth.access_token}` },
+        multipart: {
+          bank_account_id: bankAccount.id,
+          note: "Layout stability import",
+          file: {
+            name: importFilename,
+            mimeType: "text/csv",
+            buffer: Buffer.from("date,description,debit,credit,reference\n2026-05-12,Stable layout row,10.00,0.00,STABLE-1\n"),
+          },
+        },
+      },
+    );
+    expect(uploadResponse.ok()).toBe(true);
+
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await seedSessionStorage(page, company.id);
+    await page.goto("/banking");
+    await expect(page.locator(".processing-veil")).toBeHidden();
+
+    const workspaceTabs = page.locator(".workspace-tabs");
+    const positions: Array<{ left: number; top: number }> = [];
+    for (const workspace of ["Accounts & imports", "Reconciliation", "BAS support", "Accounts & imports"]) {
+      await page.getByRole("button", { name: workspace, exact: true }).click();
+      positions.push(await workspaceTabs.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return { left: box.left, top: box.top };
+      }));
+    }
+
+    const horizontalMovement = Math.max(...positions.map((position) => position.left))
+      - Math.min(...positions.map((position) => position.left));
+    const verticalMovement = Math.max(...positions.map((position) => position.top))
+      - Math.min(...positions.map((position) => position.top));
+    expect(horizontalMovement).toBeLessThanOrEqual(0.5);
+    expect(verticalMovement).toBeLessThanOrEqual(0.5);
+
+    const uploadCard = page.getByTestId("bank-import-upload-card");
+    const uploadTopBeforeSelection = await uploadCard.evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+    await page.getByRole("button", { name: bankAccount.name, exact: true }).click();
+    const uploadTopAfterSelection = await uploadCard.evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+    expect(Math.abs(uploadTopAfterSelection - uploadTopBeforeSelection)).toBeLessThanOrEqual(0.5);
+
+    const importRowsTable = page.getByTestId("bank-import-rows-table");
+    const tableTopBeforeSelection = await importRowsTable.evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+    await page.getByRole("button", { name: new RegExp(importFilename) }).click();
+    await expect(page.locator(".processing-veil")).toBeHidden();
+    const tableTopAfterSelection = await importRowsTable.evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+    expect(Math.abs(tableTopAfterSelection - tableTopBeforeSelection)).toBeLessThanOrEqual(0.5);
+  });
+
   test("builds a monthly budget and calculates projected year-end profit", async ({ page }) => {
     const auth = await ensureOperatorSession(page.request);
     const company = await createCompany(page.request, auth.access_token, "E2E Planning Company");

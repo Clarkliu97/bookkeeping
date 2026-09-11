@@ -688,7 +688,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
   }
 
   return (
-    <section className="sections-stack">
+    <section className="sections-stack banking-workspace">
       <WorkspaceTabs
         label="Banking and BAS workspaces"
         activeTab={activeWorkspace}
@@ -700,11 +700,11 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
         ]}
       />
       {activeWorkspace === "accounts" ? (
-      <article className="panel panel-wide">
+      <article className="panel panel-wide banking-workspace-panel">
         <div className="panel-heading"><h2>Bank accounts and imports</h2><span className="pill">{activeBankAccounts.length} active accounts</span></div>
         <div className="workspace-split">
-          <div className="stacked-cards">
-            <div className="mini-card" data-testid="create-bank-account-card">
+          <div className="stacked-cards banking-account-controls">
+            <div className="mini-card bank-account-create-card" data-testid="create-bank-account-card">
               <div className="mini-card-heading">
                 <div>
                   <h3>Create bank account</h3>
@@ -723,7 +723,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
               </div>
             </div>
 
-            <div className="mini-card" data-testid="manage-bank-accounts-card">
+            <div className="mini-card bank-account-manage-card" data-testid="manage-bank-accounts-card">
               <div className="mini-card-heading">
                 <div>
                   <h3>Manage bank accounts</h3>
@@ -752,7 +752,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
               )}
             </div>
 
-            <div className="mini-card">
+            <div className="mini-card bank-import-upload-card" data-testid="bank-import-upload-card">
               <h3>Upload bank CSV</h3>
               <div className="form-grid">
                 <Field label="Bank account"><select value={selectedBankAccountId} onChange={(event) => { setSelectedBankAccountId(event.target.value); setReconciliationDraft((current) => ({ ...current, bank_account_id: event.target.value })); }}><option value="">Select bank account</option>{bankAccountOptionList.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
@@ -785,13 +785,13 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
           </div>
 
           <div className="stacked-cards">
-            <div className="mini-card">
+            <div className="mini-card bank-import-session-card">
               <h3>Import sessions</h3>
               <div className="compact-list tall-list">
                 {bankImports.map((item) => <button key={item.id} className={`list-row-button${selectedImportSessionId === item.id ? " is-active" : ""}`} type="button" onClick={() => setSelectedImportSessionId(item.id)}>{item.original_filename} · {item.status}</button>)}
               </div>
               {selectedImportSession ? (
-                <div>
+                <div className="bank-import-session-detail">
                   <div className="form-grid two-up">
                     <Field label="Imported"><input value={formatDateTime(selectedImportSession.imported_at)} readOnly /></Field>
                     <Field label="Status"><input value={selectedImportSession.status} readOnly /></Field>
@@ -823,7 +823,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
                   </div>
                 </div>
               ) : null}
-              <div className="table-shell compact-table-shell">
+              <div className="table-shell compact-table-shell" data-testid="bank-import-rows-table">
                 <table className="data-table">
                   <thead><tr><th>Line</th><th>Description</th><th>Status</th></tr></thead>
                   <tbody>
@@ -838,7 +838,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
       ) : null}
 
       {activeWorkspace === "reconciliation" ? (
-      <article className="panel panel-wide">
+      <article className="panel panel-wide banking-workspace-panel">
         <div className="panel-heading"><h2>Reconciliation</h2><span className="pill">{reconciliationSessions.length} sessions</span></div>
         <div className="workspace-split">
           <div className="stacked-cards">
@@ -1242,7 +1242,7 @@ export function BankingSection({ operator }: { operator: OperatorState }) {
       ) : null}
 
       {activeWorkspace === "bas" ? (
-      <article className="panel panel-wide">
+      <article className="panel panel-wide banking-workspace-panel">
         <div className="panel-heading"><h2>BAS support</h2><StatusPill value={basRunDetail?.status ?? "no run"} /></div>
         <div className="workspace-split">
           <div className="stacked-cards">

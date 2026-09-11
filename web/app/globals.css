@@ -66,6 +66,10 @@ body {
   line-height: 1.45;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   min-height: 100vh;
 }
@@ -909,6 +913,61 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
   gap: 14px;
+}
+
+.banking-workspace .workspace-split {
+  align-items: start;
+}
+
+.banking-workspace .stacked-cards {
+  align-content: start;
+}
+
+.banking-account-controls > .bank-account-create-card {
+  order: 1;
+}
+
+.banking-account-controls > .bank-import-upload-card {
+  order: 2;
+}
+
+.banking-account-controls > .bank-account-manage-card {
+  order: 3;
+}
+
+.bank-import-session-card > h3 {
+  order: 1;
+}
+
+.bank-import-session-card > .compact-list {
+  order: 2;
+}
+
+.bank-import-session-card > .table-shell {
+  order: 3;
+}
+
+.bank-import-session-card > .bank-import-session-detail {
+  order: 4;
+}
+
+.banking-workspace-panel,
+.banking-workspace .mini-card,
+.banking-workspace .workspace-tab,
+.banking-workspace .list-row-button {
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banking-workspace-panel,
+  .banking-workspace .mini-card,
+  .banking-workspace .workspace-tab,
+  .banking-workspace .list-row-button {
+    transition: none;
+  }
 }
 
 .journal-workspace-split {
