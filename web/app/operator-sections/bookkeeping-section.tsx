@@ -211,6 +211,19 @@ type JournalRecommendationDetail = {
   confidence_summary: string | null;
   warning_text: string | null;
   failure_reason: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  analysis_diagnostics?: {
+    stage?: string;
+    failed_stage?: string;
+    request_id?: string;
+    error_code?: string;
+    provider_request_id?: string;
+    timeout_seconds?: number;
+    duration_ms?: number;
+    document_count?: number;
+    total_bytes?: number;
+  } | null;
   documents: JournalRecommendationDocument[];
   lines: JournalRecommendationLine[];
   entries: JournalRecommendationEntry[];
@@ -319,7 +332,6 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
     downloadFromApi,
     loadJournalEvidence,
     confirmDanger,
-    busyLabel,
   } = operator;
 
   const generalLedgerEntryCount = countLedgerEntries(reportState.generalLedger);
@@ -346,6 +358,13 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const [recommendationResult, setRecommendationResult] = useState<JournalRecommendationDetail | null>(null);
   const [acceptedProposalIds, setAcceptedProposalIds] = useState<string[]>([]);
   const [recommendationUploadKey, setRecommendationUploadKey] = useState(0);
+  const [recommendationPhase, setRecommendationPhase] = useState<"uploading" | "analyzing" | null>(null);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  const [recommendationElapsed, setRecommendationElapsed] = useState(0);
+  const [recentRecommendationRuns, setRecentRecommendationRuns] = useState<JournalRecommendationDetail[]>([]);
+  const recommendationBusyRef = useRef(false);
+  const recommendationRequestRef = useRef(request);
+  recommendationRequestRef.current = request;
   const [journalEvidenceCache, setJournalEvidenceCache] = useState<Record<string, JournalEvidenceItem[]>>({});
   const [journalEvidenceLoadingIds, setJournalEvidenceLoadingIds] = useState<Record<string, boolean>>({});
   const [journalEvidenceErrorById, setJournalEvidenceErrorById] = useState<Record<string, string | null>>({});
@@ -358,7 +377,90 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
   const documentPreviewRequestsRef = useRef<Record<string, Promise<boolean>>>({});
   const pdfThumbnailRequestsRef = useRef<Record<string, Promise<void>>>({});
   const pdfFullRenderRequestsRef = useRef<Record<string, Promise<void>>>({});
-  const isRecommendationProcessing = busyLabel === "Analyzing documents";
+  const isRecommendationProcessing = recommendationPhase !== null;
+  useEffect(() => {
+    if (!recommendationPhase) return;
+    const started = Date.now();
+    setRecommendationElapsed(0);
+    const timer = window.setInterval(() => setRecommendationElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [recommendationPhase]);
+
+  useEffect(() => {
+    if (recommendationPhase !== "analyzing" || !recommendationResult?.id) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const path = `/api/companies/${selectedCompanyId}/journal-recommendations/${recommendationResult.id}`;
+    async function poll() {
+      try {
+        const saved = await recommendationRequestRef.current<JournalRecommendationDetail>(path);
+        if (!cancelled) setRecommendationResult(saved);
+      } catch {
+        // The original request owns errors; a transient status check must not cancel analysis.
+      }
+      if (!cancelled) timer = setTimeout(poll, 3000);
+    }
+    timer = setTimeout(poll, 3000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [recommendationPhase, recommendationResult?.id, selectedCompanyId]);
+
+  async function checkRecommendationStatus(runId: string) {
+    const saved = await request<JournalRecommendationDetail>(`/api/companies/${selectedCompanyId}/journal-recommendations/${runId}`);
+    setRecommendationResult(saved);
+    setAcceptedProposalIds([]);
+    setRecommendationError(saved.status === "failed" ? saved.failure_reason : null);
+  }
+
+  async function analyzeRecommendation(existingRun?: JournalRecommendationDetail) {
+    if (recommendationBusyRef.current) return;
+    recommendationBusyRef.current = true;
+    let savedRun = existingRun;
+    let uploadAttempted = false;
+    setRecommendationError(null);
+    try {
+      if (!selectedCompanyId) throw new Error("Select a company before analysis.");
+      if (!savedRun) {
+        if (recommendationEvidenceCount === 0) throw new Error("Select or upload at least one evidence document before analysis.");
+        if (recommendationUploadMode === "single" && recommendationEvidenceCount !== 1) throw new Error("Single-document mode requires exactly one evidence document.");
+        if (recommendationEvidenceCount > recommendationFileLimit) throw new Error(`Select at most ${recommendationFileLimit} evidence documents.`);
+        uploadAttempted = true;
+        setRecommendationPhase("uploading");
+        setRecommendationResult(null);
+        const formData = new FormData();
+        recommendationSelectedExistingDocuments.forEach((document) => formData.append("existing_document_ids", document.id));
+        recommendationFiles.forEach((file) => formData.append("files", file));
+        formData.append("model", recommendationModelId || "gpt-5.4-mini");
+        formData.append("analysis_mode", recommendationUploadMode);
+        if (recommendationNote.trim()) formData.append("user_context_note", recommendationNote.trim());
+        if (recommendationTargetPeriodId) formData.append("target_accounting_period_id", recommendationTargetPeriodId);
+        savedRun = await request<JournalRecommendationDetail>(`/api/companies/${selectedCompanyId}/journal-recommendations`, "POST", formData);
+      }
+      setRecommendationResult(savedRun);
+      setAcceptedProposalIds([]);
+      setRecommendationPhase("analyzing");
+      const analyzed = await request<JournalRecommendationDetail>(`/api/companies/${selectedCompanyId}/journal-recommendations/${savedRun.id}/analyze`, "POST");
+      setRecommendationResult(analyzed);
+      const journalCount = analyzed.entries?.length || 1;
+      showMessage("success", `Generated ${journalCount} review-only journal recommendation${journalCount === 1 ? "" : "s"}.`);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "The request failed.";
+      let message = savedRun
+        ? `The analysis request did not finish normally. Your evidence is saved (run ${savedRun.id}). The server may still be working; check saved status before retrying. ${detail}`
+        : uploadAttempted ? `Evidence upload could not be confirmed. Check recent analyses before uploading again. ${detail}` : detail;
+      if (savedRun) {
+        try {
+          const saved = await request<JournalRecommendationDetail>(`/api/companies/${selectedCompanyId}/journal-recommendations/${savedRun.id}`);
+          setRecommendationResult(saved);
+          if (saved.status === "review_ready") message = "Analysis completed on the server despite the interrupted connection. Your recommendations are ready for review.";
+          else if (saved.status === "failed" && saved.failure_reason) message = saved.failure_reason;
+        } catch { /* Keep the run reference available when the server cannot be reached. */ }
+      }
+      setRecommendationError(message);
+    } finally {
+      setRecommendationPhase(null);
+      recommendationBusyRef.current = false;
+    }
+  }
   const fallbackPeriodId = selectedPeriodId || periodOptionList[0]?.value || "";
 
   async function ensureJournalEvidenceLoaded(journalId: string) {
@@ -1639,47 +1741,42 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
                 <p className="summary-line"><strong>{recommendationEvidenceCount} evidence document{recommendationEvidenceCount === 1 ? "" : "s"}</strong> - {formatFileSize(recommendationSelectedBytes)} total. Existing documents are numbered first in selection order, followed by new uploads; these numbers are preserved in the AI grouping result.</p>
               ) : null}
               <div className="request-actions">
-                <button className="button-link button-link-small" type="button" disabled={isRecommendationProcessing} onClick={() => runAction("Analyzing evidence", async () => {
-                  if (!selectedCompanyId) {
-                    throw new Error("Select a company before generating a journal recommendation.");
-                  }
-                  if (recommendationEvidenceCount === 0) {
-                    throw new Error("Select or upload at least one evidence document before analysis.");
-                  }
-                  if (recommendationUploadMode === "single" && recommendationEvidenceCount !== 1) {
-                    throw new Error("Single-document mode requires exactly one evidence document.");
-                  }
-                  if (recommendationEvidenceCount > recommendationFileLimit) {
-                    throw new Error(`Select at most ${recommendationFileLimit} evidence documents.`);
-                  }
-                  const formData = new FormData();
-                  recommendationSelectedExistingDocuments.forEach((document) => formData.append("existing_document_ids", document.id));
-                  recommendationFiles.forEach((file) => formData.append("files", file));
-                  formData.append("model", recommendationModelId || "gpt-5.4-mini");
-                  formData.append("analysis_mode", recommendationUploadMode);
-                  if (recommendationNote.trim()) {
-                    formData.append("user_context_note", recommendationNote.trim());
-                  }
-                  if (recommendationTargetPeriodId) {
-                    formData.append("target_accounting_period_id", recommendationTargetPeriodId);
-                  }
-                  const createdRun = await request<JournalRecommendationDetail>(`/api/companies/${selectedCompanyId}/journal-recommendations`, "POST", formData);
-                  const analyzedRun = await request<JournalRecommendationDetail>(`/api/companies/${selectedCompanyId}/journal-recommendations/${createdRun.id}/analyze`, "POST");
-                  setRecommendationResult(analyzedRun);
-                  setAcceptedProposalIds([]);
-                  const journalCount = analyzedRun.entries?.length || 1;
-                  showMessage("success", `Generated ${journalCount} review-only journal recommendation${journalCount === 1 ? "" : "s"}.`);
-                })}>{isRecommendationProcessing ? "Analyzing..." : "Analyze evidence"}</button>
+                <button className="button-link button-link-small" type="button" disabled={isRecommendationProcessing || recommendationResult?.status === "analyzing"} onClick={() => void analyzeRecommendation()}>{isRecommendationProcessing ? "Analyzing..." : "Analyze evidence"}</button>
                 <button className="button-link button-link-small button-link-secondary" type="button" disabled={isRecommendationProcessing} onClick={() => {
                   setRecommendationFiles([]);
                   setRecommendationExistingDocumentIds([]);
                   setRecommendationDocumentSearch("");
                   setRecommendationNote("");
                   setRecommendationResult(null);
+                  setRecommendationError(null);
                   setAcceptedProposalIds([]);
                   setRecommendationUploadKey((current) => current + 1);
                 }}>Clear evidence</button>
               </div>
+              <div className="request-actions">
+                <button className="button-link button-link-small button-link-secondary" type="button" disabled={isRecommendationProcessing} onClick={() => runAction("Loading recent analyses", async () => {
+                  setRecentRecommendationRuns(await request<JournalRecommendationDetail[]>(`/api/companies/${selectedCompanyId}/journal-recommendations`));
+                })}>Load recent analyses</button>
+                {recommendationResult ? <button className="button-link button-link-small button-link-secondary" type="button" disabled={isRecommendationProcessing} onClick={() => runAction("Checking analysis status", () => checkRecommendationStatus(recommendationResult.id))}>Check saved status</button> : null}
+                {recommendationResult && ["draft", "failed"].includes(recommendationResult.status) ? <button className="button-link button-link-small" type="button" disabled={isRecommendationProcessing} onClick={() => void analyzeRecommendation(recommendationResult)}>Retry saved evidence</button> : null}
+              </div>
+              {recentRecommendationRuns.length > 0 ? <Field label="Recent analysis"><select disabled={isRecommendationProcessing} value={recommendationResult?.id ?? ""} onChange={(event) => {
+                if (event.target.value) void runAction("Loading saved analysis", () => checkRecommendationStatus(event.target.value));
+              }}><option value="">Select a saved run</option>{recentRecommendationRuns.map((run) => <option key={run.id} value={run.id}>{run.id.slice(0, 8)} · {run.provider_model} · {run.status}</option>)}</select></Field> : null}
+              {(recommendationPhase || recommendationError || recommendationResult) ? (
+                <section className="mini-card" data-testid="analysis-progress">
+                  <h4>Analysis progress</h4>
+                  <p role="status">{recommendationPhase === "uploading" ? "Uploading and saving evidence" : recommendationResult?.status === "analyzing" || recommendationPhase === "analyzing" ? "Analyzing documents and checking journal recommendations" : recommendationResult?.status === "review_ready" ? "Ready for review" : recommendationResult?.status ?? "Request interrupted"}{recommendationPhase ? ` — ${recommendationElapsed}s elapsed in this step` : ""}</p>
+                  {recommendationPhase ? <p>Large batches can take several minutes. The model reads the documents together, so a reliable per-file completion percentage is unavailable. Keep this page open; saved results can also be retrieved from recent analyses.</p> : null}
+                  {recommendationError ? <p role="alert">{recommendationError}</p> : null}
+                  {recommendationResult ? <>
+                    <p>Run reference: <code>{recommendationResult.id}</code></p>
+                    <p>{recommendationResult.documents.length} documents · {recommendationResult.provider_model}</p>
+                    {recommendationResult.status === "analyzing" && !recommendationPhase ? <p>The last saved status is still analyzing. Check again shortly. If it remains unchanged, give the run reference to the developer; a server restart may have interrupted the work.</p> : null}
+                    <details><summary>Diagnostic details for support</summary><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify({ run_id: recommendationResult.id, model: recommendationResult.provider_model, status: recommendationResult.status, started_at: recommendationResult.started_at, completed_at: recommendationResult.completed_at, ...recommendationResult.analysis_diagnostics }, null, 2)}</pre></details>
+                  </> : null}
+                </section>
+              ) : null}
             </div>
           </div>
 

@@ -22,6 +22,7 @@ The implemented system currently supports:
 - annual company tax workpaper packs with adjustments, notes, exceptions, approvals, and exports
 - operational health, metrics, alerts, backup and restore guidance, and a browser diagnostics workbench
 - AI-assisted journal drafting in single-document or multi-document mode, reusing stored evidence or accepting new uploads, with up to 50 PDFs or images grouped into one or more review-only journal recommendations
+- AI analysis shows upload/analysis progress, elapsed time and persistent failure guidance with a run reference. Use **Check saved status** after a connection timeout, **Load recent analyses** to recover a saved run, and **Retry saved evidence** for failed runs. Developer diagnostics and the required `20260912_0015` migration are described in [API troubleshooting](api/README.md#progress-timeouts-and-troubleshooting).
 
 The project explicitly does not support:
 
@@ -418,7 +419,7 @@ Important variables:
 - `API_JOURNAL_AI_MAX_FILE_COUNT`: maximum files in one recommendation run; defaults to `50` and cannot exceed `50`
 - `API_JOURNAL_AI_MAX_FILE_SIZE_BYTES`: maximum size of each source file; defaults to `10485760` (10 MiB)
 - `API_JOURNAL_AI_MAX_TOTAL_SIZE_BYTES`: maximum combined batch size; defaults to `104857600` (100 MiB)
-- `API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS`: provider request timeout for a recommendation batch
+- `API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS`: provider request timeout (default 90 seconds); SDK retries and structured-output repair attempts can make the complete batch take longer
 - `API_ALLOWED_ORIGINS` and `API_ALLOWED_ORIGIN_REGEX`: CORS configuration
 - `API_LOG_LEVEL` and `API_LOG_JSON`: backend logging behavior
 - `API_METRICS_ENABLED`: enable the metrics endpoint

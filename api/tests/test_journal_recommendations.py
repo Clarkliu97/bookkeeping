@@ -1,4 +1,6 @@
 import json
+import pytest
+from fastapi import HTTPException
 from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
@@ -15,6 +17,49 @@ from pydantic import ValidationError
 
 def auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.parametrize("failure,expected_status,error_code", [
+    (TimeoutError("sensitive provider detail"), 504, "provider_timeout"),
+    (HTTPException(status_code=422, detail="Model returned an unbalanced recommendation"), 422, "analysis_validation"),
+    (RuntimeError("sensitive provider detail"), 502, "analysis_internal"),
+])
+def test_analysis_failure_is_saved_and_recoverable(client, monkeypatch, failure, expected_status, error_code):
+    monkeypatch.setattr(get_settings(), "openai_api_key", "test-key")
+    token = bootstrap_superuser(client)
+    company_id = create_company(client, token)
+    base = f"/api/companies/{company_id}/journal-recommendations"
+    created = client.post(base, headers=auth_header(token),
+                          files=[("files", ("invoice.pdf", b"%PDF-1.4 test", "application/pdf"))],
+                          data={"model": "gpt-5.4-mini"})
+    assert created.status_code == 201, created.text
+    run_id = created.json()["id"]
+
+    def fail_analysis(_db, *, run, documents):
+        # Running status is committed and can be observed by a separate request.
+        observed = client.get(f"{base}/{run_id}", headers=auth_header(token)).json()
+        assert observed["status"] == "analyzing"
+        assert observed["analysis_diagnostics"]["document_count"] == 1
+        assert client.post(f"{base}/{run_id}/analyze", headers=auth_header(token)).status_code == 409
+        assert client.delete(f"{base}/{run_id}", headers=auth_header(token)).status_code == 409
+        raise failure
+
+    monkeypatch.setattr(recommendation_service, "_analyze_with_openai", fail_analysis)
+    response = client.post(f"{base}/{run_id}/analyze", headers=auth_header(token))
+    assert response.status_code == expected_status, response.text
+    assert run_id in response.json()["detail"]
+    assert "sensitive provider detail" not in response.text
+    saved = client.get(f"{base}/{run_id}", headers=auth_header(token)).json()
+    assert saved["status"] == "failed"
+    assert saved["failure_reason"]
+    assert saved["completed_at"]
+    assert len(saved["documents"]) == 1
+    assert saved["analysis_diagnostics"]["error_code"] == error_code
+    assert saved["analysis_diagnostics"]["failed_stage"] == "analyzing_documents"
+    assert saved["analysis_diagnostics"]["request_id"]
+    # A failed run can be retried with the same evidence, without another upload.
+    retry = client.post(f"{base}/{run_id}/analyze", headers=auth_header(token))
+    assert retry.status_code == expected_status
 
 
 def bootstrap_superuser(client):
@@ -1836,7 +1881,8 @@ def test_journal_recommendation_returns_503_when_openai_runtime_is_missing(clien
         headers=auth_header(token),
     )
     assert analyze_response.status_code == 503, analyze_response.text
-    assert analyze_response.json()["detail"] == "Journal AI dependencies are not available in the current API runtime"
+    assert "Journal AI dependencies are not available in the current API runtime" in analyze_response.json()["detail"]
+    assert create_response.json()["id"] in analyze_response.json()["detail"]
 
     run_response = client.get(
         f"/api/companies/{company_id}/journal-recommendations/{run_id}",

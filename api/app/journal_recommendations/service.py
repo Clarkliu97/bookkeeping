@@ -3,10 +3,13 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
+import traceback
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+from time import monotonic
 from importlib import import_module
 from typing import Annotated, Any
 from urllib.parse import urlparse
@@ -14,10 +17,11 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, WithJsonSchema, model_validator
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.logging import request_id_context
 from app.db.models.accounting import Account, AccountingPeriod, JournalEntry
 from app.db.models.companies import Company, CompanyConfigurationVersion
 from app.db.models.documents import Document, DocumentLink
@@ -44,6 +48,41 @@ from app.schemas.requests import JournalEntryCreate, JournalLineCreate
 
 
 PROMPT_VERSION = "journal-document-reference-map-v8"
+logger = logging.getLogger("bookkeeping_tax.journal_analysis")
+
+
+def _analysis_progress(db: Session, run: JournalRecommendationRun, stage: str, **details: Any) -> None:
+    run.analysis_diagnostics = {
+        **(run.analysis_diagnostics or {}),
+        **details,
+        "stage": stage,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db.commit()
+    logger.info("journal_analysis.progress", extra={
+        "run_id": str(run.id), "company_id": str(run.company_id),
+        "model": run.provider_model, **run.analysis_diagnostics,
+    })
+
+
+def _analysis_failure(exc: Exception) -> tuple[str, str, int]:
+    name = type(exc).__name__
+    code = getattr(exc, "status_code", None)
+    if isinstance(exc, TimeoutError) or "Timeout" in name:
+        return "provider_timeout", "The AI provider did not respond within the configured time limit. Your evidence is saved. Try a smaller batch or ask the administrator to review the analysis timeout.", 504
+    if code == 429:
+        return "provider_rate_limit", "The AI provider's rate or usage limit was reached. Your evidence is saved. Retry later; the administrator may need to check provider quota and billing.", 503
+    if "Connection" in name:
+        return "provider_connection", "The server could not reach the AI provider. Your evidence is saved. Retry after connectivity is restored.", 502
+    if isinstance(exc, HTTPException):
+        return "analysis_validation" if code == 422 else "analysis_configuration", str(exc.detail), exc.status_code
+    if code in (400, 413):
+        return "provider_rejected_request", "The AI provider rejected the request. Check document size, format and model compatibility. Ask the developer to inspect the run reference.", 502
+    if code in (401, 403):
+        return "provider_access", "The AI provider rejected the server credentials or model access. Ask the administrator to check the AI configuration.", 502
+    return "analysis_internal", "Analysis could not be completed. Your evidence is saved. Give the run reference to the developer before retrying.", 502
+
+
 PRICE_ESTIMATE_INPUT_TOKENS = 40000
 PRICE_ESTIMATE_OUTPUT_TOKENS = 3500
 RECOMMENDATION_MAX_OUTPUT_TOKENS = 30000
@@ -500,47 +539,72 @@ def _extract_search_sources(run: JournalRecommendationRun) -> list[dict[str, str
 
 def analyze_run(db: Session, *, company_id: UUID, run_id: UUID) -> JournalRecommendationRun:
     settings = get_settings()
-    if not settings.journal_ai_enabled:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Journal AI workflow is disabled")
-    if not settings.openai_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENAI_API_KEY is not configured for journal recommendations",
-        )
-
     run = _load_run_or_404(db, company_id, run_id)
     if run.status == JournalRecommendationStatus.ACCEPTED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Accepted recommendations cannot be re-analyzed")
-
-    run.status = JournalRecommendationStatus.ANALYZING
+    claimed = db.execute(update(JournalRecommendationRun).where(
+        JournalRecommendationRun.id == run.id,
+        JournalRecommendationRun.status.notin_([
+            JournalRecommendationStatus.ANALYZING, JournalRecommendationStatus.ACCEPTED,
+        ]),
+    ).values(status=JournalRecommendationStatus.ANALYZING))
+    if claimed.rowcount != 1:
+        raise HTTPException(status_code=409, detail="This run is already analyzing. Check its saved status before retrying.")
     run.started_at = datetime.now(timezone.utc)
     run.completed_at = None
     run.failure_reason = None
-    db.flush()
+    run.analysis_diagnostics = {
+        "request_id": request_id_context.get(),
+        "timeout_seconds": settings.journal_ai_request_timeout_seconds,
+    }
+    started = monotonic()
+    _analysis_progress(db, run, "preparing_documents")
 
     try:
+        if not settings.journal_ai_enabled:
+            raise HTTPException(status_code=503, detail="Journal AI workflow is disabled")
+        if not settings.openai_api_key:
+            raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured for journal recommendations")
         documents = _load_run_documents(db, run.id)
+        _analysis_progress(db, run, "analyzing_documents", document_count=len(documents),
+                           total_bytes=sum(document.byte_size for document in documents))
         recommendation = _analyze_with_openai(db, run=run, documents=documents)
+        _analysis_progress(db, run, "saving_recommendations")
         _persist_recommendation(db, run=run, recommendation=recommendation, documents=documents)
         run.status = JournalRecommendationStatus.REVIEW_READY
         run.analysis_summary = recommendation.summary
         run.confidence_summary = recommendation.confidence_summary
         run.warning_text = recommendation.warning_text
         run.completed_at = datetime.now(timezone.utc)
-        db.commit()
+        _analysis_progress(db, run, "completed", duration_ms=round((monotonic() - started) * 1000))
         db.refresh(run)
         return run
-    except HTTPException:
+    except Exception as exc:
+        # Roll back partial replacement entries before saving failure status.
+        diagnostics = dict(run.analysis_diagnostics or {})
+        provider_response = run.raw_provider_response_json
+        provider_usage = run.provider_usage_json
+        db.rollback()
+        error_code, message, http_status = _analysis_failure(exc)
         run.status = JournalRecommendationStatus.FAILED
+        run.failure_reason = message
         run.completed_at = datetime.now(timezone.utc)
-        db.commit()
-        raise
-    except Exception as exc:  # pragma: no cover - guarded through route tests with monkeypatching
-        run.status = JournalRecommendationStatus.FAILED
-        run.failure_reason = str(exc)
-        run.completed_at = datetime.now(timezone.utc)
-        db.commit()
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Journal recommendation analysis failed: {exc}") from exc
+        run.raw_provider_response_json = provider_response
+        run.provider_usage_json = provider_usage
+        run.analysis_diagnostics = diagnostics
+        _analysis_progress(db, run, "failed", failed_stage=diagnostics.get("stage"),
+                           error_code=error_code, error_type=type(exc).__name__,
+                           provider_request_id=getattr(exc, "request_id", None),
+                           provider_status=getattr(exc, "status_code", None),
+                           duration_ms=round((monotonic() - started) * 1000))
+        logger.error("journal_analysis.failed", extra={
+            "run_id": str(run.id), "company_id": str(company_id),
+            "model": run.provider_model, **run.analysis_diagnostics,
+            "provider_error_code": getattr(exc, "code", None),
+            "provider_error_param": getattr(exc, "param", None),
+            "traceback_frames": traceback.format_list(traceback.extract_tb(exc.__traceback__)),
+        })
+        raise HTTPException(status_code=http_status, detail=f"{message} Run reference: {run.id}.") from exc
 
 
 def accept_run(
@@ -722,6 +786,8 @@ def reject_run(db: Session, *, company_id: UUID, run_id: UUID) -> JournalRecomme
     run = _load_run_or_404(db, company_id, run_id)
     if run.status == JournalRecommendationStatus.ACCEPTED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Accepted recommendations cannot be rejected")
+    if run.status == JournalRecommendationStatus.ANALYZING:
+        raise HTTPException(status_code=409, detail="Analysis is still running; check its status before rejecting.")
     run.status = JournalRecommendationStatus.REJECTED
     run.completed_at = datetime.now(timezone.utc)
     db.commit()
@@ -788,6 +854,11 @@ def _analyze_with_openai(db: Session, *, run: JournalRecommendationRun, document
     disable_web_search_tools = False
 
     for _attempt in range(3):
+        attempt_started = monotonic()
+        attempt_context = {"run_id": str(run.id), "company_id": str(run.company_id),
+                           "model": run.provider_model, "attempt": _attempt + 1,
+                           "document_count": len(documents)}
+        logger.info("journal_analysis.provider_attempt", extra=attempt_context)
         request_input = [{"role": "user", "content": content_items}]
         if retry_feedback:
             request_input.append(
@@ -827,6 +898,7 @@ def _analyze_with_openai(db: Session, *, run: JournalRecommendationRun, document
             response = client.responses.parse(**parse_kwargs)
         except ValidationError as exc:
             if not parse_retry_used:
+                logger.warning("journal_analysis.retry_schema", extra=attempt_context)
                 parse_retry_used = True
                 retry_feedback = _build_structured_output_retry_text(exc)
                 # Keep schema-repair retries deterministic by removing optional tool calls.
@@ -837,6 +909,11 @@ def _analyze_with_openai(db: Session, *, run: JournalRecommendationRun, document
                 detail=f"The model returned invalid structured JSON after retry: {_summarize_validation_error(exc)}",
             ) from exc
         _capture_provider_response(run, response)
+        logger.info("journal_analysis.provider_response", extra={
+            **attempt_context, "duration_ms": round((monotonic() - attempt_started) * 1000),
+            "provider_request_id": getattr(response, "_request_id", None),
+            "provider_status": getattr(response, "status", None),
+        })
 
         parsed = getattr(response, "output_parsed", None)
         if parsed is None:
@@ -861,6 +938,7 @@ def _analyze_with_openai(db: Session, *, run: JournalRecommendationRun, document
             )
         except HTTPException as exc:
             if not balance_retry_used and exc.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT:
+                logger.warning("journal_analysis.retry_validation", extra=attempt_context)
                 balance_retry_used = True
                 retry_feedback = _build_balance_retry_text(parsed)
                 continue

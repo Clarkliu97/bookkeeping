@@ -831,6 +831,7 @@ class JournalRecommendationRunRead(ORMModel):
     confidence_summary: str | None
     warning_text: str | None
     failure_reason: str | None
+    analysis_diagnostics: dict | None = None
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime

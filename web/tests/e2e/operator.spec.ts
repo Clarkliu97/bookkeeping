@@ -863,6 +863,18 @@ test.describe.serial("operator workspace journeys", () => {
     const proposalId = "33333333-3333-4333-8333-333333333333";
     let acceptRequestCount = 0;
     let createRequestBody = "";
+    let createRequestCount = 0;
+    let analysisRequestCount = 0;
+    let releaseAnalysis: () => void = () => {};
+    const analysisGate = new Promise<void>((resolve) => { releaseAnalysis = resolve; });
+    await page.route(`**/journal-recommendations/${createdRunId}`, async (route) => {
+      await route.fulfill({ json: {
+        id: createdRunId, status: "failed", provider_model: "gpt-5.4",
+        failure_reason: "The AI provider did not respond within the configured time limit. Your evidence is saved.",
+        documents: [], lines: [], entries: [], proposals: [], search_sources: [],
+        analysis_diagnostics: { stage: "failed", error_code: "provider_timeout", request_id: "test-analysis-request" },
+      } });
+    });
 
     await page.route(/\/api\/companies\/[^/]+\/journal-recommendations(?:\/[^/]+\/(analyze|accept))?$/, async (route, request) => {
       const url = new URL(request.url());
@@ -872,6 +884,7 @@ test.describe.serial("operator workspace journeys", () => {
         return;
       }
       if (/\/journal-recommendations$/.test(pathname)) {
+        createRequestCount += 1;
         createRequestBody = request.postData() ?? "";
         await route.fulfill({
           status: 201,
@@ -899,6 +912,12 @@ test.describe.serial("operator workspace journeys", () => {
         return;
       }
       if (pathname.endsWith(`/journal-recommendations/${createdRunId}/analyze`)) {
+        analysisRequestCount += 1;
+        if (analysisRequestCount === 1) {
+          await analysisGate;
+          await route.fulfill({ status: 504, json: { detail: "request timeout" } });
+          return;
+        }
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -1061,6 +1080,19 @@ test.describe.serial("operator workspace journeys", () => {
     ]);
     await expect(page.getByText("3 evidence documents")).toBeVisible();
     await page.getByRole("button", { name: "Analyze evidence" }).click();
+
+    const progress = page.getByTestId("analysis-progress");
+    await expect(progress).toContainText("Analyzing documents");
+    await expect(progress).toContainText(createdRunId);
+    await expect(page.getByRole("button", { name: "Analyzing...", exact: true })).toBeDisabled();
+    await expect(page.locator(".processing-veil")).toBeHidden();
+    releaseAnalysis();
+    await expect(progress.getByRole("alert")).toContainText("Your evidence is saved");
+    await expect(page.getByRole("button", { name: "Retry saved evidence" })).toBeEnabled();
+    await progress.getByText("Diagnostic details for support").click();
+    await expect(progress).toContainText("provider_timeout");
+    await page.getByRole("button", { name: "Retry saved evidence" }).click();
+    expect(createRequestCount).toBe(1);
 
     await expect(page.getByRole("status").getByText("Generated 1 review-only journal recommendation.")).toBeVisible();
     expect(createRequestBody).toContain("existing_document_ids");

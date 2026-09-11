@@ -77,6 +77,18 @@ Both routes require prepare permission and apply the same controls: every journa
 
 ## AI Journal Drafting
 
+### Progress, timeouts and troubleshooting
+
+Apply migration `20260912_0015` with `alembic upgrade head` before starting the updated API. It adds nullable `analysis_diagnostics` to saved recommendation runs; existing runs remain readable.
+
+The frontend separates evidence upload from analysis, shows elapsed time for the current step, and polls the saved run every three seconds while awaiting analysis. It does not display a made-up per-file percentage: documents are sent to the model together. Errors remain in the analysis panel with a run reference, model, document count and expandable diagnostic details. The analysis button and evidence controls are disabled during the operation.
+
+If a request times out or the connection is interrupted, the browser retrieves the saved status. A lost HTTP response does not prove that analysis failed. Use **Check saved status** before retrying, or **Load recent analyses** after reopening the page. **Retry saved evidence** reuses a draft/failed run and its documents, without uploading them again. A provider timeout returns HTTP 504 with actionable guidance; provider connectivity, quota/access and request-rejection failures have distinct error codes. Validation failures also persist a failure reason. Concurrent analysis of the same run returns 409; running analyses cannot be deleted or rejected.
+
+With `API_LOG_JSON=true`, filter API logs by `run_id`. `journal_analysis.progress` records stage, company, model, document count, total bytes, configured timeout and elapsed duration. `journal_analysis.provider_attempt`, `provider_response`, `retry_schema` and `retry_validation` identify the explicit model calls and repair retries. `journal_analysis.failed` includes error type/code, provider HTTP status/request ID when available, provider error code/parameter and traceback frames. HTTP request IDs correlate these events with normal request logs. Prompts, document contents, API keys and raw provider error bodies are deliberately omitted from these diagnostic events. Existing provider-result storage is unchanged.
+
+`API_JOURNAL_AI_REQUEST_TIMEOUT_SECONDS` defaults to 90 seconds per provider request; SDK transport retries and up to three explicit structured-output/validation attempts can extend the overall duration. Compare provider duration and request references with reverse-proxy timeouts before increasing limits; reducing the document batch may also help. This remains a synchronous workflow, not a durable job queue: a terminated API process can leave a run marked `analyzing`. An unchanged saved stage is not proof that a worker is alive. Investigate that run in server logs before any administrative recovery; the UI does not automatically restart or double-submit it.
+
 The journal-recommendation API accepts PDF and supported image evidence in two explicit modes:
 
 - `single`: exactly one evidence document and exactly one recommended journal

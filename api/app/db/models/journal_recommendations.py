@@ -42,6 +42,7 @@ class JournalRecommendationRun(PrimaryKeyMixin, TimestampMixin, Base):
     normalized_result_json: Mapped[dict | None] = mapped_column(JSON)
     provider_usage_json: Mapped[dict | None] = mapped_column(JSON)
     failure_reason: Mapped[str | None] = mapped_column(Text)
+    analysis_diagnostics: Mapped[dict | None] = mapped_column(JSON)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

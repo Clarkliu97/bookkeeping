@@ -300,6 +300,8 @@ def delete_recommendation_run(
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     if run.status == JournalRecommendationStatus.ACCEPTED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Accepted recommendation runs cannot be deleted")
+    if run.status == JournalRecommendationStatus.ANALYZING:
+        raise HTTPException(status_code=409, detail="Analysis is still running; check its status before deleting.")
     db.delete(run)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
