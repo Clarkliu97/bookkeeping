@@ -41,7 +41,7 @@ function formatFileSize(byteSize: number) {
 }
 
 
-export function JournalEditorSection({ operator, journalId, mode = "page", onClose }: { operator: OperatorState; journalId?: string; mode?: "page" | "modal"; onClose?: () => void }) {
+export function JournalEditorSection({ operator, journalId, mode = "page", onClose, onPostedJournalUpdated }: { operator: OperatorState; journalId?: string; mode?: "page" | "modal"; onClose?: () => void; onPostedJournalUpdated?: () => Promise<void> }) {
   const router = useRouter();
   const initializedNewDraftRef = useRef(false);
   const [journalLineEditorMode, setJournalLineEditorMode] = useState<"panel" | "table">("panel");
@@ -271,8 +271,11 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
         return;
       }
       await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}`, "PUT", payload);
-      showMessage("success", selectedJournal.status === "posted" ? `Updated posted journal ${selectedJournal.entry_number}.` : `Saved ${selectedJournal.entry_number}.`);
       await refreshAll();
+      if (selectedJournal.status === "posted") {
+        await onPostedJournalUpdated?.();
+      }
+      showMessage("success", selectedJournal.status === "posted" ? `Updated posted journal ${selectedJournal.entry_number} and refreshed the ledger.` : `Saved ${selectedJournal.entry_number}.`);
       return;
     }
 
@@ -419,7 +422,7 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
               </section>
             </div>
             <div className="request-actions journal-editor-actions">
-              {canSaveJournal ? <button className="button-link button-link-small" type="button" data-testid="save-journal" onClick={() => runAction(selectedJournal?.status === "posted" ? "Updating posted journal" : "Saving journal", saveJournal)}>{selectedJournal?.status === "posted" ? "Save posted changes" : "Save journal"}</button> : null}
+              {canSaveJournal ? <button className="button-link button-link-small" type="button" data-testid={selectedJournal?.status === "posted" ? "update-posted-journal" : "save-journal"} onClick={() => runAction(selectedJournal?.status === "posted" ? "Updating posted journal and ledger" : "Saving journal", saveJournal)}>{selectedJournal?.status === "posted" ? "Update posted journal" : "Save journal"}</button> : null}
               {selectedJournal && selectedJournal.status === "draft" ? <button className="button-link button-link-small button-link-danger" type="button" onClick={() => runAction("Deleting journal", async () => {
                 if (!confirmDanger(`Delete draft journal ${selectedJournal.entry_number}?`)) {
                   return;

@@ -850,17 +850,28 @@ test.describe.serial("operator workspace journeys", () => {
 
     await seedSessionStorage(page, company.id);
     await page.goto("/bookkeeping");
+    await page.getByRole("button", { name: "Ledger", exact: true }).click();
+    await page.getByRole("button", { name: "Use all time" }).click();
+    await expect(page.locator(".ledger-description").filter({ hasText: "Posted entry for UI correction" }).first()).toBeVisible();
     await page.getByRole("button", { name: "Journals", exact: true }).click();
 
     await page.getByRole("row").filter({ hasText: editable.entry_number }).first().click();
     await page.getByRole("button", { name: "Update journal", exact: true }).click();
     let dialog = page.getByRole("dialog", { name: "Update journal" });
-    await expect(dialog.getByTestId("save-journal")).toHaveText("Save posted changes");
+    await expect(dialog.getByTestId("update-posted-journal")).toHaveText("Update posted journal");
     await dialog.getByLabel("Description").fill("Corrected posted entry from UI");
     page.once("dialog", (confirmation) => confirmation.accept());
-    await dialog.getByTestId("save-journal").click();
-    await expect(page.getByRole("status").getByText(`Updated posted journal ${editable.entry_number}.`)).toBeVisible();
+    await dialog.getByTestId("update-posted-journal").click();
+    await expect(page.getByRole("status").getByText(`Updated posted journal ${editable.entry_number} and refreshed the ledger.`)).toBeVisible();
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Ledger", exact: true }).click();
+    await expect(page.locator(".ledger-description").filter({ hasText: "Corrected posted entry from UI" }).first()).toBeVisible();
+    await expect(page.locator(".ledger-description").filter({ hasText: "Posted entry for UI correction" })).toHaveCount(0);
 
+    await page.getByRole("button", { name: "Journals", exact: true }).click();
+    await page.getByRole("row").filter({ hasText: "Corrected posted entry from UI" }).click();
+    await page.getByRole("button", { name: "Update journal", exact: true }).click();
+    dialog = page.getByRole("dialog", { name: "Update journal" });
     page.once("dialog", (confirmation) => confirmation.accept());
     await dialog.getByTestId("delete-posted-journal").click();
     await expect(page.getByRole("status").getByText(`Deleted posted journal ${editable.entry_number}.`)).toBeVisible();

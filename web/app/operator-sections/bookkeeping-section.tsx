@@ -2418,7 +2418,13 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
       {isJournalEditorOpen ? (
         <div className="journal-popup-backdrop" role="presentation" onClick={closeJournalEditorPopup}>
           <div className="journal-popup-card journal-editor-popup-card" role="dialog" aria-modal="true" aria-label={journalEditorJournalId ? "Update journal" : "Create journal"} onClick={(event) => event.stopPropagation()}>
-            <JournalEditorSection operator={operator} journalId={journalEditorJournalId} mode="modal" onClose={closeJournalEditorPopup} />
+            <JournalEditorSection
+              operator={operator}
+              journalId={journalEditorJournalId}
+              mode="modal"
+              onClose={closeJournalEditorPopup}
+              onPostedJournalUpdated={() => loadGeneralLedger()}
+            />
           </div>
         </div>
       ) : null}
