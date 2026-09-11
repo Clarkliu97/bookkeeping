@@ -41,7 +41,7 @@ function formatFileSize(byteSize: number) {
 }
 
 
-export function JournalEditorSection({ operator, journalId, mode = "page", onClose, onPostedJournalUpdated }: { operator: OperatorState; journalId?: string; mode?: "page" | "modal"; onClose?: () => void; onPostedJournalUpdated?: () => Promise<void> }) {
+export function JournalEditorSection({ operator, journalId, mode = "page", onClose, onPostedJournalChanged }: { operator: OperatorState; journalId?: string; mode?: "page" | "modal"; onClose?: () => void; onPostedJournalChanged?: () => Promise<void> }) {
   const router = useRouter();
   const initializedNewDraftRef = useRef(false);
   const [journalLineEditorMode, setJournalLineEditorMode] = useState<"panel" | "table">("panel");
@@ -162,14 +162,18 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
   }, [selectedJournal]);
 
   const isEditingMissingJournal = Boolean(journalId && selectedCompanyId && !selectedJournal);
-  const canAdministrativelyChangePosted = Boolean(
+  const relatedReversals = selectedJournal
+    ? journals.filter((journal) => journal.reversal_of_entry_id === selectedJournal.id)
+    : [];
+  const voidedReversalCount = relatedReversals.filter((journal) => journal.status === "voided").length;
+  const canAdministrativelyEditPosted = Boolean(
     currentUser?.is_superuser
     && selectedJournal?.status === "posted"
     && !selectedJournal.reversal_of_entry_id
-    && !journals.some((journal) => journal.reversal_of_entry_id === selectedJournal.id)
     && !["system", "depreciation"].includes(selectedJournal.source_type),
   );
-  const canSaveJournal = !selectedJournal || selectedJournal.status === "draft" || canAdministrativelyChangePosted;
+  const canAdministrativelyDeletePosted = canAdministrativelyEditPosted && relatedReversals.every((journal) => journal.status === "voided");
+  const canSaveJournal = !selectedJournal || selectedJournal.status === "draft" || canAdministrativelyEditPosted;
   const isModal = mode === "modal";
   const visibleTableRowCount = Math.max(journalDraft.lines.length + 4, 10);
   const tableEditorLines = useMemo(
@@ -266,14 +270,14 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
       })),
     };
 
-    if (selectedJournal && (selectedJournal.status === "draft" || canAdministrativelyChangePosted)) {
+    if (selectedJournal && (selectedJournal.status === "draft" || canAdministrativelyEditPosted)) {
       if (selectedJournal.status === "posted" && !confirmDanger(`Save changes directly to posted journal ${selectedJournal.entry_number}? This changes the posted ledger and financial reports.`)) {
         return;
       }
       await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}`, "PUT", payload);
       await refreshAll();
       if (selectedJournal.status === "posted") {
-        await onPostedJournalUpdated?.();
+        await onPostedJournalChanged?.();
       }
       showMessage("success", selectedJournal.status === "posted" ? `Updated posted journal ${selectedJournal.entry_number} and refreshed the ledger.` : `Saved ${selectedJournal.entry_number}.`);
       return;
@@ -437,14 +441,18 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
                   router.replace("/bookkeeping");
                 }
               })}>Delete selected</button> : null}
-              {selectedJournal && canAdministrativelyChangePosted ? <button className="button-link button-link-small button-link-danger" type="button" data-testid="delete-posted-journal" onClick={() => runAction("Deleting posted journal", async () => {
-                if (!confirmDanger(`Permanently delete posted journal ${selectedJournal.entry_number}? This removes it from the ledger and financial reports and cannot be undone.`)) {
+              {selectedJournal && canAdministrativelyDeletePosted ? <button className="button-link button-link-small button-link-danger" type="button" data-testid="delete-posted-journal" onClick={() => runAction("Deleting posted journal", async () => {
+                const reversalWarning = voidedReversalCount > 0
+                  ? ` This will also permanently delete ${voidedReversalCount} associated voided reversal${voidedReversalCount === 1 ? "" : "s"}.`
+                  : "";
+                if (!confirmDanger(`Permanently delete posted journal ${selectedJournal.entry_number}?${reversalWarning} This removes the entries from the ledger and financial reports and cannot be undone.`)) {
                   return;
                 }
                 await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}`, "DELETE", undefined, "void");
                 setSelectedJournalId("");
                 await refreshAll();
-                showMessage("success", `Deleted posted journal ${selectedJournal.entry_number}.`);
+                await onPostedJournalChanged?.();
+                showMessage("success", `Deleted posted journal ${selectedJournal.entry_number}${voidedReversalCount > 0 ? ` and ${voidedReversalCount} voided reversal${voidedReversalCount === 1 ? "" : "s"}` : ""}.`);
                 if (isModal) {
                   onClose?.();
                 } else {

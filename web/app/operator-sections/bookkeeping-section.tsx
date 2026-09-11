@@ -2423,7 +2423,7 @@ export function BookkeepingSection({ operator }: { operator: OperatorState }) {
               journalId={journalEditorJournalId}
               mode="modal"
               onClose={closeJournalEditorPopup}
-              onPostedJournalUpdated={() => loadGeneralLedger()}
+              onPostedJournalChanged={() => loadGeneralLedger()}
             />
           </div>
         </div>

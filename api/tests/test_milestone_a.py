@@ -661,6 +661,26 @@ def test_superuser_can_delete_posted_journals_and_unreverse_entries(client):
     assert by_id[original["id"]]["status"] == "posted"
     assert by_id[reversal["id"]]["status"] == "voided"
 
+    restored_update = client.put(
+        f"/api/companies/{company_id}/journals/{original['id']}",
+        headers=auth_header(admin_token),
+        json={
+            "entry_date": "2026-07-17",
+            "accounting_period_id": period_id,
+            "source_type": "manual",
+            "description": "Corrected after un-reversing",
+            "reference": "UNREVERSED-CORRECTION",
+            "lines": [
+                {"account_id": cash_account_id, "debit_amount": "85.00", "credit_amount": "0.00"},
+                {"account_id": revenue_account_id, "debit_amount": "0.00", "credit_amount": "85.00"},
+            ],
+        },
+    )
+    assert restored_update.status_code == 200, restored_update.text
+    assert restored_update.json()["status"] == "posted"
+    assert restored_update.json()["description"] == "Corrected after un-reversing"
+    assert restored_update.json()["lines"][0]["debit_amount"] == "85.00"
+
     repeated_unreverse = client.post(
         f"/api/companies/{company_id}/journals/{original['id']}/unreverse",
         headers=auth_header(admin_token),
@@ -670,4 +690,11 @@ def test_superuser_can_delete_posted_journals_and_unreverse_entries(client):
         f"/api/companies/{company_id}/journals/{original['id']}",
         headers=auth_header(admin_token),
     )
-    assert history_delete.status_code == 409, history_delete.text
+    assert history_delete.status_code == 204, history_delete.text
+    journals_after_history_delete = client.get(
+        f"/api/companies/{company_id}/journals", headers=auth_header(admin_token)
+    )
+    assert journals_after_history_delete.status_code == 200, journals_after_history_delete.text
+    remaining_ids = {journal["id"] for journal in journals_after_history_delete.json()}
+    assert original["id"] not in remaining_ids
+    assert reversal["id"] not in remaining_ids

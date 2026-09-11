@@ -201,6 +201,7 @@ def _ensure_posted_journal_can_be_changed(
     journal: JournalEntry,
     *,
     operation: str,
+    allow_voided_reversal_history: bool = False,
 ) -> None:
     _ensure_period_not_locked(db, company_id, journal.accounting_period_id)
     if journal.source_type in {JournalSourceType.SYSTEM, JournalSourceType.DEPRECIATION}:
@@ -213,18 +214,20 @@ def _ensure_posted_journal_can_be_changed(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"A posted reversal cannot be {operation} directly. Un-reverse the original journal instead",
         )
-    reversal_history = db.scalar(
-        select(JournalEntry.id)
-        .where(
-            JournalEntry.company_id == company_id,
-            JournalEntry.reversal_of_entry_id == journal.id,
-        )
-        .limit(1)
+    reversal_history_query = select(JournalEntry.id).where(
+        JournalEntry.company_id == company_id,
+        JournalEntry.reversal_of_entry_id == journal.id,
     )
+    if allow_voided_reversal_history:
+        reversal_history_query = reversal_history_query.where(
+            JournalEntry.status != JournalStatus.VOIDED
+        )
+    reversal_history = db.scalar(reversal_history_query.limit(1))
     if reversal_history is not None:
+        reason = "active reversal" if allow_voided_reversal_history else "reversal history"
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Journal has reversal history and cannot be {operation}",
+            detail=f"Journal has {reason} and cannot be {operation}",
         )
     depreciation_run = db.scalar(
         select(DepreciationRun.id).where(DepreciationRun.journal_entry_id == journal.id).limit(1)
@@ -235,6 +238,50 @@ def _ensure_posted_journal_can_be_changed(
             detail="Journal belongs to a depreciation run and must be managed from that workflow",
         )
     _ensure_journal_not_reconciled(db, journal.id)
+
+
+def _detach_journal_references(db: Session, company_id: UUID, journal: JournalEntry) -> None:
+    recommendation_entry_run_ids = select(JournalRecommendationEntry.recommendation_run_id).where(
+        JournalRecommendationEntry.accepted_journal_entry_id == journal.id
+    )
+    recommendation_runs = list(
+        db.scalars(
+            select(JournalRecommendationRun).where(
+                JournalRecommendationRun.company_id == company_id,
+                (
+                    (JournalRecommendationRun.accepted_journal_entry_id == journal.id)
+                    | (JournalRecommendationRun.target_journal_entry_id == journal.id)
+                    | JournalRecommendationRun.id.in_(recommendation_entry_run_ids)
+                ),
+            )
+        ).all()
+    )
+    recommendation_entries = list(
+        db.scalars(
+            select(JournalRecommendationEntry).where(
+                JournalRecommendationEntry.accepted_journal_entry_id == journal.id
+            )
+        ).all()
+    )
+    for entry in recommendation_entries:
+        entry.accepted_journal_entry_id = None
+    for run in recommendation_runs:
+        if run.accepted_journal_entry_id == journal.id:
+            run.accepted_journal_entry_id = None
+        if run.target_journal_entry_id == journal.id:
+            run.target_journal_entry_id = None
+
+    evidence_links = list(
+        db.scalars(
+            select(DocumentLink).where(
+                DocumentLink.company_id == company_id,
+                DocumentLink.entity_type == DocumentLinkEntityType.JOURNAL_ENTRY,
+                DocumentLink.entity_id == str(journal.id),
+            )
+        ).all()
+    )
+    for link in evidence_links:
+        db.delete(link)
 
 
 @router.get("", response_model=list[JournalEntryRead])
@@ -304,6 +351,7 @@ def update_journal(
             company_id,
             journal,
             operation="updated",
+            allow_voided_reversal_history=True,
         )
         if JournalSourceType(payload.source_type) in {
             JournalSourceType.SYSTEM,
@@ -355,6 +403,7 @@ def delete_journal(
 ) -> Response:
     require_company_permission(company_id, "can_prepare", db, current_user)
     journal = _load_journal_or_404(db, company_id, journal_id)
+    voided_reversals: list[JournalEntry] = []
     if journal.status == JournalStatus.POSTED:
         if not current_user.is_superuser:
             raise HTTPException(
@@ -366,7 +415,22 @@ def delete_journal(
             company_id,
             journal,
             operation="permanently deleted",
+            allow_voided_reversal_history=True,
         )
+        voided_reversals = list(
+            db.scalars(
+                select(JournalEntry)
+                .options(selectinload(JournalEntry.lines))
+                .where(
+                    JournalEntry.company_id == company_id,
+                    JournalEntry.reversal_of_entry_id == journal.id,
+                    JournalEntry.status == JournalStatus.VOIDED,
+                )
+                .order_by(JournalEntry.created_at.asc())
+            ).all()
+        )
+        for reversal in voided_reversals:
+            _ensure_journal_not_reconciled(db, reversal.id)
     elif journal.status == JournalStatus.REVERSED:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -392,53 +456,37 @@ def delete_journal(
         actor_user_id=current_user.id,
         company_id=company_id,
         before_state=before_state,
-        metadata={"administrative_override": True} if was_posted else None,
+        metadata=(
+            {
+                "administrative_override": True,
+                "deleted_voided_reversal_count": len(voided_reversals),
+                "deleted_voided_reversal_ids": [str(reversal.id) for reversal in voided_reversals],
+            }
+            if was_posted
+            else None
+        ),
     )
 
-    # Keep recommendation history while allowing accepted draft journals to be deleted.
-    recommendation_entry_run_ids = select(JournalRecommendationEntry.recommendation_run_id).where(
-        JournalRecommendationEntry.accepted_journal_entry_id == journal.id
-    )
-    recommendation_runs = list(
-        db.scalars(
-            select(JournalRecommendationRun).where(
-                JournalRecommendationRun.company_id == company_id,
-                (
-                    (JournalRecommendationRun.accepted_journal_entry_id == journal.id)
-                    | (JournalRecommendationRun.target_journal_entry_id == journal.id)
-                    | JournalRecommendationRun.id.in_(recommendation_entry_run_ids)
-                ),
-            )
-        ).all()
-    )
-    recommendation_entries = list(
-        db.scalars(
-            select(JournalRecommendationEntry).where(
-                JournalRecommendationEntry.accepted_journal_entry_id == journal.id
-            )
-        ).all()
-    )
-    for entry in recommendation_entries:
-        entry.accepted_journal_entry_id = None
-    for run in recommendation_runs:
-        if run.accepted_journal_entry_id == journal.id:
-            run.accepted_journal_entry_id = None
-        if run.target_journal_entry_id == journal.id:
-            run.target_journal_entry_id = None
-
-    # Document links use a polymorphic string key, so remove direct journal links explicitly.
-    evidence_links = list(
-        db.scalars(
-            select(DocumentLink).where(
-                DocumentLink.company_id == company_id,
-                DocumentLink.entity_type == DocumentLinkEntityType.JOURNAL_ENTRY,
-                DocumentLink.entity_id == str(journal.id),
-            )
-        ).all()
-    )
-    for link in evidence_links:
-        db.delete(link)
-
+    for reversal in voided_reversals:
+        log_audit_event(
+            db,
+            action="journal.voided_reversal_deleted",
+            summary=f"Deleted voided reversal {reversal.entry_number} with original {journal.entry_number}",
+            entity_type=EntityType.JOURNAL_ENTRY.value,
+            entity_id=reversal.id,
+            actor_user_id=current_user.id,
+            company_id=company_id,
+            before_state=JournalEntryRead.model_validate(reversal).model_dump(mode="json"),
+            metadata={
+                "administrative_override": True,
+                "deleted_with_original_journal_id": str(journal.id),
+            },
+        )
+        _detach_journal_references(db, company_id, reversal)
+        db.delete(reversal)
+    if voided_reversals:
+        db.flush()
+    _detach_journal_references(db, company_id, journal)
     db.delete(journal)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

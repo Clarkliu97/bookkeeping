@@ -885,8 +885,23 @@ test.describe.serial("operator workspace journeys", () => {
     await dialog.getByTestId("unreverse-journal").click();
     await expect(page.getByRole("status").getByText(`Un-reversed journal ${restorable.entry_number}.`)).toBeVisible();
     await expect(dialog.getByText("posted", { exact: true })).toBeVisible();
+    await expect(dialog.getByTestId("update-posted-journal")).toBeVisible();
+    await dialog.getByLabel("Description").fill("Corrected restored journal from UI");
+    page.once("dialog", (confirmation) => confirmation.accept());
+    await dialog.getByTestId("update-posted-journal").click();
+    await expect(page.getByRole("status").getByText(`Updated posted journal ${restorable.entry_number} and refreshed the ledger.`)).toBeVisible();
+    await expect(dialog.getByTestId("delete-posted-journal")).toBeVisible();
+    page.once("dialog", async (confirmation) => {
+      expect(confirmation.message()).toContain("also permanently delete 1 associated voided reversal");
+      await confirmation.accept();
+    });
+    await dialog.getByTestId("delete-posted-journal").click();
+    await expect(page.getByRole("status").getByText(`Deleted posted journal ${restorable.entry_number} and 1 voided reversal.`)).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    await page.getByRole("button", { name: "Ledger", exact: true }).click();
+    await expect(page.locator(".ledger-description").filter({ hasText: "Corrected restored journal from UI" })).toHaveCount(0);
 
-    const journals = await apiJson<Array<JournalRecord>>(
+    const journals = await apiJson<Array<JournalRecord & { description: string }>>(
       page.request,
       "GET",
       `/api/companies/${company.id}/journals`,
@@ -894,8 +909,8 @@ test.describe.serial("operator workspace journeys", () => {
     );
     const journalById = new Map(journals.map((journal) => [journal.id, journal]));
     expect(journalById.has(editable.id)).toBe(false);
-    expect(journalById.get(restorable.id)?.status).toBe("posted");
-    expect(journalById.get(reversal.id)?.status).toBe("voided");
+    expect(journalById.has(restorable.id)).toBe(false);
+    expect(journalById.has(reversal.id)).toBe(false);
   });
 
   test("selects and deletes multiple stored documents", async ({ page }) => {
