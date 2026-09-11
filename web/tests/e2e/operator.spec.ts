@@ -807,6 +807,86 @@ test.describe.serial("operator workspace journeys", () => {
     expect(journalById.get(secondJournal.id)?.status).toBe("posted");
   });
 
+  test("lets a superuser edit, delete, and un-reverse posted journals", async ({ page }) => {
+    const auth = await ensureOperatorSession(page.request);
+    const company = await createCompany(page.request, auth.access_token, "E2E Journal Override Company");
+    const period = await createPeriod(page.request, auth.access_token, company.id, uniqueSuffix("E2E Override Quarter"));
+    const cashAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Override Cash",
+      account_type: "asset",
+    });
+    const revenueAccount = await createAccount(page.request, auth.access_token, company.id, {
+      account_code: uniqueAccountCode(),
+      name: "Override Revenue",
+      account_type: "income",
+    });
+    const editable = await createDraftJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      period.id,
+      cashAccount.id,
+      revenueAccount.id,
+      { description: "Posted entry for UI correction", amount: "120.00" },
+    );
+    const restorable = await createDraftJournal(
+      page.request,
+      auth.access_token,
+      company.id,
+      period.id,
+      cashAccount.id,
+      revenueAccount.id,
+      { description: "Posted entry for UI un-reverse", amount: "80.00" },
+    );
+    await apiJson(page.request, "POST", `/api/companies/${company.id}/journals/${editable.id}/post`, auth.access_token);
+    await apiJson(page.request, "POST", `/api/companies/${company.id}/journals/${restorable.id}/post`, auth.access_token);
+    const reversal = await apiJson<JournalRecord>(
+      page.request,
+      "POST",
+      `/api/companies/${company.id}/journals/${restorable.id}/reverse`,
+      auth.access_token,
+    );
+
+    await seedSessionStorage(page, company.id);
+    await page.goto("/bookkeeping");
+    await page.getByRole("button", { name: "Journals", exact: true }).click();
+
+    await page.getByRole("row").filter({ hasText: editable.entry_number }).first().click();
+    await page.getByRole("button", { name: "Update journal", exact: true }).click();
+    let dialog = page.getByRole("dialog", { name: "Update journal" });
+    await expect(dialog.getByTestId("save-journal")).toHaveText("Save posted changes");
+    await dialog.getByLabel("Description").fill("Corrected posted entry from UI");
+    page.once("dialog", (confirmation) => confirmation.accept());
+    await dialog.getByTestId("save-journal").click();
+    await expect(page.getByRole("status").getByText(`Updated posted journal ${editable.entry_number}.`)).toBeVisible();
+
+    page.once("dialog", (confirmation) => confirmation.accept());
+    await dialog.getByTestId("delete-posted-journal").click();
+    await expect(page.getByRole("status").getByText(`Deleted posted journal ${editable.entry_number}.`)).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+
+    await page.getByRole("row").filter({ hasText: "Posted entry for UI un-reverse" }).click();
+    await page.getByRole("button", { name: "Update journal", exact: true }).click();
+    dialog = page.getByRole("dialog", { name: "Update journal" });
+    await expect(dialog.getByTestId("unreverse-journal")).toBeVisible();
+    page.once("dialog", (confirmation) => confirmation.accept());
+    await dialog.getByTestId("unreverse-journal").click();
+    await expect(page.getByRole("status").getByText(`Un-reversed journal ${restorable.entry_number}.`)).toBeVisible();
+    await expect(dialog.getByText("posted", { exact: true })).toBeVisible();
+
+    const journals = await apiJson<Array<JournalRecord>>(
+      page.request,
+      "GET",
+      `/api/companies/${company.id}/journals`,
+      auth.access_token,
+    );
+    const journalById = new Map(journals.map((journal) => [journal.id, journal]));
+    expect(journalById.has(editable.id)).toBe(false);
+    expect(journalById.get(restorable.id)?.status).toBe("posted");
+    expect(journalById.get(reversal.id)?.status).toBe("voided");
+  });
+
   test("selects and deletes multiple stored documents", async ({ page }) => {
     const auth = await ensureOperatorSession(page.request);
     const company = await createCompany(page.request, auth.access_token, "E2E Bulk Document Delete Company");

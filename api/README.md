@@ -75,6 +75,12 @@ The statement of changes in equity reconciles opening equity, profit or loss, ow
 
 Both routes require prepare permission and apply the same controls: every journal must still be a draft, belong to an unlocked accounting period, contain at least two valid one-sided lines, balance exactly, and reference valid accounts that allow manual posting. Bulk posting validates the complete selection before changing any journal, uses one posting timestamp, records an audit event for every entry, and commits once. If any selected journal is missing or invalid, no journal in that batch is posted.
 
+`PUT /companies/{company_id}/journals/{journal_id}` continues to update drafts and additionally lets superusers correct eligible posted journals. Posted changes preserve the journal ID, entry number, `posted_at`, and `posted_by_user_id`, revalidate the complete balanced entry, and record `journal.posted_updated` with before and after snapshots. Both the current and destination periods must be unlocked. Reconciled, generated, reversal, and reversal-history entries cannot be edited in place.
+
+`DELETE /companies/{company_id}/journals/{journal_id}` continues to let preparers delete drafts and additionally lets superusers permanently delete eligible posted journals. A posted entry cannot be deleted from a locked period, while reconciled, system-generated, depreciation, reversal, and reversal-history entries must be resolved through their owning workflows. Posted deletion records a `journal.posted_deleted` audit snapshot before removing the journal, its lines, direct evidence links, and journal-recommendation pointers.
+
+`POST /companies/{company_id}/journals/{journal_id}/unreverse` is superuser-only and accepts the original journal ID. It requires an unlocked period, a `reversed` original, and exactly one active posted reversal that is not reconciled. The operation restores the original to `posted`, marks the reversal `voided`, and records `journal.reversal_undone`; the reversal is retained as evidence of the prior action.
+
 ## Document Deletion
 
 `POST /companies/{company_id}/documents/bulk-delete` deletes between 1 and 500 unique, company-owned documents. Its JSON body is `{ "document_ids": [...], "remove_links": false }`; the response returns `deleted_count` and the deleted IDs in submitted order. The service validates the complete selection before mutation, so a missing, foreign-company, linked, or protected document prevents every deletion in the batch.

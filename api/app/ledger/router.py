@@ -28,6 +28,8 @@ from app.db.models.journal_recommendations import (
     JournalRecommendationEntry,
     JournalRecommendationRun,
 )
+from app.db.models.fixed_assets import DepreciationRun
+from app.db.models.reconciliation import ReconciliationItem, ReconciliationJournalAllocation
 from app.schemas.common import JournalEntryRead, JournalEvidenceRead, TrialBalanceRow
 from app.schemas.requests import (
     JournalBulkPostRequest,
@@ -175,6 +177,66 @@ def _apply_journal_payload(journal: JournalEntry, payload: JournalEntryCreate, *
         )
 
 
+def _ensure_journal_not_reconciled(db: Session, journal_id: UUID) -> None:
+    direct_match = db.scalar(
+        select(ReconciliationItem.id)
+        .where(ReconciliationItem.matched_journal_entry_id == journal_id)
+        .limit(1)
+    )
+    grouped_match = db.scalar(
+        select(ReconciliationJournalAllocation.id)
+        .where(ReconciliationJournalAllocation.journal_entry_id == journal_id)
+        .limit(1)
+    )
+    if direct_match is not None or grouped_match is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Journal is used by reconciliation. Unmatch it before changing its posted state",
+        )
+
+
+def _ensure_posted_journal_can_be_changed(
+    db: Session,
+    company_id: UUID,
+    journal: JournalEntry,
+    *,
+    operation: str,
+) -> None:
+    _ensure_period_not_locked(db, company_id, journal.accounting_period_id)
+    if journal.source_type in {JournalSourceType.SYSTEM, JournalSourceType.DEPRECIATION}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Generated journals must be {operation} through their owning period or depreciation workflow",
+        )
+    if journal.reversal_of_entry_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A posted reversal cannot be {operation} directly. Un-reverse the original journal instead",
+        )
+    reversal_history = db.scalar(
+        select(JournalEntry.id)
+        .where(
+            JournalEntry.company_id == company_id,
+            JournalEntry.reversal_of_entry_id == journal.id,
+        )
+        .limit(1)
+    )
+    if reversal_history is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Journal has reversal history and cannot be {operation}",
+        )
+    depreciation_run = db.scalar(
+        select(DepreciationRun.id).where(DepreciationRun.journal_entry_id == journal.id).limit(1)
+    )
+    if depreciation_run is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Journal belongs to a depreciation run and must be managed from that workflow",
+        )
+    _ensure_journal_not_reconciled(db, journal.id)
+
+
 @router.get("", response_model=list[JournalEntryRead])
 def list_journals(
     company_id: UUID,
@@ -230,8 +292,32 @@ def update_journal(
 ) -> JournalEntry:
     require_company_permission(company_id, "can_prepare", db, current_user)
     journal = _load_journal_or_404(db, company_id, journal_id)
-    if journal.status != JournalStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only draft journals can be updated")
+    was_posted = journal.status == JournalStatus.POSTED
+    if was_posted:
+        if not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Superuser access is required to update a posted journal",
+            )
+        _ensure_posted_journal_can_be_changed(
+            db,
+            company_id,
+            journal,
+            operation="updated",
+        )
+        if JournalSourceType(payload.source_type) in {
+            JournalSourceType.SYSTEM,
+            JournalSourceType.DEPRECIATION,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A posted journal cannot be changed into a generated journal source type",
+            )
+    elif journal.status != JournalStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only draft or posted journals can be updated",
+        )
     _ensure_period_not_locked(db, company_id, payload.accounting_period_id)
     before_state = JournalEntryRead.model_validate(journal).model_dump(mode="json")
     journal.lines.clear()
@@ -241,14 +327,19 @@ def update_journal(
     db.flush()
     log_audit_event(
         db,
-        action="journal.updated",
-        summary=f"Updated journal {journal.entry_number}",
+        action="journal.posted_updated" if was_posted else "journal.updated",
+        summary=(
+            f"Superuser updated posted journal {journal.entry_number}"
+            if was_posted
+            else f"Updated journal {journal.entry_number}"
+        ),
         entity_type=EntityType.JOURNAL_ENTRY.value,
         entity_id=journal.id,
         actor_user_id=current_user.id,
         company_id=company_id,
         before_state=before_state,
         after_state=JournalEntryRead.model_validate(journal).model_dump(mode="json"),
+        metadata={"administrative_override": True} if was_posted else None,
     )
     db.commit()
     db.refresh(journal)
@@ -264,17 +355,44 @@ def delete_journal(
 ) -> Response:
     require_company_permission(company_id, "can_prepare", db, current_user)
     journal = _load_journal_or_404(db, company_id, journal_id)
-    if journal.status != JournalStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only draft journals can be deleted")
+    if journal.status == JournalStatus.POSTED:
+        if not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Superuser access is required to delete a posted journal",
+            )
+        _ensure_posted_journal_can_be_changed(
+            db,
+            company_id,
+            journal,
+            operation="permanently deleted",
+        )
+    elif journal.status == JournalStatus.REVERSED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Un-reverse this journal before deleting it",
+        )
+    elif journal.status != JournalStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only draft or posted journals can be deleted",
+        )
+    before_state = JournalEntryRead.model_validate(journal).model_dump(mode="json")
+    was_posted = journal.status == JournalStatus.POSTED
     log_audit_event(
         db,
-        action="journal.deleted",
-        summary=f"Deleted journal {journal.entry_number}",
+        action="journal.posted_deleted" if was_posted else "journal.deleted",
+        summary=(
+            f"Superuser permanently deleted posted journal {journal.entry_number}"
+            if was_posted
+            else f"Deleted journal {journal.entry_number}"
+        ),
         entity_type=EntityType.JOURNAL_ENTRY.value,
         entity_id=journal.id,
         actor_user_id=current_user.id,
         company_id=company_id,
-        before_state=JournalEntryRead.model_validate(journal).model_dump(mode="json"),
+        before_state=before_state,
+        metadata={"administrative_override": True} if was_posted else None,
     )
 
     # Keep recommendation history while allowing accepted draft journals to be deleted.
@@ -468,6 +586,72 @@ def reverse_journal(
     db.commit()
     db.refresh(reversal)
     return _load_journal_or_404(db, company_id, reversal.id)
+
+
+@router.post("/{journal_id}/unreverse", response_model=JournalEntryRead)
+def unreverse_journal(
+    company_id: UUID,
+    journal_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JournalEntry:
+    require_company_permission(company_id, "can_prepare", db, current_user)
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superuser access is required to un-reverse a journal",
+        )
+    journal = _load_journal_or_404(db, company_id, journal_id)
+    if journal.status != JournalStatus.REVERSED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only reversed journals can be un-reversed",
+        )
+    _ensure_period_not_locked(db, company_id, journal.accounting_period_id)
+    reversals = list(
+        db.scalars(
+            select(JournalEntry)
+            .options(selectinload(JournalEntry.lines))
+            .where(
+                JournalEntry.company_id == company_id,
+                JournalEntry.reversal_of_entry_id == journal.id,
+                JournalEntry.status == JournalStatus.POSTED,
+            )
+            .order_by(JournalEntry.created_at.desc())
+        ).all()
+    )
+    if len(reversals) != 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Journal does not have exactly one active posted reversal",
+        )
+    reversal = reversals[0]
+    _ensure_journal_not_reconciled(db, reversal.id)
+    before_state = JournalEntryRead.model_validate(journal).model_dump(mode="json")
+    reversal_before_state = JournalEntryRead.model_validate(reversal).model_dump(mode="json")
+    journal.status = JournalStatus.POSTED
+    reversal.status = JournalStatus.VOIDED
+    db.flush()
+    log_audit_event(
+        db,
+        action="journal.reversal_undone",
+        summary=f"Superuser un-reversed journal {journal.entry_number}",
+        entity_type=EntityType.JOURNAL_ENTRY.value,
+        entity_id=journal.id,
+        actor_user_id=current_user.id,
+        company_id=company_id,
+        before_state=before_state,
+        after_state=JournalEntryRead.model_validate(journal).model_dump(mode="json"),
+        metadata={
+            "administrative_override": True,
+            "voided_reversal_entry_id": str(reversal.id),
+            "voided_reversal_entry_number": reversal.entry_number,
+            "reversal_before_state": reversal_before_state,
+        },
+    )
+    db.commit()
+    db.refresh(journal)
+    return _load_journal_or_404(db, company_id, journal.id)
 
 
 @router.get("/{journal_id}/documents", response_model=list[JournalEvidenceRead])

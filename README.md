@@ -56,11 +56,16 @@ The project explicitly does not support:
 - post journals through the normal validation path
 - select and post up to 500 reviewed draft journals together from a searchable, period-aware popup; the batch is all-or-nothing
 - reverse journals
+- let superusers un-reverse journals by voiding the active reversal and restoring the original posted entry
+- let superusers correct eligible posted journal dates, periods, descriptions, references, accounts, tax treatment, and amounts in place
+- let superusers permanently delete eligible posted journals after explicit confirmation
 - lock periods with an automatic, balanced system journal that closes posted profit-and-loss balances into retained earnings
 - unlock periods with an audited void of the prior rollover so corrections can be posted before relocking
 - review journal detail including source type, lines, status, references, and audit-relevant metadata
 - search and filter journal lists by text and status
 - inspect a ledger explorer that can show both draft and posted lines for review
+
+Administrative posted-journal changes remain controlled. Locked-period entries must be unlocked first; reconciled journals must be unmatched; generated system and depreciation journals stay under their owning workflows; and journals with reversal history cannot be changed or permanently deleted. Un-reversing preserves history by marking the reversal `voided` rather than deleting it. Posted edits preserve the original posting identity and timestamp. Every administrative operation stores an audit snapshot and is unavailable to ordinary preparers, reviewers, and approvers.
 
 ### Documents And Evidence
 

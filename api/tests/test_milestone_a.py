@@ -537,3 +537,137 @@ def test_period_unlock_and_journal_reversal_and_validation(client):
     period_list = client.get(f"/api/companies/{company_id}/periods", headers=auth_header(token))
     assert period_list.status_code == 200, period_list.text
     assert period_list.json()[0]["status"] == "approved"
+
+
+def test_superuser_can_delete_posted_journals_and_unreverse_entries(client):
+    admin_token = bootstrap_superuser(client)
+    company_id = create_company(client, admin_token)
+    period_id = create_period(client, admin_token, company_id)
+    cash_account_id = create_account(client, admin_token, company_id, "1000", "Cash", "asset")
+    revenue_account_id = create_account(client, admin_token, company_id, "4000", "Revenue", "income")
+    preparer_id = create_user(
+        client,
+        admin_token,
+        email="journal-preparer@example.com",
+        full_name="Journal Preparer",
+        password="StrongPass123",
+    )
+    access = grant_company_access(
+        client,
+        admin_token,
+        company_id,
+        preparer_id,
+        can_prepare=True,
+        can_review=True,
+        can_approve=False,
+    )
+    assert access.status_code == 201, access.text
+    preparer_token = login(client, "journal-preparer@example.com", "StrongPass123")
+
+    def create_and_post(amount: str, description: str) -> dict:
+        created = client.post(
+            f"/api/companies/{company_id}/journals",
+            headers=auth_header(admin_token),
+            json={
+                "entry_date": "2026-07-15",
+                "accounting_period_id": period_id,
+                "source_type": "manual",
+                "description": description,
+                "lines": [
+                    {"account_id": cash_account_id, "debit_amount": amount, "credit_amount": "0.00"},
+                    {"account_id": revenue_account_id, "debit_amount": "0.00", "credit_amount": amount},
+                ],
+            },
+        )
+        assert created.status_code == 201, created.text
+        posted = client.post(
+            f"/api/companies/{company_id}/journals/{created.json()['id']}/post",
+            headers=auth_header(admin_token),
+        )
+        assert posted.status_code == 200, posted.text
+        return posted.json()
+
+    deletable = create_and_post("125.00", "Posted entry for administrative deletion")
+    updated_payload = {
+        "entry_date": "2026-07-16",
+        "accounting_period_id": period_id,
+        "source_type": "manual",
+        "description": "Administratively corrected posted entry",
+        "reference": "ADMIN-CORRECTION",
+        "lines": [
+            {"account_id": cash_account_id, "debit_amount": "130.00", "credit_amount": "0.00"},
+            {"account_id": revenue_account_id, "debit_amount": "0.00", "credit_amount": "130.00"},
+        ],
+    }
+    denied_update = client.put(
+        f"/api/companies/{company_id}/journals/{deletable['id']}",
+        headers=auth_header(preparer_token),
+        json=updated_payload,
+    )
+    assert denied_update.status_code == 403, denied_update.text
+    updated = client.put(
+        f"/api/companies/{company_id}/journals/{deletable['id']}",
+        headers=auth_header(admin_token),
+        json=updated_payload,
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["status"] == "posted"
+    assert updated.json()["description"] == "Administratively corrected posted entry"
+    assert updated.json()["posted_at"] == deletable["posted_at"]
+    assert updated.json()["lines"][0]["debit_amount"] == "130.00"
+
+    denied_delete = client.delete(
+        f"/api/companies/{company_id}/journals/{deletable['id']}",
+        headers=auth_header(preparer_token),
+    )
+    assert denied_delete.status_code == 403, denied_delete.text
+    deleted = client.delete(
+        f"/api/companies/{company_id}/journals/{deletable['id']}",
+        headers=auth_header(admin_token),
+    )
+    assert deleted.status_code == 204, deleted.text
+
+    original = create_and_post("75.00", "Posted entry to reverse and restore")
+    reversed_response = client.post(
+        f"/api/companies/{company_id}/journals/{original['id']}/reverse",
+        headers=auth_header(admin_token),
+    )
+    assert reversed_response.status_code == 201, reversed_response.text
+    reversal = reversed_response.json()
+
+    direct_reversal_delete = client.delete(
+        f"/api/companies/{company_id}/journals/{reversal['id']}",
+        headers=auth_header(admin_token),
+    )
+    assert direct_reversal_delete.status_code == 409, direct_reversal_delete.text
+    denied_unreverse = client.post(
+        f"/api/companies/{company_id}/journals/{original['id']}/unreverse",
+        headers=auth_header(preparer_token),
+    )
+    assert denied_unreverse.status_code == 403, denied_unreverse.text
+
+    restored = client.post(
+        f"/api/companies/{company_id}/journals/{original['id']}/unreverse",
+        headers=auth_header(admin_token),
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["status"] == "posted"
+    journals = client.get(
+        f"/api/companies/{company_id}/journals", headers=auth_header(admin_token)
+    )
+    assert journals.status_code == 200, journals.text
+    by_id = {journal["id"]: journal for journal in journals.json()}
+    assert deletable["id"] not in by_id
+    assert by_id[original["id"]]["status"] == "posted"
+    assert by_id[reversal["id"]]["status"] == "voided"
+
+    repeated_unreverse = client.post(
+        f"/api/companies/{company_id}/journals/{original['id']}/unreverse",
+        headers=auth_header(admin_token),
+    )
+    assert repeated_unreverse.status_code == 400, repeated_unreverse.text
+    history_delete = client.delete(
+        f"/api/companies/{company_id}/journals/{original['id']}",
+        headers=auth_header(admin_token),
+    )
+    assert history_delete.status_code == 409, history_delete.text

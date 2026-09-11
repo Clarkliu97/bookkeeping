@@ -46,10 +46,12 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
   const initializedNewDraftRef = useRef(false);
   const [journalLineEditorMode, setJournalLineEditorMode] = useState<"panel" | "table">("panel");
   const {
+    currentUser,
     selectedCompanyId,
     selectedJournalId,
     setSelectedJournalId,
     selectedJournal,
+    journals,
     journalDraft,
     setJournalDraft,
     periodOptionList,
@@ -160,7 +162,14 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
   }, [selectedJournal]);
 
   const isEditingMissingJournal = Boolean(journalId && selectedCompanyId && !selectedJournal);
-  const canSaveDraft = !selectedJournal || selectedJournal.status === "draft";
+  const canAdministrativelyChangePosted = Boolean(
+    currentUser?.is_superuser
+    && selectedJournal?.status === "posted"
+    && !selectedJournal.reversal_of_entry_id
+    && !journals.some((journal) => journal.reversal_of_entry_id === selectedJournal.id)
+    && !["system", "depreciation"].includes(selectedJournal.source_type),
+  );
+  const canSaveJournal = !selectedJournal || selectedJournal.status === "draft" || canAdministrativelyChangePosted;
   const isModal = mode === "modal";
   const visibleTableRowCount = Math.max(journalDraft.lines.length + 4, 10);
   const tableEditorLines = useMemo(
@@ -257,9 +266,12 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
       })),
     };
 
-    if (selectedJournal && selectedJournal.status === "draft") {
+    if (selectedJournal && (selectedJournal.status === "draft" || canAdministrativelyChangePosted)) {
+      if (selectedJournal.status === "posted" && !confirmDanger(`Save changes directly to posted journal ${selectedJournal.entry_number}? This changes the posted ledger and financial reports.`)) {
+        return;
+      }
       await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}`, "PUT", payload);
-      showMessage("success", `Saved ${selectedJournal.entry_number}.`);
+      showMessage("success", selectedJournal.status === "posted" ? `Updated posted journal ${selectedJournal.entry_number}.` : `Saved ${selectedJournal.entry_number}.`);
       await refreshAll();
       return;
     }
@@ -407,7 +419,7 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
               </section>
             </div>
             <div className="request-actions journal-editor-actions">
-              {canSaveDraft ? <button className="button-link button-link-small" type="button" data-testid="save-journal" onClick={() => runAction("Saving journal", saveJournal)}>Save journal</button> : null}
+              {canSaveJournal ? <button className="button-link button-link-small" type="button" data-testid="save-journal" onClick={() => runAction(selectedJournal?.status === "posted" ? "Updating posted journal" : "Saving journal", saveJournal)}>{selectedJournal?.status === "posted" ? "Save posted changes" : "Save journal"}</button> : null}
               {selectedJournal && selectedJournal.status === "draft" ? <button className="button-link button-link-small button-link-danger" type="button" onClick={() => runAction("Deleting journal", async () => {
                 if (!confirmDanger(`Delete draft journal ${selectedJournal.entry_number}?`)) {
                   return;
@@ -422,6 +434,20 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
                   router.replace("/bookkeeping");
                 }
               })}>Delete selected</button> : null}
+              {selectedJournal && canAdministrativelyChangePosted ? <button className="button-link button-link-small button-link-danger" type="button" data-testid="delete-posted-journal" onClick={() => runAction("Deleting posted journal", async () => {
+                if (!confirmDanger(`Permanently delete posted journal ${selectedJournal.entry_number}? This removes it from the ledger and financial reports and cannot be undone.`)) {
+                  return;
+                }
+                await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}`, "DELETE", undefined, "void");
+                setSelectedJournalId("");
+                await refreshAll();
+                showMessage("success", `Deleted posted journal ${selectedJournal.entry_number}.`);
+                if (isModal) {
+                  onClose?.();
+                } else {
+                  router.replace("/bookkeeping");
+                }
+              })}>Delete posted</button> : null}
               {selectedJournal?.status === "draft" ? <button className="button-link button-link-small" type="button" data-testid="post-journal" onClick={() => runAction("Posting journal", async () => {
                 await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/post`, "POST");
                 await refreshAll();
@@ -432,6 +458,14 @@ export function JournalEditorSection({ operator, journalId, mode = "page", onClo
                 await refreshAll();
                 showMessage("success", "Created reversal journal.");
               })}>Reverse selected</button> : null}
+              {currentUser?.is_superuser && selectedJournal?.status === "reversed" ? <button className="button-link button-link-small button-link-secondary" type="button" data-testid="unreverse-journal" onClick={() => runAction("Un-reversing journal", async () => {
+                if (!confirmDanger(`Un-reverse journal ${selectedJournal.entry_number}? Its active reversal will be voided and the original journal will return to the posted ledger.`)) {
+                  return;
+                }
+                await request(`/api/companies/${selectedCompanyId}/journals/${selectedJournal.id}/unreverse`, "POST");
+                await refreshAll();
+                showMessage("success", `Un-reversed journal ${selectedJournal.entry_number}.`);
+              })}>Un-reverse selected</button> : null}
             </div>
           </div>
 
